@@ -3,9 +3,9 @@ import { supabase } from '@/lib/supabase';
 
 export async function GET(
   req: NextRequest,
-  context: { params: { token: string } }
+  context: { params: Promise<{ token: string }> }
 ) {
-  const { token } = await Promise.resolve(context.params);
+  const { token } = await context.params;
   console.log('Token reçu:', token);
   // Trouver le client par son QR token
   const { data: customer, error } = await supabase
