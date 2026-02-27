@@ -18,7 +18,8 @@ export async function sendWelcomeEmail({
   qrToken,
 }: WelcomeEmailProps) {
   const scanUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/scan/${qrToken}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(scanUrl)}`;
+  const QRCode = await import('qrcode');
+  const qrUrl = await QRCode.toDataURL(scanUrl, { width: 250, margin: 2 });
 
   await resend.emails.send({
     from: 'Carte Fidélité <noreply@rebites.be>',
