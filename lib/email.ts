@@ -18,8 +18,7 @@ export async function sendWelcomeEmail({
   qrToken,
 }: WelcomeEmailProps) {
   const scanUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/scan/${qrToken}`;
-  const QRCode = await import('qrcode');
-  const qrUrl = await QRCode.toDataURL(scanUrl, { width: 250, margin: 2 });
+  const qrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(scanUrl)}&size=250`;
 
   await resend.emails.send({
     from: 'Carte Fidélité <noreply@rebites.be>',
