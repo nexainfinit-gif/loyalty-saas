@@ -71,6 +71,7 @@ try {
     to: email,
     firstName,
     restaurantName: restaurant.name,
+    restaurantColor: restaurant.color,
     qrToken: customer.qr_token,
   });
   console.log('Email envoyé avec succès');
