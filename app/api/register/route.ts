@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin as supabase } from '@/lib/supabase-admin';
 import { sendWelcomeEmail } from '@/lib/email';
 
 export async function POST(req: NextRequest) {
+  console.log('=== API REGISTER START ===');
   const body = await req.json();
-
+  console.log('Body reçu:', body);
   console.log('Clé Resend:', process.env.RESEND_API_KEY ? 'OK' : 'MANQUANTE');
 
   const {
@@ -32,13 +33,16 @@ export async function POST(req: NextRequest) {
     .eq('slug', restaurantSlug)
     .single();
 
+console.log('Restaurant trouvé:', restaurant);
+console.log('Erreur restaurant:', restError);
+
   if (restError || !restaurant) {
     return NextResponse.json(
       { error: 'Restaurant introuvable' },
       { status: 404 }
     );
   }
-
+    
   // Créer le client
   const { data: customer, error } = await supabase
     .from('customers')
@@ -54,6 +58,8 @@ export async function POST(req: NextRequest) {
     })
     .select()
     .single();
+    console.log('Customer data:', customer);
+    console.log('Customer error:', error);
 
   if (error) {
     if (error.code === '23505') {
@@ -77,8 +83,9 @@ try {
   console.log('Email envoyé avec succès');
 } catch (emailError) {
   console.error('Erreur email:', emailError);
-};
+}
 
+console.log('Client créé avec succès:', customer.id);
   return NextResponse.json({
     success: true,
     qrToken: customer.qr_token,
