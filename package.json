@@ -17,6 +17,7 @@
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-qr-code": "^2.0.18",
     "recharts": "^3.7.0",
     "registerform": "^1.0.1",
     "resend": "^6.9.3"

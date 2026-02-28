@@ -1,76 +1,119 @@
-// v3
-import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase-admin';
+// app/api/scan/[customerId]/route.ts
+import { createClient } from '@supabase/supabase-js'
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ token: string }> }
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ customerId: string }> }
 ) {
-  const { token } = await params;
+  const { customerId } = await params
 
-  const { data: customer, error } = await supabase
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const token = authHeader.replace('Bearer ', '')
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  // Vérifie l'owner
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Récupère le restaurant de l'owner
+  const { data: restaurant } = await supabase
+    .from('restaurants')
+    .select('id')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+
+  if (!restaurant) return Response.json({ error: 'Restaurant introuvable' }, { status: 404 })
+
+  // Récupère le client
+  const { data: customer, error: cErr } = await supabase
     .from('customers')
-    .select('*, restaurants(*)')
-    .eq('qr_token', token)
-    .single();
+    .select('id, first_name, last_name, total_points, restaurant_id')
+    .eq('id', customerId)
+    .single()
 
-  if (error || !customer) {
-    return new NextResponse(
-      `<!DOCTYPE html>
-      <html lang="fr">
-      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>QR Code invalide</title></head>
-      <body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fef2f2;">
-        <div style="background:white;border-radius:16px;padding:2rem;text-align:center;">
-          <div style="font-size:4rem;">❌</div>
-          <h1 style="color:#dc2626;">QR Code invalide</h1>
-        </div>
-      </body>
-      </html>`,
-      { headers: { 'Content-Type': 'text/html' } }
-    );
+  if (cErr || !customer) return Response.json({ error: 'Client introuvable' }, { status: 404 })
+
+  // Vérifie que le client appartient au restaurant
+  if (customer.restaurant_id !== restaurant.id) {
+    return Response.json({ error: 'Client invalide' }, { status: 403 })
   }
 
-  const newPoints = customer.points + 1;
+  // Récupère la config fidélité
+  const { data: settings } = await supabase
+    .from('loyalty_settings')
+    .select('points_per_scan, reward_threshold, reward_message')
+    .eq('restaurant_id', restaurant.id)
+    .maybeSingle()
 
-  await supabase
-    .from('customers')
-    .update({ points: newPoints, last_visit_at: new Date().toISOString() })
-    .eq('id', customer.id);
+  const pointsToAdd = settings?.points_per_scan ?? 1
+  const newBalance = customer.total_points + pointsToAdd
+  const rewardThreshold = settings?.reward_threshold ?? 100
+  const rewardTriggered = customer.total_points < rewardThreshold && newBalance >= rewardThreshold
 
-  await supabase.from('scan_history').insert({
+  // Insère la transaction
+  await supabase.from('transactions').insert({
+    restaurant_id: restaurant.id,
     customer_id: customer.id,
-    restaurant_id: customer.restaurant_id,
-    points_added: 1,
-  });
+    type: 'visit',
+    points_delta: pointsToAdd,
+    balance_after: newBalance,
+    metadata: { reason: 'Scan caisse' },
+  })
 
-  return new NextResponse(
-    `<!DOCTYPE html>
-    <html lang="fr">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>+1 Point !</title>
-      <style>
-        body { font-family:system-ui; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#f0fdf4; }
-        .card { background:white; border-radius:16px; padding:2rem; text-align:center; box-shadow:0 4px 24px rgba(0,0,0,0.1); max-width:320px; width:90%; }
-        .points { font-size:3rem; font-weight:bold; color:#15803d; }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <div style="font-size:4rem;">🎉</div>
-        <h1 style="color:#16a34a;">+1 point !</h1>
-        <div class="points">${newPoints}</div>
-        <p style="color:#374151;">points au total</p>
-        <p style="color:#6b7280;font-size:0.9rem;">
-          Bonjour <strong>${customer.first_name}</strong> !<br>
-          Merci pour votre visite chez<br>
-          <strong>${customer.restaurants.name}</strong>
-        </p>
-      </div>
-    </body>
-    </html>`,
-    { headers: { 'Content-Type': 'text/html' } }
-  );
+  return Response.json({
+    success: true,
+    customer: {
+      id: customer.id,
+      first_name: customer.first_name,
+      last_name: customer.last_name,
+      total_points: newBalance,
+    },
+    points_added: pointsToAdd,
+    reward_triggered: rewardTriggered,
+    reward_message: settings?.reward_message ?? 'Récompense offerte !',
+  })
+}
+
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ customerId: string }> }
+) {
+  const { customerId } = await params
+
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const token = authHeader.replace('Bearer ', '')
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: customer, error: cErr } = await supabase
+    .from('customers')
+    .select('id, first_name, last_name, total_points, last_visit_at, restaurant_id')
+    .eq('id', customerId)
+    .single()
+
+  if (cErr || !customer) return Response.json({ error: 'Client introuvable' }, { status: 404 })
+
+  const { data: restaurant } = await supabase
+    .from('restaurants')
+    .select('id')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+
+  if (!restaurant || customer.restaurant_id !== restaurant.id) {
+    return Response.json({ error: 'Accès refusé' }, { status: 403 })
+  }
+
+  return Response.json({ customer })
 }
