@@ -23,7 +23,8 @@ export default function RegisterPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [customerName, setCustomerName] = useState('');
-
+  const [walletUrl, setWalletUrl] = useState<string | null>(null);
+  
   useEffect(() => {
     async function loadRestaurant() {
       const res = await fetch(`/api/register/${slug}/restaurant`);
@@ -72,6 +73,9 @@ export default function RegisterPage() {
     }
 
     setCustomerName(first_name);
+    const walletRes = await fetch(`/api/wallet/${data.customer_id}`);
+    const walletData = await walletRes.json();
+    if (walletData.walletUrl) setWalletUrl(walletData.walletUrl);
     setStep('success');
   }
 
@@ -308,14 +312,19 @@ export default function RegisterPage() {
               <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#111827', margin: '0 0 0.75rem' }}>
                 📱 Ajoutez votre carte à votre Wallet
               </p>
-              <button style={{
-                background: 'black', color: 'white', border: 'none',
-                padding: '0.75rem 1.5rem', borderRadius: '10px',
-                fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer',
-                width: '100%',
+              {walletUrl ? (
+              <a href={walletUrl} target="_blank" rel="noreferrer" style={{
+                display: 'block', background: '#1a73e8', color: 'white',
+                padding: '0.75rem', borderRadius: '10px', textAlign: 'center',
+                fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none',
               }}>
-                🍎 Ajouter à Apple Wallet
-              </button>
+                🎫 Ajouter à Google Wallet
+              </a>
+            ) : (
+              <p style={{ color: '#9CA3AF', fontSize: '0.8rem', textAlign: 'center' }}>
+                ⏳ Génération de votre carte...
+              </p>
+            )}
             </div>
 
             <div style={{

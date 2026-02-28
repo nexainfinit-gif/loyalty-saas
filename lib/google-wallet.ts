@@ -1,172 +1,65 @@
-import { GoogleAuth } from 'google-auth-library';
+// lib/google-wallet.ts
+import jwt from 'jsonwebtoken'
 
-const issuerId = process.env.GOOGLE_WALLET_ISSUER_ID!;
-const classId = `${issuerId}.loyalty_saas_card`;
+const ISSUER_ID = process.env.GOOGLE_WALLET_ISSUER_ID!
+const CLIENT_EMAIL = process.env.GOOGLE_WALLET_CLIENT_EMAIL!
+const PRIVATE_KEY = process.env.GOOGLE_WALLET_PRIVATE_KEY!.replace(/\\n/g, '\n')
 
-function getAuth() {
-  return new GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_WALLET_CLIENT_EMAIL!,
-      private_key: process.env.GOOGLE_WALLET_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-    },
-    scopes: ['https://www.googleapis.com/auth/wallet_object.issuer'],
-  });
+interface CreateCardParams {
+  customerId: string
+  firstName: string
+  totalPoints: number
+  restaurantName: string
+  restaurantSlug: string
+  primaryColor: string
+  logoUrl: string | null
 }
 
-// Créer la classe de carte (une seule fois par restaurant)
-export async function createWalletClass(restaurantName: string, restaurantColor: string) {
-  const auth = getAuth();
-  const client = await auth.getClient();
+export async function generateWalletUrl(params: CreateCardParams): Promise<string> {
+  const {
+    customerId, firstName, totalPoints,
+    restaurantName, restaurantSlug, primaryColor,
+  } = params
 
-  const walletClass = {
-    id: classId,
-    issuerName: restaurantName,
-    reviewStatus: 'UNDER_REVIEW',
-    hexBackgroundColor: restaurantColor,
-    logo: {
-      sourceUri: {
-        uri: 'https://storage.googleapis.com/wallet-lab-tools-codelab-artifacts-public/pass_google_logo.jpg',
-      },
-    },
-  };
+  const classId = `${ISSUER_ID}.${restaurantSlug}_loyalty`
+  const objectId = `${ISSUER_ID}.${customerId.replace(/-/g, '_')}`
 
-  try {
-    await (client as any).request({
-      url: `https://walletobjects.googleapis.com/walletobjects/v1/loyaltyClass/${classId}`,
-      method: 'GET',
-    });
-    console.log('Classe wallet déjà existante');
-  } catch (getError: any) {
-    console.log('Erreur GET:', getError?.response?.data);
-    try {
-      const postResponse = await (client as any).request({
-        url: 'https://walletobjects.googleapis.com/walletobjects/v1/loyaltyClass',
-        method: 'POST',
-        data: walletClass,
-      });
-      console.log('Classe créée:', postResponse.data);
-    } catch (postError: any) {
-      console.log('Erreur POST classe:', postError?.response?.data);
-    }
-  }
-}
-
-// Créer un objet wallet pour un client
-export async function createWalletObject(
-  customerId: string,
-  customerName: string,
-  restaurantName: string,
-  restaurantColor: string,
-  points: number,
-  qrToken: string
-) {
-  const auth = getAuth();
-  const client = await auth.getClient();
-  const objectId = `${issuerId}.${customerId.replace(/-/g, '_')}`;
-  const scanUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/scan/${qrToken}`;
-
-  const walletObject = {
+  const loyaltyObject = {
     id: objectId,
     classId,
     state: 'ACTIVE',
     accountId: customerId,
-    accountName: customerName,
+    accountName: firstName,
     loyaltyPoints: {
-      label: 'Points',
-      balance: {
-        int: points,
-      },
+      balance: { string: `${totalPoints} pts` },
+      label: 'Points fidélité',
     },
     barcode: {
       type: 'QR_CODE',
-      value: scanUrl,
-      alternateText: 'Scannez pour gagner des points',
+      value: customerId,
+      alternateText: customerId.slice(0, 8).toUpperCase(),
     },
-    hexBackgroundColor: restaurantColor,
-    cardTitle: {
-      defaultValue: {
-        language: 'fr',
-        value: restaurantName,
+    textModulesData: [
+      {
+        header: 'Programme',
+        body: `Fidélité ${restaurantName}`,
+        id: 'program',
       },
-    },
-    header: {
-      defaultValue: {
-        language: 'fr',
-        value: customerName,
-      },
-    },
-  };
-
-  try {
-    await (client as any).request({
-      url: `https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/${objectId}`,
-      method: 'GET',
-    });
-    // Mettre à jour si existe déjà
-    await (client as any).request({
-      url: `https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/${objectId}`,
-      method: 'PUT',
-      data: walletObject,
-    });
-  } catch {
-    // Créer si n'existe pas
-    await (client as any).request({
-      url: 'https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject',
-      method: 'POST',
-      data: walletObject,
-    });
+    ],
+    hexBackgroundColor: primaryColor.startsWith('#') ? primaryColor : '#FF6B35',
   }
 
-  return objectId;
-}
-
-// Générer le lien "Ajouter à Google Wallet"
-export async function generateWalletLink(
-  customerId: string,
-  customerName: string,
-  restaurantName: string,
-  restaurantColor: string,
-  points: number,
-  qrToken: string
-): Promise<string> {
-  // Créer la classe si nécessaire
-  await createWalletClass(restaurantName, restaurantColor);
-
-  // Créer l'objet
-  const objectId = await createWalletObject(
-    customerId,
-    customerName,
-    restaurantName,
-    restaurantColor,
-    points,
-    qrToken
-  );
-
-  // Générer le JWT pour le lien
-  const { JWT } = await import('google-auth-library');
-  
   const claims = {
-    iss: process.env.GOOGLE_WALLET_CLIENT_EMAIL!,
+    iss: CLIENT_EMAIL,
     aud: 'google',
-    origins: [process.env.NEXT_PUBLIC_APP_URL!],
+    origins: ['*'],
     typ: 'savetowallet',
     payload: {
-      loyaltyObjects: [{ id: objectId }],
+      loyaltyObjects: [loyaltyObject],
     },
-  };
-
-  const token = new JWT({
-    email: process.env.GOOGLE_WALLET_CLIENT_EMAIL!,
-    key: process.env.GOOGLE_WALLET_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-    scopes: ['https://www.googleapis.com/auth/wallet_object.issuer'],
-  });
-
-  const jwt = await token.authorize();
-  
-  // Signer le JWT manuellement
-  const { sign } = await import('jsonwebtoken');
-  const privateKey = process.env.GOOGLE_WALLET_PRIVATE_KEY!.replace(/\\n/g, '\n');
-  const signedJwt = sign(claims, privateKey, { algorithm: 'RS256' });
-
-  return `https://pay.google.com/gp/v/save/${signedJwt}`;
+  }
+  console.log('PRIVATE_KEY début:', PRIVATE_KEY.substring(0, 50))
+  console.log('PRIVATE_KEY fin:', PRIVATE_KEY.substring(PRIVATE_KEY.length - 50))
+  const token = jwt.sign(claims, PRIVATE_KEY, { algorithm: 'RS256' })
+  return `https://pay.google.com/gp/v/save/${token}`
 }
