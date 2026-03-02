@@ -24,10 +24,10 @@ export async function GET(request: Request) {
   const sort   = url.searchParams.get('sort')   ?? 'health';
   const order  = url.searchParams.get('order')  ?? 'desc';
 
-  // Fetch all restaurants
+  // Fetch all restaurants with plan name via join
   const { data: restaurants, error: restErr } = await supabaseAdmin
     .from('restaurants')
-    .select('id, name, slug, plan, created_at');
+    .select('id, name, slug, plan, plan_id, created_at, plans(name)');
 
   if (restErr || !restaurants) {
     return NextResponse.json({ error: 'Erreur base de données.' }, { status: 500 });
@@ -77,6 +77,7 @@ export async function GET(request: Request) {
       name:              r.name,
       slug:              r.slug,
       plan:              r.plan ?? 'free',
+      plan_name:         (r.plans as { name: string } | null)?.name ?? r.plan ?? 'free',
       created_at:        r.created_at,
       health_score:      snap?.health_score      ?? 0,
       upgrade_score:     snap?.upgrade_score     ?? 0,

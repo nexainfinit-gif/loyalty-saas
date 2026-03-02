@@ -31,6 +31,7 @@ interface Restaurant {
   name:             string;
   slug:             string;
   plan:             string;
+  plan_id:          string | null;
   primary_color:    string | null;
   logo_url:         string | null;
   created_at:       string;
@@ -39,6 +40,12 @@ interface Restaurant {
   churn_risk_score: number;
   reasons:          string[];
   snapshot_at:      string | null;
+}
+
+interface PlanOption {
+  id:   string;
+  key:  string;
+  name: string;
 }
 
 interface Totals {
@@ -126,23 +133,53 @@ export default function AdminRestaurantDetailPage() {
   const [trend, setTrend]           = useState<TrendRow[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
+  const [plans, setPlans]           = useState<PlanOption[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+  const [savingPlan, setSavingPlan]         = useState(false);
+  const [planMsg, setPlanMsg]               = useState('');
 
   useEffect(() => {
     if (!restaurantId) return;
     setLoading(true);
-    fetch(`/api/admin/restaurants/${restaurantId}`)
-      .then(async (res) => {
-        if (res.status === 401 || res.status === 403) { router.replace('/dashboard'); return; }
-        if (res.status === 404) { setError('Restaurant introuvable.'); return; }
-        if (!res.ok) throw new Error('Erreur serveur');
-        const json = await res.json();
-        setRestaurant(json.restaurant);
-        setTotals(json.totals);
-        setTrend(json.trend ?? []);
+
+    Promise.all([
+      fetch(`/api/admin/restaurants/${restaurantId}`),
+      fetch('/api/admin/plans'),
+    ])
+      .then(async ([restRes, plansRes]) => {
+        if (restRes.status === 401 || restRes.status === 403) { router.replace('/dashboard'); return; }
+        if (restRes.status === 404) { setError('Restaurant introuvable.'); return; }
+        if (!restRes.ok) throw new Error('Erreur serveur');
+        const restJson  = await restRes.json();
+        const plansJson = plansRes.ok ? await plansRes.json() : { plans: [] };
+        setRestaurant(restJson.restaurant);
+        setTotals(restJson.totals);
+        setTrend(restJson.trend ?? []);
+        setPlans(plansJson.plans ?? []);
+        setSelectedPlanId(restJson.restaurant?.plan_id ?? '');
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [restaurantId, router]);
+
+  async function handleUpdatePlan() {
+    if (!selectedPlanId || !restaurantId) return;
+    setSavingPlan(true);
+    setPlanMsg('');
+    try {
+      const res = await fetch(`/api/admin/restaurants/${restaurantId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_id: selectedPlanId }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setPlanMsg(json.error ?? 'Erreur.'); return; }
+      setRestaurant((r) => r ? { ...r, plan: json.restaurant.plan, plan_id: json.restaurant.plan_id } : r);
+      setPlanMsg('✓ Plan mis à jour');
+    } finally {
+      setSavingPlan(false);
+    }
+  }
 
   /* Format date label for chart X-axis */
   function fmtDate(dateStr: string) {
@@ -321,6 +358,38 @@ export default function AdminRestaurantDetailPage() {
               </AreaChart>
             </ResponsiveContainer>
           )}
+        </div>
+
+        {/* Plan assignment */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Plan d&apos;abonnement</h2>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-48">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Plan actuel</label>
+              <select
+                value={selectedPlanId}
+                onChange={(e) => { setSelectedPlanId(e.target.value); setPlanMsg(''); }}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20 bg-white"
+              >
+                <option value="">— Sélectionner un plan —</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.key})</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={handleUpdatePlan}
+              disabled={savingPlan || !selectedPlanId}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
+            >
+              {savingPlan ? 'Mise à jour…' : 'Mettre à jour'}
+            </button>
+            {planMsg && (
+              <span className={`text-xs font-medium ${planMsg.startsWith('✓') ? 'text-emerald-600' : 'text-red-600'}`}>
+                {planMsg}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Quick actions */}

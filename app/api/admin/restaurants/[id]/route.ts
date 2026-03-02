@@ -2,6 +2,52 @@ import { NextResponse } from 'next/server';
 import { requireOwner } from '@/lib/server-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
+/**
+ * PATCH /api/admin/restaurants/[id]
+ * Assign a plan to a restaurant.
+ * Auth: platform owner only.
+ *
+ * Body: { plan_id: string }
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } },
+) {
+  const guard = await requireOwner(request);
+  if (guard instanceof NextResponse) return guard;
+
+  const { id } = params;
+  const body = await request.json().catch(() => null);
+
+  if (!body?.plan_id) {
+    return NextResponse.json({ error: 'plan_id est requis.' }, { status: 400 });
+  }
+
+  // Verify plan exists
+  const { data: plan } = await supabaseAdmin
+    .from('plans')
+    .select('id, key, name')
+    .eq('id', body.plan_id)
+    .maybeSingle();
+
+  if (!plan) {
+    return NextResponse.json({ error: 'Plan introuvable.' }, { status: 404 });
+  }
+
+  const { data: restaurant, error } = await supabaseAdmin
+    .from('restaurants')
+    .update({ plan_id: plan.id, plan: plan.key })
+    .eq('id', id)
+    .select('id, name, plan, plan_id')
+    .maybeSingle();
+
+  if (error || !restaurant) {
+    return NextResponse.json({ error: 'Erreur mise à jour du plan.' }, { status: 500 });
+  }
+
+  return NextResponse.json({ restaurant });
+}
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +68,7 @@ export async function GET(
   // Restaurant base info
   const { data: restaurant, error: restErr } = await supabaseAdmin
     .from('restaurants')
-    .select('id, name, slug, plan, primary_color, logo_url, created_at')
+    .select('id, name, slug, plan, plan_id, primary_color, logo_url, created_at')
     .eq('id', id)
     .maybeSingle();
 

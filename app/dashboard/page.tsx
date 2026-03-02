@@ -44,6 +44,8 @@ interface Restaurant {
   primary_color: string;
   logo_url: string | null;
   plan: string;
+  plan_id: string | null;
+  plans: { name: string; key: string } | null;
 }
 
 interface Transaction {
@@ -156,7 +158,7 @@ export default function DashboardPage() {
       setSession(session);
 
       const { data: resto } = await supabase
-        .from('restaurants').select('*')
+        .from('restaurants').select('id, name, slug, primary_color, logo_url, plan, plan_id, scanner_token, plans(name, key)')
         .eq('owner_id', session.user.id).maybeSingle();
       if (!resto) { router.replace('/onboarding'); return; }
       setRestaurant(resto);
@@ -433,11 +435,11 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold text-gray-900 truncate">{restaurant?.name}</p>
               <span className={[
                 'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md',
-                restaurant?.plan === 'pro'     ? 'bg-purple-100 text-purple-700' :
-                restaurant?.plan === 'starter' ? 'bg-primary-100 text-primary-700' :
-                                                  'bg-gray-100 text-gray-500',
+                (restaurant?.plans?.key ?? restaurant?.plan) === 'pro'     ? 'bg-purple-100 text-purple-700' :
+                (restaurant?.plans?.key ?? restaurant?.plan) === 'starter' ? 'bg-primary-100 text-primary-700' :
+                                                                              'bg-gray-100 text-gray-500',
               ].join(' ')}>
-                {restaurant?.plan ?? 'free'}
+                {restaurant?.plans?.name ?? restaurant?.plan ?? 'free'}
               </span>
             </div>
           )}
@@ -480,7 +482,7 @@ export default function DashboardPage() {
           </a>
 
           {/* Wallet Studio — hidden on free plan */}
-          {restaurant?.plan !== 'free' && (
+          {(restaurant?.plans?.key ?? restaurant?.plan) !== 'free' && (
             <a
               href="/dashboard/wallet"
               aria-label="Wallet Studio"
@@ -495,7 +497,7 @@ export default function DashboardPage() {
         {/* Bottom section */}
         <div className="p-2 border-t border-gray-100">
           {/* Upgrade card — free plan only */}
-          {sidebarOpen && restaurant?.plan === 'free' && (
+          {sidebarOpen && (restaurant?.plans?.key ?? restaurant?.plan) === 'free' && (
             <div className="rounded-xl p-3 mb-2 bg-gradient-to-br from-purple-600 to-primary-600 text-white">
               <p className="text-xs font-bold mb-0.5">Passer à Pro</p>
               <p className="text-[11px] text-white/70 mb-2.5">Campagnes illimitées + Analytics</p>
@@ -1343,12 +1345,14 @@ export default function DashboardPage() {
                   <h3 className="text-sm font-semibold text-gray-900 mb-4">Abonnement</h3>
                   <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                     <div>
-                      <p className="font-semibold text-gray-900">Plan {restaurant?.plan?.toUpperCase()}</p>
+                      <p className="font-semibold text-gray-900">
+                        Plan {(restaurant?.plans?.name ?? restaurant?.plan)?.toUpperCase()}
+                      </p>
                       <p className="text-sm text-gray-500 mt-0.5">
-                        {restaurant?.plan === 'free' ? 'Limité à 100 clients' : 'Clients illimités'}
+                        {(restaurant?.plans?.key ?? restaurant?.plan) === 'free' ? 'Limité à 100 clients' : 'Clients illimités'}
                       </p>
                     </div>
-                    {restaurant?.plan === 'free' && (
+                    {(restaurant?.plans?.key ?? restaurant?.plan) === 'free' && (
                       <button className="bg-gradient-to-r from-purple-600 to-primary-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
                         Upgrader ✨
                       </button>

@@ -38,6 +38,13 @@ export async function POST(req: Request) {
 
   if (existingSlug) return Response.json({ error: 'Slug déjà pris' }, { status: 409 })
 
+  // Resolve the free plan id for plan_id FK
+  const { data: freePlan } = await supabase
+    .from('plans')
+    .select('id')
+    .eq('key', 'free')
+    .maybeSingle()
+
   const { data, error } = await supabase
     .from('restaurants')
     .insert({
@@ -49,6 +56,7 @@ export async function POST(req: Request) {
       phone: phone ?? null,
       business_type: business_type ?? 'restaurant',
       plan: 'free',
+      plan_id: freePlan?.id ?? null,
       primary_color: primary_color ?? '#FF6B35',
       logo_url: logo_url ?? null,
     })

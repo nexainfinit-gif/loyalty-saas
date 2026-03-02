@@ -10,6 +10,7 @@ interface RestaurantRow {
   name:             string;
   slug:             string;
   plan:             string;
+  plan_name:        string;
   created_at:       string;
   health_score:     number;
   upgrade_score:    number;
@@ -160,12 +161,20 @@ export default function AdminPage() {
               </p>
             )}
           </div>
-          <a
-            href="/dashboard"
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            ← Dashboard
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="/admin/plans"
+              className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
+            >
+              Plans
+            </a>
+            <a
+              href="/dashboard"
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              ← Dashboard
+            </a>
+          </div>
         </div>
       </header>
 

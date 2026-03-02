@@ -11,11 +11,17 @@ export interface AuthContext {
   platformRole: PlatformRole;
   restaurantId: string | null;
   plan:         string;
+  planId:       string | null;
+  /**
+   * Feature flags loaded from plan_features for this restaurant's plan.
+   * Falls back to empty object when plan_id is not yet set.
+   */
+  features:     Record<string, boolean>;
   /**
    * true when wallet studio is accessible for this restaurant.
-   * Granted when EITHER condition holds:
-   *   - restaurant.plan !== 'free'  (paid plan implies wallet access)
-   *   - restaurant.wallet_studio_enabled = true  (per-restaurant manual override)
+   * Derived from features['wallet_studio'] when plan_id is set,
+   * otherwise falls back to plan !== 'free' check for backward compat.
+   * Also granted by per-restaurant wallet_studio_enabled manual override.
    */
   walletEnabled: boolean;
 }
@@ -47,7 +53,7 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
   const [{ data: restaurant }, { data: profile }] = await Promise.all([
     supabaseAdmin
       .from('restaurants')
-      .select('id, plan, wallet_studio_enabled')
+      .select('id, plan, plan_id, wallet_studio_enabled')
       .eq('owner_id', userId)
       .maybeSingle(),
     supabaseAdmin
@@ -57,15 +63,33 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
       .maybeSingle(),
   ]);
 
-  const plan         = restaurant?.plan ?? 'free';
-  const manualGrant  = restaurant?.wallet_studio_enabled ?? false;
+  const plan        = restaurant?.plan ?? 'free';
+  const planId      = restaurant?.plan_id ?? null;
+  const manualGrant = restaurant?.wallet_studio_enabled ?? false;
+
+  // Load feature flags from plan_features when plan_id is available
+  let features: Record<string, boolean> = {};
+  if (planId) {
+    const { data: pf } = await supabaseAdmin
+      .from('plan_features')
+      .select('feature_key, enabled')
+      .eq('plan_id', planId);
+    features = Object.fromEntries((pf ?? []).map((f) => [f.feature_key, f.enabled]));
+  }
+
+  // walletEnabled: use DB feature flag when available, else fall back to plan string
+  const walletEnabled = 'wallet_studio' in features
+    ? (features['wallet_studio'] || manualGrant)
+    : (plan !== 'free' || manualGrant);
 
   return {
     userId,
-    platformRole:  (profile?.platform_role ?? 'restaurant_admin') as PlatformRole,
-    restaurantId:  restaurant?.id ?? null,
+    platformRole: (profile?.platform_role ?? 'restaurant_admin') as PlatformRole,
+    restaurantId: restaurant?.id ?? null,
     plan,
-    walletEnabled: plan !== 'free' || manualGrant,
+    planId,
+    features,
+    walletEnabled,
   };
 }
 
