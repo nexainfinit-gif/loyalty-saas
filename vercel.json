@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/wallet-sync",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 1 * * *"
     },
     {
       "path": "/api/cron/metrics-daily",
