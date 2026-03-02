@@ -50,22 +50,47 @@ export async function GET(
     .maybeSingle();
 
   if (existingPass && existingPass.object_id) {
-    // Update existing pass with latest points — fire-and-forget
+    // Resolve passKind BEFORE the update call — it controls which field/format is written.
+    // Bug fix: previously passKind was resolved after the update, so every call used the
+    // default 'points' format and overwrote the stamps display with "X pts" instead of "X/Y".
+    const passKind = (existingPass.wallet_pass_templates as { pass_kind: string } | null)?.pass_kind ?? 'points';
+
+    // For stamps passes, fetch stamps_total so the counter renders correctly.
+    const { data: lsForSync } = passKind === 'stamps'
+      ? await supabaseAdmin
+          .from('loyalty_settings')
+          .select('stamps_total')
+          .eq('restaurant_id', guard.restaurantId)
+          .maybeSingle()
+      : { data: null };
+
+    // Update existing pass with latest loyalty state — fire-and-forget
     void updateLoyaltyObject(existingPass.object_id, {
+      passKind:    passKind as 'stamps' | 'points',
       totalPoints: customer.total_points ?? 0,
+      stampsCount: customer.stamps_count ?? 0,
+      stampsTotal: lsForSync?.stamps_total ?? 10,
     }).then(result => {
+      if (!result.ok) {
+        console.error(
+          `[wallet/customerId] sync failed objectId=${existingPass.object_id}` +
+          ` HTTP ${result.status}` +
+          (result.error ? ` error=${result.error}` : ` body=${JSON.stringify(result.data).slice(0, 200)}`),
+        );
+      }
       if (result.ok) {
         return supabaseAdmin
           .from('wallet_passes')
           .update({ last_synced_at: new Date().toISOString(), sync_error: null })
           .eq('id', existingPass.id);
       }
-    }).catch(() => {/* silent */});
+    }).catch((err) => {
+      console.error('[wallet/customerId] sync unhandled error:', err instanceof Error ? err.message : String(err));
+    });
 
     // Reconstruct the save JWT using the stored objectId (Phase-3 naming) and the
     // restaurantId-based classId. This ensures Google presents the EXISTING object
     // rather than trying to create a new one with a mismatched ID.
-    const passKind = (existingPass.wallet_pass_templates as { pass_kind: string } | null)?.pass_kind ?? 'points';
     const classId  = computeClassId(guard.restaurantId, passKind);
 
     const saveUrl = generateSaveJwt({

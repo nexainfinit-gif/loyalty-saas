@@ -164,13 +164,41 @@ export async function POST(
 
     if (!googlePasses?.length) return;
 
+    // Re-read the customer's actual post-trigger values from DB.
+    // The DB trigger runs atomically after the transaction insert, so by the time
+    // we reach here the correct stamps/points are already committed. Using the
+    // freshly-read values prevents a race condition where two concurrent scans
+    // both compute the same app-side newStampsCount and write a stale value to
+    // Google Wallet (e.g. both send 6 while the DB correctly wrote 7).
+    const { data: freshCustomer } = await supabaseAdmin
+      .from('customers')
+      .select('total_points, stamps_count')
+      .eq('id', customer.id)
+      .maybeSingle();
+
+    const syncPoints = freshCustomer?.total_points ?? newBalance;
+    const syncStamps = freshCustomer?.stamps_count ?? newStampsCount;
+
     await Promise.allSettled(googlePasses.map(async (p) => {
+      console.log(
+        `[GWallet/scan] objectId=${p.object_id} customer=${customer.id}` +
+        ` stamps_before=${customer.stamps_count} stamps_after=${syncStamps}` +
+        ` points_before=${customer.total_points} points_after=${syncPoints}` +
+        ` passKind=${programType}`,
+      );
+
       const result = await updateLoyaltyObject(p.object_id!, {
         passKind:    programType as 'stamps' | 'points',
-        totalPoints: newBalance,
-        stampsCount: newStampsCount,
+        totalPoints: syncPoints,
+        stampsCount: syncStamps,
         stampsTotal: settings?.stamps_total ?? 10,
       });
+
+      console.log(
+        `[GWallet/scan] objectId=${p.object_id} GW_response: ok=${result.ok} HTTP ${result.status}` +
+        (!result.ok ? ` error=${result.error ?? JSON.stringify(result.data).slice(0, 200)}` : ''),
+      );
+
       await supabaseAdmin
         .from('wallet_passes')
         .update({
@@ -179,7 +207,9 @@ export async function POST(
         })
         .eq('id', p.id);
     }));
-  })().catch(() => {/* silent */});
+  })().catch((err) => {
+    console.error('[GWallet/scan] wallet sync unhandled error:', err instanceof Error ? err.message : String(err));
+  });
 
   return Response.json({
     success: true,

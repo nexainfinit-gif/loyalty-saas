@@ -97,7 +97,16 @@ export async function ensureLoyaltyClass(params: {
   // GET first — skip creation if class already exists
   const check = await gFetch('GET', `/loyaltyClass/${encodeURIComponent(classId)}`);
   if (check.ok) return { ok: true, created: false };
-  if (check.status !== 404) return { ok: false, created: false };
+  if (check.status !== 404) {
+    // Unexpected error (401 = bad credentials, 403 = wrong issuer/scope, 5xx = Google outage).
+    // Do NOT attempt creation — we can't know if the class already exists.
+    console.error(
+      `[GWallet] ensureLoyaltyClass GET failed classId=${classId}` +
+      ` HTTP ${check.status}` +
+      (check.error ? ` error=${check.error}` : ` body=${JSON.stringify(check.data).slice(0, 300)}`),
+    );
+    return { ok: false, created: false };
+  }
 
   const hexColor  = primaryColor.startsWith('#') ? primaryColor : '#4f6bed';
   const classBody: Record<string, unknown> = {
@@ -174,7 +183,7 @@ export async function updateLoyaltyObject(
      */
     passKind?:      'stamps' | 'points' | 'event';
   },
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; status: number; data: unknown; error?: string }> {
   const body: Record<string, unknown> = {};
 
   if (patch.state !== undefined) {
@@ -231,7 +240,30 @@ export async function updateLoyaltyObject(
 
   const qs     = maskFields.length > 0 ? `?updateMask=${maskFields.join(',')}` : '';
   const result = await gFetch('PATCH', `/loyaltyObject/${encodeURIComponent(objectId)}${qs}`, body);
-  return { ok: result.ok, error: result.error };
+
+  if (result.ok) {
+    // Extract the confirmed loyaltyPoints value from Google's response body.
+    // A 200 with a mismatched balance here means our patch payload was silently ignored
+    // (e.g. class still UNDER_REVIEW, invalid field combination, or stale cached object).
+    const responseObj  = result.data as Record<string, unknown> | null;
+    const lp           = responseObj?.loyaltyPoints as Record<string, unknown> | null;
+    const confirmedBal = (lp?.balance as Record<string, unknown> | null)?.string ?? '(no balance field)';
+    console.log(
+      `[GWallet] PATCH ok objectId=${objectId}` +
+      ` mask=[${maskFields.join(',')}]` +
+      ` sent=${JSON.stringify({ stampsCount: patch.stampsCount, stampsTotal: patch.stampsTotal, totalPoints: patch.totalPoints, passKind: patch.passKind })}` +
+      ` confirmed loyaltyPoints.balance.string="${confirmedBal}"`,
+    );
+  } else {
+    console.error(
+      `[GWallet] PATCH failed objectId=${objectId}` +
+      ` mask=[${maskFields.join(',')}]` +
+      ` HTTP ${result.status}` +
+      (result.error ? ` error=${result.error}` : ` body=${JSON.stringify(result.data).slice(0, 300)}`),
+    );
+  }
+
+  return { ok: result.ok, status: result.status, data: result.data, error: result.error };
 }
 
 export async function revokeLoyaltyObject(objectId: string): Promise<{ ok: boolean }> {
