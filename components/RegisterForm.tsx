@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import AddToAppleWalletButton from '@/components/AddToAppleWalletButton';
 
 interface Restaurant {
   id: string;
@@ -17,6 +18,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
     customerName: string;
     restaurantName: string;
     walletLink: string | null;
+    appleWalletUrl?: string | null;
   } | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
@@ -158,35 +160,44 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             </p>
           </div>
 
-          {/* Bouton Google Wallet */}
-          {successData.walletLink && (
-            <div className="fade-up-4">
-              <a
-                href={successData.walletLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="wallet-btn"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.75rem',
-                  background: '#000',
-                  color: 'white',
-                  padding: '0.875rem 1.5rem',
-                  borderRadius: '12px',
-                  textDecoration: 'none',
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                  marginBottom: '1rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-                </svg>
-                Ajouter à Google Wallet
-              </a>
+          {/* Boutons Wallet */}
+          {(successData.walletLink || successData.appleWalletUrl) && (
+            <div className="fade-up-4" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+              {successData.walletLink && (
+                <a
+                  href={successData.walletLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="wallet-btn"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.75rem',
+                    background: '#000',
+                    color: 'white',
+                    padding: '0.875rem 1.5rem',
+                    borderRadius: '12px',
+                    textDecoration: 'none',
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+                  </svg>
+                  Ajouter à Google Wallet
+                </a>
+              )}
+              {successData.appleWalletUrl && (() => {
+                const applePassId = successData.appleWalletUrl!.split('/passes/')[1]?.split('/')[0] ?? null;
+                return applePassId ? (
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <AddToAppleWalletButton passId={applePassId} />
+                  </div>
+                ) : null;
+              })()}
             </div>
           )}
 

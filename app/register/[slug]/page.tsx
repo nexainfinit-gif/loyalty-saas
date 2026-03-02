@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import AddToAppleWalletButton from '@/components/AddToAppleWalletButton';
 
 interface Restaurant {
   id: string;
@@ -24,6 +25,7 @@ export default function RegisterPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [walletUrl, setWalletUrl] = useState<string | null>(null);
+  const [appleWalletUrl, setAppleWalletUrl] = useState<string | null>(null);
   
   useEffect(() => {
     async function loadRestaurant() {
@@ -73,6 +75,7 @@ export default function RegisterPage() {
     }
 
     setCustomerName(first_name);
+    setAppleWalletUrl(data.appleWalletUrl ?? null);
     const walletRes = await fetch(`/api/wallet/${data.customer_id}`);
     const walletData = await walletRes.json();
     if (walletData.walletUrl) setWalletUrl(walletData.walletUrl);
@@ -317,6 +320,7 @@ export default function RegisterPage() {
                 display: 'block', background: '#1a73e8', color: 'white',
                 padding: '0.75rem', borderRadius: '10px', textAlign: 'center',
                 fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none',
+                marginBottom: appleWalletUrl ? '0.75rem' : '0',
               }}>
                 🎫 Ajouter à Google Wallet
               </a>
@@ -325,6 +329,14 @@ export default function RegisterPage() {
                 ⏳ Génération de votre carte...
               </p>
             )}
+            {appleWalletUrl && (() => {
+              const applePassId = appleWalletUrl.split('/passes/')[1]?.split('/')[0] ?? null;
+              return applePassId ? (
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <AddToAppleWalletButton passId={applePassId} />
+                </div>
+              ) : null;
+            })()}
             </div>
 
             <div style={{

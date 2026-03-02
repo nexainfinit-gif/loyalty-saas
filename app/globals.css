@@ -1,10 +1,13 @@
 @import "tailwindcss";
 
+/* ─── Base CSS variables ──────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f8fb;
+  --foreground: #111827;
+  --ring-primary: rgba(79, 107, 237, 0.1);
 }
 
+/* ─── TailwindCSS v4 inline theme mapping ─────────────────── */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -12,15 +15,101 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Design System Color Tokens ──────────────────────────── */
+@theme {
+  /* Surfaces */
+  --color-surface: #f6f8fb;
+  --color-card: #ffffff;
+
+  /* Primary — Premium Blue (#4F6BED range) */
+  --color-primary-50:  #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f6bed;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+
+  /* Success — Soft Green */
+  --color-success-50:  #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+
+  /* Warning — Amber */
+  --color-warning-50:  #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-600: #d97706;
+  --color-warning-700: #92400e;
+
+  /* Danger — Muted Red */
+  --color-danger-50:  #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+
+  /* VIP / Orange */
+  --color-vip-50:  #fff7ed;
+  --color-vip-100: #ffedd5;
+  --color-vip-600: #c2410c;
+  --color-vip-700: #9a3412;
+
+  /* Purple — Pro / Premium indicator */
+  --color-purple-50:  #f5f3ff;
+  --color-purple-100: #ede9fe;
+  --color-purple-600: #7c3aed;
+  --color-purple-700: #6d28d9;
+}
+
+/* ─── Global resets ───────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #f6f8fb;
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* ─── Custom scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar          { width: 5px; height: 5px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: #e5e7eb; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+
+/* ─── Animations ──────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-fade-up  { animation: fade-up  0.2s ease; }
+.animate-fade-in  { animation: fade-in  0.15s ease; }
+.animate-ds-spin  { animation: ds-spin  0.65s linear infinite; }
+
+/* ─── Input focus override ────────────────────────────────── */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-600);
+  box-shadow: 0 0 0 3px var(--ring-primary);
 }

@@ -1,31 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireOwner } from '@/lib/server-auth';
+
+const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+
+const ALLOWED_MIME: Record<string, string> = {
+  'image/png':  'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+};
 
 export async function POST(req: NextRequest) {
-  const formData = await req.formData();
-  const file = formData.get('file') as File;
-  const userId = formData.get('userId') as string;
-
-  if (!file || !userId) {
-    return NextResponse.json({ error: 'Fichier manquant' }, { status: 400 });
+  // Auth: platform owner only — userId is derived from the session, never from the client
+  const guard = await requireOwner(req);
+  if (guard instanceof NextResponse) return guard;
+  if (!guard.restaurantId) {
+    return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
   }
 
-  const ext = file.name.split('.').pop();
-  const fileName = `${userId}-${Date.now()}.${ext}`;
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 });
+  }
+
+  const file = formData.get('file') as File | null;
+  if (!file) {
+    return NextResponse.json({ error: 'Fichier manquant.' }, { status: 400 });
+  }
+
+  // Validate MIME type against server-side allowlist (never trust file.name extension)
+  const ext = ALLOWED_MIME[file.type];
+  if (!ext) {
+    return NextResponse.json(
+      { error: 'Format non supporté. Utilisez PNG, JPEG ou WebP.' },
+      { status: 415 },
+    );
+  }
+
+  // Validate file size
+  if (file.size > MAX_BYTES) {
+    return NextResponse.json(
+      { error: 'Fichier trop grand (max 2 Mo).' },
+      { status: 413 },
+    );
+  }
+
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  const { error } = await supabaseAdmin.storage
+  // Storage path is derived entirely from the authenticated restaurantId — never from client input
+  const storagePath = `${guard.restaurantId}/logo.${ext}`;
+
+  const { error: uploadError } = await supabaseAdmin.storage
     .from('logos')
-    .upload(fileName, buffer, {
+    .upload(storagePath, buffer, {
       contentType: file.type,
       upsert: true,
     });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (uploadError) {
+    return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
 
-  const { data } = supabaseAdmin.storage.from('logos').getPublicUrl(fileName);
+  const { data } = supabaseAdmin.storage.from('logos').getPublicUrl(storagePath);
 
   return NextResponse.json({ url: data.publicUrl });
 }

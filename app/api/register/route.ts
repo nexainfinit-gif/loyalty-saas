@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase-admin';
 import { sendWelcomeEmail } from '@/lib/email';
 import { generateWalletUrl } from '@/lib/google-wallet';
+import { autoIssueApplePass } from '@/lib/wallet-auto-issue';
+
+// Rate limiting constants — per restaurant, sliding window
+const RATE_WINDOW_MS = 60_000; // 1 minute
+const RATE_MAX       = 20;     // max 20 registrations per restaurant per minute
 
 export async function POST(req: NextRequest) {
-  console.log('=== API REGISTER START ===');
   const body = await req.json();
-  console.log('Body reçu:', body);
-  console.log('Clé Resend:', process.env.RESEND_API_KEY ? 'OK' : 'MANQUANTE');
 
   const {
     restaurantSlug,
@@ -32,13 +34,25 @@ export async function POST(req: NextRequest) {
     .eq('slug', restaurantSlug)
     .single();
 
-  console.log('Restaurant trouvé:', restaurant);
-  console.log('Erreur restaurant:', restError);
-
   if (restError || !restaurant) {
     return NextResponse.json(
       { error: 'Restaurant introuvable' },
       { status: 404 }
+    );
+  }
+
+  // ── Rate limit: max RATE_MAX registrations per restaurant per RATE_WINDOW_MS ──
+  const windowStart = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
+  const { count: recentCount } = await supabase
+    .from('customers')
+    .select('id', { count: 'exact', head: true })
+    .eq('restaurant_id', restaurant.id)
+    .gte('created_at', windowStart);
+
+  if (recentCount !== null && recentCount >= RATE_MAX) {
+    return NextResponse.json(
+      { error: 'Trop d\'inscriptions récentes. Réessayez dans une minute.' },
+      { status: 429 },
     );
   }
 
@@ -56,9 +70,6 @@ export async function POST(req: NextRequest) {
     })
     .select()
     .single();
-
-  console.log('Customer data:', customer);
-  console.log('Customer error:', error);
 
   if (error) {
     if (error.code === '23505') {
@@ -78,27 +89,34 @@ export async function POST(req: NextRequest) {
       restaurantColor: restaurant.color,
       qrToken: customer.qr_token,
     });
-    console.log('Email envoyé avec succès');
   } catch (emailError) {
     console.error('Erreur email:', emailError);
   }
 
-  console.log('Client créé avec succès:', customer.id);
-
   let walletLink = null;
   try {
     walletLink = await generateWalletUrl({
-      customerId: customer.id,
+      customerId:     customer.id,
       firstName,
-      totalPoints: 0,
+      totalPoints:    0,
       restaurantName: restaurant.name,
-      restaurantSlug: restaurant.slug,
-      primaryColor: restaurant.primary_color ?? '#FF6B35',
-      logoUrl: restaurant.logo_url ?? null,
+      restaurantId:   restaurant.id,
+      primaryColor:   restaurant.primary_color ?? '#FF6B35',
+      logoUrl:        restaurant.logo_url ?? null,
     });
   } catch (walletError) {
     console.error('Erreur Google Wallet:', walletError);
   }
+
+  // Auto-issue Apple Wallet pass if the restaurant has a default template configured.
+  // Never fails registration — passId will be null when Apple Wallet is not set up.
+  const applePassId = await autoIssueApplePass({
+    restaurantId: restaurant.id,
+    customerId: customer.id,
+  });
+  const appleWalletUrl = applePassId
+    ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${applePassId}/pkpass`
+    : null;
 
   return NextResponse.json({
     success: true,
@@ -106,5 +124,6 @@ export async function POST(req: NextRequest) {
     customerName: `${firstName} ${lastName}`,
     restaurantName: restaurant.name,
     walletLink,
+    appleWalletUrl,
   });
 }

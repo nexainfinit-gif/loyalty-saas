@@ -27,15 +27,10 @@ export async function GET(req: NextRequest) {
   );
 
   if (token_hash && type) {
-    const { data, error } = await supabase.auth.verifyOtp({
+    const { error } = await supabase.auth.verifyOtp({
       token_hash,
       type: type as 'magiclink' | 'email',
     });
-
-    console.log('token_hash:', token_hash);
-    console.log('type:', type);
-    console.log('data:', data);
-    console.log('error:', error);
 
     if (!error) {
       return NextResponse.redirect(`${origin}/dashboard`);

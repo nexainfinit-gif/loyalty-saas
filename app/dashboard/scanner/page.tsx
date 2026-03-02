@@ -2,57 +2,149 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import jsQR from 'jsqr';
 
 interface ScanResult {
+  program_type: 'points' | 'stamps';
   customer: {
     id: string;
     first_name: string;
     last_name: string;
     total_points: number;
+    stamps_count: number;
   };
   points_added: number;
+  stamps_added: number;
+  stamps_total: number;
+  stamp_card_completed: boolean;
   reward_triggered: boolean;
   reward_message: string;
 }
 
 export default function ScannerPage() {
   const router = useRouter();
-  const [session, setSession] = useState<any>(null);
-  const [manualId, setManualId] = useState('');
-  const [result, setResult] = useState<ScanResult | null>(null);
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [session, setSession]         = useState<any>(null);
+  const [scannerUrl, setScannerUrl]   = useState<string | null>(null);
+  const [urlCopied, setUrlCopied]     = useState(false);
+  const [manualId, setManualId]       = useState('');
+  const [result, setResult]           = useState<ScanResult | null>(null);
+  const [status, setStatus]           = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg]       = useState('');
   const [cameraActive, setCameraActive] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const videoRef    = useRef<HTMLVideoElement>(null);
+  const streamRef   = useRef<MediaStream | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) router.replace('/dashboard/login');
-      else setSession(session);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { router.replace('/dashboard/login'); return; }
+      setSession(session);
+
+      // Fetch the restaurant's scanner_token to build the public cashier URL.
+      const { data: resto } = await supabase
+        .from('restaurants')
+        .select('scanner_token')
+        .eq('owner_id', session.user.id)
+        .maybeSingle();
+
+      if (resto?.scanner_token) {
+        const base = typeof window !== 'undefined' ? window.location.origin : '';
+        setScannerUrl(`${base}/scan/${resto.scanner_token}`);
+      }
     });
     return () => stopCamera();
   }, [router]);
 
-  async function startCamera() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
+  // Assign srcObject + start QR scanning AFTER cameraActive flips to true and <video> is in the DOM
+  useEffect(() => {
+    if (!cameraActive || !videoRef.current || !streamRef.current) return;
+
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    video.play().catch((err) => {
+      console.error('[Scanner] video.play() failed:', err.name, err.message);
+    });
+
+    // Give the video a moment to receive its first frame before scanning
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if ('BarcodeDetector' in window) {
+      // Chrome / Edge: use native BarcodeDetector (fastest)
+      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+      intervalRef.current = setInterval(async () => {
+        if (!videoRef.current || !streamRef.current) return;
+        try {
+          const barcodes = await detector.detect(videoRef.current);
+          if (barcodes.length > 0) {
+            clearInterval(intervalRef.current!);
+            intervalRef.current = null;
+            stopCamera();
+            processScan(barcodes[0].rawValue);
+          }
+        } catch { /* frame not ready yet — silent */ }
+      }, 300);
+    } else if (ctx) {
+      // Firefox / Safari / iOS fallback: jsqr canvas decoding
+      intervalRef.current = setInterval(() => {
+        if (!videoRef.current || !streamRef.current) return;
+        if (video.videoWidth === 0) return; // frame not ready yet
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code?.data) {
+          clearInterval(intervalRef.current!);
+          intervalRef.current = null;
+          stopCamera();
+          processScan(code.data);
+        }
+      }, 300);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraActive]);
+
+  async function startCamera() {
+    if (typeof window !== 'undefined' && location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      setErrorMsg('La caméra nécessite une connexion sécurisée (HTTPS).');
+      setStatus('error');
+      return;
+    }
+    try {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+      streamRef.current = stream;
       setCameraActive(true);
-      scanQRFromCamera();
-    } catch (err) {
-      setErrorMsg('Impossible d\'accéder à la caméra. Utilisez la saisie manuelle.');
+    } catch (err: any) {
+      console.error('[Scanner] getUserMedia error:', err.name, err.message);
+      const msg =
+        err.name === 'NotAllowedError'
+          ? 'Accès caméra refusé. Autorisez-la dans les réglages du navigateur.'
+          : err.name === 'NotFoundError'
+          ? 'Aucune caméra détectée sur cet appareil.'
+          : `Impossible d'accéder à la caméra (${err.name}). Utilisez la saisie manuelle.`;
+      setErrorMsg(msg);
       setStatus('error');
     }
   }
 
   function stopCamera() {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
@@ -60,35 +152,14 @@ export default function ScannerPage() {
     setCameraActive(false);
   }
 
-  async function scanQRFromCamera() {
-    // Utilise BarcodeDetector si disponible (Chrome Android)
-    if ('BarcodeDetector' in window) {
-      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-      const interval = setInterval(async () => {
-        if (!videoRef.current || !streamRef.current) {
-          clearInterval(interval);
-          return;
-        }
-        try {
-          const barcodes = await detector.detect(videoRef.current);
-          if (barcodes.length > 0) {
-            clearInterval(interval);
-            stopCamera();
-            await processScan(barcodes[0].rawValue);
-          }
-        } catch {}
-      }, 500);
-    }
-  }
-
-  async function processScan(customerId: string) {
+  async function processScan(scanToken: string) {
     if (!session) return;
     setStatus('loading');
     setErrorMsg('');
     setResult(null);
 
     try {
-      const res = await fetch(`/api/scan/${customerId}`, {
+      const res = await fetch(`/api/scan/${encodeURIComponent(scanToken)}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${session.access_token}` },
       });
@@ -104,7 +175,7 @@ export default function ScannerPage() {
       setResult(data);
       setStatus('success');
       setManualId('');
-    } catch (err) {
+    } catch {
       setErrorMsg('Erreur réseau');
       setStatus('error');
     }
@@ -130,6 +201,11 @@ export default function ScannerPage() {
         * { box-sizing: border-box; }
         @keyframes scaleIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .result-card { animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes confettiFall {
+          0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+          100% { transform: translateY(280px) rotate(720deg); opacity: 0; }
+        }
+        .confetti-piece { position: absolute; width: 8px; height: 8px; border-radius: 2px; animation: confettiFall 1.6s ease-in forwards; }
       `}</style>
 
       {/* Header */}
@@ -151,8 +227,43 @@ export default function ScannerPage() {
           padding: '2rem', textAlign: 'center',
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
           marginBottom: '1.5rem',
+          position: 'relative', overflow: 'hidden',
         }}>
-          {result.reward_triggered ? (
+
+          {/* ── Confetti (stamps completion only) ── */}
+          {result.stamp_card_completed && (
+            <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              {[
+                { left: '10%', delay: '0s',    color: '#F59E0B' },
+                { left: '20%', delay: '0.1s',  color: '#10B981' },
+                { left: '32%', delay: '0.05s', color: '#6366F1' },
+                { left: '45%', delay: '0.15s', color: '#EF4444' },
+                { left: '55%', delay: '0s',    color: '#F59E0B' },
+                { left: '65%', delay: '0.2s',  color: '#10B981' },
+                { left: '75%', delay: '0.08s', color: '#6366F1' },
+                { left: '85%', delay: '0.12s', color: '#EF4444' },
+                { left: '25%', delay: '0.3s',  color: '#F59E0B' },
+                { left: '50%', delay: '0.25s', color: '#6366F1' },
+                { left: '70%', delay: '0.18s', color: '#10B981' },
+                { left: '90%', delay: '0.35s', color: '#EF4444' },
+              ].map((p, i) => (
+                <div key={i} className="confetti-piece" style={{ left: p.left, top: '-12px', background: p.color, animationDelay: p.delay }} />
+              ))}
+            </div>
+          )}
+
+          {/* ── Header: completion / reward / normal ── */}
+          {result.stamp_card_completed ? (
+            <>
+              <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🎉</div>
+              <h2 style={{ color: '#059669', fontWeight: 700, margin: '0 0 0.5rem' }}>
+                Carte terminée !
+              </h2>
+              <p style={{ color: '#065F46', background: '#D1FAE5', padding: '0.75rem', borderRadius: '10px', fontSize: '0.9rem', margin: '0 0 1.25rem' }}>
+                {result.reward_message}
+              </p>
+            </>
+          ) : result.reward_triggered ? (
             <>
               <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🏆</div>
               <h2 style={{ color: '#D97706', fontWeight: 700, margin: '0 0 0.5rem' }}>
@@ -171,14 +282,37 @@ export default function ScannerPage() {
           </h3>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', margin: '1.25rem 0' }}>
-            <div style={{ background: '#F0FDF4', borderRadius: '12px', padding: '0.875rem 1.5rem' }}>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280' }}>Points ajoutés</p>
-              <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#16A34A' }}>+{result.points_added}</p>
-            </div>
-            <div style={{ background: '#EFF6FF', borderRadius: '12px', padding: '0.875rem 1.5rem' }}>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280' }}>Total points</p>
-              <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#2563EB' }}>{result.customer.total_points}</p>
-            </div>
+            {result.program_type === 'stamps' ? (
+              <>
+                <div style={{ background: result.stamp_card_completed ? '#D1FAE5' : '#F0FDF4', borderRadius: '12px', padding: '0.875rem 1.5rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280' }}>
+                    {result.stamp_card_completed ? 'Carte complétée' : 'Tampon ajouté'}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: result.stamp_card_completed ? '#059669' : '#16A34A' }}>
+                    {result.stamp_card_completed ? '✓' : `+${result.stamps_added}`}
+                  </p>
+                </div>
+                <div style={{ background: '#EFF6FF', borderRadius: '12px', padding: '0.875rem 1.5rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280' }}>
+                    {result.stamp_card_completed ? 'Nouvelle carte' : 'Carte'}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#2563EB' }}>
+                    {result.customer.stamps_count} / {result.stamps_total}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ background: '#F0FDF4', borderRadius: '12px', padding: '0.875rem 1.5rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280' }}>Points ajoutés</p>
+                  <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#16A34A' }}>+{result.points_added}</p>
+                </div>
+                <div style={{ background: '#EFF6FF', borderRadius: '12px', padding: '0.875rem 1.5rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280' }}>Total points</p>
+                  <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#2563EB' }}>{result.customer.total_points}</p>
+                </div>
+              </>
+            )}
           </div>
 
           <button
@@ -189,6 +323,35 @@ export default function ScannerPage() {
               fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', width: '100%',
             }}
           >Scanner un autre client</button>
+        </div>
+      )}
+
+      {/* Cashier scanner link */}
+      {scannerUrl && status !== 'success' && (
+        <div style={{ background: '#EFF6FF', borderRadius: '16px', padding: '1rem 1.25rem', marginBottom: '1.25rem', border: '1.5px solid #BFDBFE' }}>
+          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', fontWeight: 600, color: '#1D4ED8' }}>
+            🔗 Lien scanner caissier
+          </p>
+          <p style={{ margin: '0 0 0.625rem', fontSize: '0.75rem', color: '#3B82F6' }}>
+            Partagez ce lien avec vos employés. Ils peuvent scanner sans compte.
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input
+              readOnly
+              value={scannerUrl}
+              style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #BFDBFE', fontSize: '0.75rem', fontFamily: 'monospace', background: 'white', color: '#1E40AF', outline: 'none' }}
+            />
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(scannerUrl);
+                setUrlCopied(true);
+                setTimeout(() => setUrlCopied(false), 2000);
+              }}
+              style={{ padding: '0.5rem 0.875rem', borderRadius: '8px', border: 'none', background: urlCopied ? '#059669' : '#2563EB', color: 'white', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.2s' }}
+            >
+              {urlCopied ? '✓ Copié' : 'Copier'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -206,7 +369,7 @@ export default function ScannerPage() {
                 <video
                   ref={videoRef}
                   style={{ width: '100%', display: 'block', maxHeight: '300px', objectFit: 'cover' }}
-                  muted playsInline
+                  autoPlay muted playsInline
                 />
                 <div style={{
                   position: 'absolute', inset: 0,
@@ -249,13 +412,16 @@ export default function ScannerPage() {
             background: 'white', borderRadius: '20px', padding: '1.5rem',
             boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1.5px solid #F3F4F6',
           }}>
-            <p style={{ fontWeight: 600, margin: '0 0 1rem', fontSize: '0.9rem', color: '#374151' }}>
-              Ou saisir l'ID manuellement
+            <p style={{ fontWeight: 600, margin: '0 0 0.25rem', fontSize: '0.9rem', color: '#374151' }}>
+              Ou saisir le code manuellement
+            </p>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#9CA3AF' }}>
+              Copiez le code affiché sous le QR du pass client
             </p>
             <input
               value={manualId}
-              onChange={e => setManualId(e.target.value)}
-              placeholder="UUID du client..."
+              onChange={e => setManualId(e.target.value.trim())}
+              placeholder="Code du pass client..."
               style={{
                 width: '100%', padding: '0.875rem 1rem',
                 borderRadius: '12px', border: '1.5px solid #E5E7EB',

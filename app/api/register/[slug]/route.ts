@@ -1,18 +1,18 @@
-import { createClient } from '@supabase/supabase-js'
+import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 import { Resend } from 'resend'
+import { autoIssueApplePass } from '@/lib/wallet-auto-issue'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+// Rate limiting constants — per restaurant, sliding window
+const RATE_WINDOW_MS = 60_000; // 1 minute
+const RATE_MAX       = 20;     // max 20 registrations per restaurant per minute
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
 
   const { data: restaurant, error: rErr } = await supabase
     .from('restaurants')
@@ -29,6 +29,21 @@ export async function POST(
 
   if (!first_name || !email) {
     return Response.json({ error: 'Prénom et email requis' }, { status: 400 })
+  }
+
+  // ── Rate limit: max RATE_MAX registrations per restaurant per RATE_WINDOW_MS ──
+  const windowStart = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
+  const { count: recentCount } = await supabase
+    .from('customers')
+    .select('id', { count: 'exact', head: true })
+    .eq('restaurant_id', restaurant.id)
+    .gte('created_at', windowStart);
+
+  if (recentCount !== null && recentCount >= RATE_MAX) {
+    return Response.json(
+      { error: 'Trop d\'inscriptions récentes. Réessayez dans une minute.' },
+      { status: 429 },
+    );
   }
 
   const { data: customer, error } = await supabase
@@ -62,6 +77,10 @@ export async function POST(
   })
 
   if (consent_marketing && process.env.RESEND_API_KEY) {
+    const safeName  = restaurant.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const safeFname = first_name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const safeColor = /^#[0-9A-Fa-f]{3,6}$/.test(restaurant.primary_color ?? '') ? restaurant.primary_color : '#FF6B35'
+
     try {
       await resend.emails.send({
         from: 'ReBites <noreply@rebites.app>',
@@ -69,10 +88,10 @@ export async function POST(
         subject: `Bienvenue chez ${restaurant.name} 🎉`,
         html: `
           <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 2rem;">
-            <div style="background: ${restaurant.primary_color}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
-              <h1 style="color: white; margin: 0;">Bienvenue, ${first_name} ! 🎉</h1>
+            <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
+              <h1 style="color: white; margin: 0;">Bienvenue, ${safeFname} ! 🎉</h1>
             </div>
-            <p>Votre carte fidélité <strong>${restaurant.name}</strong> est active.</p>
+            <p>Votre carte fidélité <strong>${safeName}</strong> est active.</p>
             <p>Vous avez reçu <strong>10 points de bienvenue</strong> !</p>
           </div>
         `,
@@ -82,5 +101,14 @@ export async function POST(
     }
   }
 
-  return Response.json({ success: true, customer_id: customer.id })
+  // Auto-issue Apple Wallet pass if the restaurant has a default template.
+  const applePassId = await autoIssueApplePass({
+    restaurantId: restaurant.id,
+    customerId: customer.id,
+  })
+  const appleWalletUrl = applePassId
+    ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${applePassId}/pkpass`
+    : null
+
+  return Response.json({ success: true, customer_id: customer.id, appleWalletUrl })
 }

@@ -1,53 +1,189 @@
-import { createClient } from '@supabase/supabase-js'
-import { generateWalletUrl } from '@/lib/google-wallet'
+import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireOwner } from '@/lib/server-auth';
+import { generateWalletUrl, generateSaveJwt, computeClassId, issueGooglePass, updateLoyaltyObject } from '@/lib/google-wallet';
+import { randomUUID } from 'crypto';
 
 export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ customerId: string }> }
+  request: Request,
+  { params }: { params: Promise<{ customerId: string }> },
 ) {
-  const { customerId } = await params
+  // Auth: platform owner only
+  const guard = await requireOwner(request);
+  if (guard instanceof NextResponse) return guard;
+  if (!guard.restaurantId) {
+    return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
+  }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const { customerId } = await params;
 
-  const { data: customer, error: cErr } = await supabase
+  // Fetch customer and assert it belongs to the authenticated owner's restaurant
+  const { data: customer, error: cErr } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, total_points, restaurant_id')
+    .select('id, first_name, last_name, qr_token, stamps_count, total_points, restaurant_id')
     .eq('id', customerId)
-    .single()
+    .eq('restaurant_id', guard.restaurantId)
+    .single();
 
   if (cErr || !customer) {
-    return Response.json({ error: 'Client introuvable' }, { status: 404 })
+    return NextResponse.json({ error: 'Client introuvable.' }, { status: 404 });
   }
 
-  const { data: restaurant, error: rErr } = await supabase
+  const { data: restaurant, error: rErr } = await supabaseAdmin
     .from('restaurants')
     .select('id, name, slug, primary_color, logo_url')
-    .eq('id', customer.restaurant_id)
-    .single()
+    .eq('id', guard.restaurantId)
+    .single();
 
   if (rErr || !restaurant) {
-    return Response.json({ error: 'Restaurant introuvable' }, { status: 404 })
+    return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
   }
 
-  const walletUrl = await generateWalletUrl({
-    customerId: customer.id,
-    firstName: customer.first_name,
-    totalPoints: customer.total_points,
-    restaurantName: restaurant.name,
-    restaurantSlug: restaurant.slug,
-    primaryColor: restaurant.primary_color,
-    logoUrl: restaurant.logo_url,
-  })
+  // ── Check for an existing active Google pass for this customer ────────────
+  const { data: existingPass } = await supabaseAdmin
+    .from('wallet_passes')
+    .select('id, object_id, wallet_pass_templates(pass_kind)')
+    .eq('customer_id', customerId)
+    .eq('restaurant_id', guard.restaurantId)
+    .eq('platform', 'google')
+    .eq('status', 'active')
+    .maybeSingle();
 
-  await supabase
+  if (existingPass && existingPass.object_id) {
+    // Update existing pass with latest points — fire-and-forget
+    void updateLoyaltyObject(existingPass.object_id, {
+      totalPoints: customer.total_points ?? 0,
+    }).then(result => {
+      if (result.ok) {
+        return supabaseAdmin
+          .from('wallet_passes')
+          .update({ last_synced_at: new Date().toISOString(), sync_error: null })
+          .eq('id', existingPass.id);
+      }
+    }).catch(() => {/* silent */});
+
+    // Reconstruct the save JWT using the stored objectId (Phase-3 naming) and the
+    // restaurantId-based classId. This ensures Google presents the EXISTING object
+    // rather than trying to create a new one with a mismatched ID.
+    const passKind = (existingPass.wallet_pass_templates as { pass_kind: string } | null)?.pass_kind ?? 'points';
+    const classId  = computeClassId(guard.restaurantId, passKind);
+
+    const saveUrl = generateSaveJwt({
+      objectId:        existingPass.object_id,
+      classId,
+      customerId:      customer.id,
+      displayName:     `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim(),
+      totalPoints:     customer.total_points  ?? 0,
+      stampsCount:     customer.stamps_count  ?? 0,
+      stampsTotal:     10,
+      rewardThreshold: 100,
+      rewardMessage:   'Récompense offerte !',
+      qrToken:         customer.qr_token ?? customer.id,
+      restaurantName:  restaurant.name,
+      primaryColor:    restaurant.primary_color ?? '#4f6bed',
+      passKind:        passKind as 'stamps' | 'points' | 'event',
+    });
+
+    await supabaseAdmin
+      .from('customers')
+      .update({ wallet_card_url: saveUrl })
+      .eq('id', customerId);
+
+    return NextResponse.json({ walletUrl: saveUrl });
+  }
+
+  // ── No existing pass: issue a new one ─────────────────────────────────────
+
+  // Try to find the restaurant's default (or any published) template
+  const { data: defaultTemplate } = await supabaseAdmin
+    .from('wallet_pass_templates')
+    .select('id, pass_kind, config_json, primary_color')
+    .eq('restaurant_id', guard.restaurantId)
+    .eq('status', 'published')
+    .eq('is_default', true)
+    .maybeSingle();
+
+  const { data: anyTemplate } = defaultTemplate
+    ? { data: defaultTemplate }
+    : await supabaseAdmin
+        .from('wallet_pass_templates')
+        .select('id, pass_kind, config_json, primary_color')
+        .eq('restaurant_id', guard.restaurantId)
+        .eq('status', 'published')
+        .limit(1)
+        .maybeSingle();
+
+  if (anyTemplate) {
+    // Fetch loyalty settings for resolved config
+    const { data: loyaltySettings } = await supabaseAdmin
+      .from('loyalty_settings')
+      .select('stamps_total, reward_threshold, reward_message, points_per_scan')
+      .eq('restaurant_id', guard.restaurantId)
+      .maybeSingle();
+
+    const resolvedConfig: Record<string, unknown> = {
+      ...((anyTemplate.config_json as Record<string, unknown>) ?? {}),
+      ...(loyaltySettings ?? {}),
+    };
+
+    const passId = randomUUID();
+
+    const { saveUrl, objectId, synced } = await issueGooglePass({
+      passId,
+      restaurantId:   guard.restaurantId,
+      customerId:     customer.id,
+      firstName:      customer.first_name  ?? '',
+      lastName:       customer.last_name   ?? '',
+      totalPoints:    customer.total_points ?? 0,
+      stampsCount:    customer.stamps_count ?? 0,
+      qrToken:        customer.qr_token    ?? customer.id,
+      restaurantName: restaurant.name,
+      primaryColor:   anyTemplate.primary_color ?? restaurant.primary_color ?? '#4f6bed',
+      logoUrl:        restaurant.logo_url,
+      passKind:       anyTemplate.pass_kind as 'stamps' | 'points' | 'event',
+      configJson:     resolvedConfig,
+    });
+
+    // Track the pass in DB
+    await supabaseAdmin
+      .from('wallet_passes')
+      .insert({
+        id:             passId,
+        restaurant_id:  guard.restaurantId,
+        customer_id:    customerId,
+        template_id:    anyTemplate.id,
+        platform:       'google',
+        status:         'active',
+        object_id:      objectId,
+        last_synced_at: synced ? new Date().toISOString() : null,
+        sync_error:     synced ? null : 'Initial sync failed',
+      })
+      .select()
+      .maybeSingle();
+
+    await supabaseAdmin
+      .from('customers')
+      .update({ wallet_card_url: saveUrl })
+      .eq('id', customerId);
+
+    return NextResponse.json({ walletUrl: saveUrl });
+  }
+
+  // ── Fallback: no template available — JWT-only (legacy behavior) ──────────
+  const walletUrl = await generateWalletUrl({
+    customerId:     customer.id,
+    firstName:      customer.first_name  ?? '',
+    totalPoints:    customer.total_points ?? 0,
+    restaurantName: restaurant.name,
+    restaurantId:   guard.restaurantId,
+    primaryColor:   restaurant.primary_color ?? '#4f6bed',
+    logoUrl:        restaurant.logo_url,
+  });
+
+  await supabaseAdmin
     .from('customers')
     .update({ wallet_card_url: walletUrl })
-    .eq('id', customerId)
+    .eq('id', customerId);
 
-    console.log('Wallet URL générée:', walletUrl)
-
-  return Response.json({ walletUrl })
+  return NextResponse.json({ walletUrl });
 }
