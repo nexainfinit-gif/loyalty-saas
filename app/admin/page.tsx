@@ -5,6 +5,24 @@ import { useRouter } from 'next/navigation';
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
 
+interface GrowthAction {
+  id:            string;
+  restaurant_id: string;
+  trigger_key:   string;
+  action_type:   string;
+  payload:       {
+    type:           string;
+    severity:       string;
+    title:          string;
+    message:        string;
+    suggested_plan?: string | null;
+  };
+  status:        string;
+  created_at:    string;
+  executed_at:   string | null;
+  restaurants:   { name: string } | null;
+}
+
 interface RestaurantRow {
   id:               string;
   name:             string;
@@ -108,6 +126,18 @@ export default function AdminPage() {
   const [filter, setFilter]           = useState<FilterKey>('all');
   const [sort, setSort]               = useState<SortKey>('health');
   const [order, setOrder]             = useState<'asc' | 'desc'>('desc');
+  const [growthSummary, setGrowthSummary] = useState<{
+    churn_risk_count:    number;
+    upgrade_ready_count: number;
+    free_count:          number;
+    kpiLastComputedAt:   string | null;
+    kpiFreshness:        'fresh' | 'stale' | 'missing';
+  } | null>(null);
+  const [recomputing, setRecomputing]     = useState(false);
+  const [recomputeMsg, setRecomputeMsg]   = useState<{ text: string; ok: boolean } | null>(null);
+  const [pendingActions, setPendingActions] = useState<GrowthAction[]>([]);
+  const [actionsLoading, setActionsLoading] = useState(false);
+  const [dismissingId, setDismissingId]   = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -131,6 +161,87 @@ export default function AdminPage() {
   }, [filter, sort, order, router]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    fetch('/api/admin/growth/summary')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json) {
+          setGrowthSummary({
+            churn_risk_count:    json.churn_risk_count    ?? 0,
+            upgrade_ready_count: json.upgrade_ready_count ?? 0,
+            free_count:          json.free_count          ?? 0,
+            kpiLastComputedAt:   json.kpiLastComputedAt   ?? null,
+            kpiFreshness:        json.kpiFreshness        ?? 'missing',
+          });
+        }
+      })
+      .catch(() => {/* silently ignore — summary is non-critical */});
+  }, []);
+
+  // Fetch platform-wide pending growth actions
+  const fetchActions = useCallback(async () => {
+    setActionsLoading(true);
+    try {
+      const res = await fetch('/api/admin/growth/actions?limit=100');
+      if (res.ok) {
+        const json = await res.json();
+        setPendingActions(json.actions ?? []);
+      }
+    } catch {/* non-critical */} finally {
+      setActionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchActions(); }, [fetchActions]);
+
+  async function handleDismissAction(actionId: string) {
+    setDismissingId(actionId);
+    try {
+      const res = await fetch(`/api/admin/growth/actions/${actionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'dismissed' }),
+      });
+      if (res.ok) {
+        setPendingActions((prev) => prev.filter((a) => a.id !== actionId));
+      }
+    } catch {/* ignore */} finally {
+      setDismissingId(null);
+    }
+  }
+
+  async function handleRecompute() {
+    setRecomputing(true);
+    setRecomputeMsg(null);
+    try {
+      const res  = await fetch('/api/admin/metrics/recompute', { method: 'POST' });
+      const json = await res.json();
+      if (res.status === 429) {
+        setRecomputeMsg({ text: `Calcul trop récent — réessayez dans ${json.retry_after_seconds}s.`, ok: false });
+        return;
+      }
+      if (!res.ok) {
+        setRecomputeMsg({ text: json.error ?? 'Erreur serveur.', ok: false });
+        return;
+      }
+      setRecomputeMsg({
+        text: `✓ ${json.restaurantsProcessed} restaurants recalculés en ${json.durationMs} ms.`,
+        ok: true,
+      });
+      // Refresh freshness indicator
+      setGrowthSummary((prev) => prev
+        ? { ...prev, kpiLastComputedAt: json.computedAt, kpiFreshness: 'fresh' }
+        : prev,
+      );
+    } catch {
+      setRecomputeMsg({ text: 'Erreur réseau.', ok: false });
+    } finally {
+      setRecomputing(false);
+      // Auto-clear toast after 6s
+      setTimeout(() => setRecomputeMsg(null), 6000);
+    }
+  }
 
   function handleSort(field: SortKey) {
     if (sort === field) {
@@ -169,6 +280,18 @@ export default function AdminPage() {
               Plans
             </a>
             <a
+              href="/admin/kpis"
+              className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
+            >
+              KPIs
+            </a>
+            <a
+              href="/admin/wallet"
+              className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
+            >
+              Wallet Studio
+            </a>
+            <a
               href="/dashboard"
               className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
@@ -179,6 +302,78 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+
+        {/* KPI freshness warning banner */}
+        {growthSummary && (growthSummary.kpiFreshness === 'stale' || growthSummary.kpiFreshness === 'missing') && (
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${
+            growthSummary.kpiFreshness === 'missing'
+              ? 'bg-gray-50 border border-gray-200 text-gray-600'
+              : 'bg-amber-50 border border-amber-200 text-amber-800'
+          }`}>
+            <span className="text-base flex-shrink-0">
+              {growthSummary.kpiFreshness === 'missing' ? '⚙️' : '⚠️'}
+            </span>
+            <p className="flex-1">
+              {growthSummary.kpiFreshness === 'missing'
+                ? 'Aucune donnée KPI — le cron /api/cron/metrics n\'a pas encore été exécuté.'
+                : `KPIs obsolètes — dernier calcul le ${new Date(growthSummary.kpiLastComputedAt!).toLocaleString('fr-FR')}. Cliquez sur "Recalculer" ci-dessous.`}
+            </p>
+            <button
+              onClick={handleRecompute}
+              disabled={recomputing}
+              className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-xl bg-white border border-current transition-opacity disabled:opacity-50"
+            >
+              {recomputing ? 'Calcul…' : 'Recalculer'}
+            </button>
+          </div>
+        )}
+
+        {/* Metrics Engine card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Metrics Engine</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {growthSummary?.kpiLastComputedAt
+                  ? `Dernier calcul : ${new Date(growthSummary.kpiLastComputedAt).toLocaleString('fr-FR')}`
+                  : 'Aucun calcul enregistré'}
+                {growthSummary?.kpiFreshness && (
+                  <span className={`ml-2 inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    growthSummary.kpiFreshness === 'fresh'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : growthSummary.kpiFreshness === 'stale'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {growthSummary.kpiFreshness === 'fresh' ? 'Frais' : growthSummary.kpiFreshness === 'stale' ? 'Obsolète' : 'Manquant'}
+                  </span>
+                )}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {recomputeMsg && (
+                <p className={`text-xs font-medium ${recomputeMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {recomputeMsg.text}
+                </p>
+              )}
+              <button
+                onClick={handleRecompute}
+                disabled={recomputing}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {recomputing ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Calcul en cours…
+                  </>
+                ) : (
+                  'Recalculer KPIs'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* KPI summary row */}
         {!loading && !error && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -193,6 +388,100 @@ export default function AdminPage() {
                 <p className="text-2xl font-bold text-gray-900 mt-1">{kpi.value}</p>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Growth summary row */}
+        {growthSummary && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
+              <p className="text-xs text-gray-500 font-medium">Risque churn (score ≥ 60)</p>
+              <p className={`text-2xl font-bold mt-1 ${growthSummary.churn_risk_count > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                {growthSummary.churn_risk_count}
+              </p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
+              <p className="text-xs text-gray-500 font-medium">Prêts à upgrader (free, score ≥ 50)</p>
+              <p className={`text-2xl font-bold mt-1 ${growthSummary.upgrade_ready_count > 0 ? 'text-blue-600' : 'text-gray-900'}`}>
+                {growthSummary.upgrade_ready_count}
+              </p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
+              <p className="text-xs text-gray-500 font-medium">Restaurants plan gratuit</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{growthSummary.free_count}</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
+              <p className="text-xs text-gray-500 font-medium">Actions en attente</p>
+              <p className={`text-2xl font-bold mt-1 ${pendingActions.length > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+                {actionsLoading ? '…' : pendingActions.length}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Growth Actions panel */}
+        {pendingActions.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Actions de croissance en attente</p>
+                <p className="text-xs text-gray-400 mt-0.5">{pendingActions.length} action{pendingActions.length > 1 ? 's' : ''} · cliquez sur un restaurant pour agir</p>
+              </div>
+              <button
+                onClick={fetchActions}
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors"
+              >
+                Actualiser
+              </button>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {pendingActions.slice(0, 20).map((action) => {
+                const sev = action.payload.severity;
+                const sevColor =
+                  sev === 'high'   ? 'text-red-600 bg-red-50' :
+                  sev === 'medium' ? 'text-amber-700 bg-amber-50' :
+                                     'text-gray-500 bg-gray-100';
+                const typeColor =
+                  action.payload.type === 'risk'        ? 'text-red-600' :
+                  action.payload.type === 'upgrade'     ? 'text-blue-600' :
+                                                          'text-emerald-600';
+                return (
+                  <div key={action.id} className="px-5 py-3.5 flex items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => router.push(`/admin/${action.restaurant_id}`)}
+                          className="text-sm font-semibold text-gray-900 hover:text-primary-600 transition-colors truncate"
+                        >
+                          {action.restaurants?.name ?? action.restaurant_id.slice(0, 8)}
+                        </button>
+                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${sevColor}`}>
+                          {sev}
+                        </span>
+                        <span className={`text-xs font-medium ${typeColor}`}>
+                          {action.payload.type}
+                        </span>
+                      </div>
+                      <p className="text-xs font-medium text-gray-700 mt-0.5">{action.payload.title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{action.payload.message}</p>
+                    </div>
+                    <button
+                      onClick={() => handleDismissAction(action.id)}
+                      disabled={dismissingId === action.id}
+                      className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 mt-0.5"
+                      title="Ignorer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+              {pendingActions.length > 20 && (
+                <p className="px-5 py-3 text-xs text-gray-400 text-center">
+                  + {pendingActions.length - 20} autres actions — filtrez par restaurant pour tout voir
+                </p>
+              )}
+            </div>
           </div>
         )}
 

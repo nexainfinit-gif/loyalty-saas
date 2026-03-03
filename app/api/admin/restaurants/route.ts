@@ -82,7 +82,12 @@ export async function GET(request: Request) {
       health_score:      snap?.health_score      ?? 0,
       upgrade_score:     snap?.upgrade_score     ?? 0,
       churn_risk_score:  snap?.churn_risk_score  ?? 0,
-      reasons:           snap?.reasons           ?? [],
+      reasons: (() => {
+        const raw = snap?.reasons ?? [];
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { return []; } }
+        return [];
+      })(),
       snapshot_at:       snap?.computed_at       ?? null,
       scans_yesterday:   day?.scans_count        ?? 0,
       unique_scanned:    day?.unique_customers_scanned ?? 0,

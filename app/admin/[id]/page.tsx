@@ -54,6 +54,35 @@ interface Totals {
   wallet_passes: number;
 }
 
+interface KpiMetrics {
+  total_customers:       number;
+  new_customers_30d:     number;
+  active_customers_30d:  number;
+  visits_30d:            number;
+  repeat_rate:           number;
+  wallet_passes_issued:  number;
+  wallet_active_passes:  number;
+  completed_cards:       number;
+  estimated_revenue_30d: number | null;
+  last_activity_at:      string | null;
+  last_computed_at:      string;
+}
+
+interface GrowthAction {
+  id:            string;
+  trigger_key:   string;
+  action_type:   string;
+  payload:       {
+    type:           string;
+    severity:       string;
+    title:          string;
+    message:        string;
+    suggested_plan?: string | null;
+  };
+  status:      string;
+  created_at:  string;
+}
+
 /* ── Score ring ─────────────────────────────────────────────────────────────── */
 
 function ScoreRing({ value, label, color }: { value: number; label: string; color: string }) {
@@ -133,10 +162,13 @@ export default function AdminRestaurantDetailPage() {
   const [trend, setTrend]           = useState<TrendRow[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
-  const [plans, setPlans]           = useState<PlanOption[]>([]);
+  const [kpiMetrics, setKpiMetrics] = useState<KpiMetrics | null>(null);
+  const [plans, setPlans]                   = useState<PlanOption[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [savingPlan, setSavingPlan]         = useState(false);
   const [planMsg, setPlanMsg]               = useState('');
+  const [restaurantActions, setRestaurantActions] = useState<GrowthAction[]>([]);
+  const [dismissingId, setDismissingId]           = useState<string | null>(null);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -145,18 +177,22 @@ export default function AdminRestaurantDetailPage() {
     Promise.all([
       fetch(`/api/admin/restaurants/${restaurantId}`),
       fetch('/api/admin/plans'),
+      fetch(`/api/admin/growth/actions?restaurant_id=${restaurantId}&limit=50`),
     ])
-      .then(async ([restRes, plansRes]) => {
+      .then(async ([restRes, plansRes, actionsRes]) => {
         if (restRes.status === 401 || restRes.status === 403) { router.replace('/dashboard'); return; }
         if (restRes.status === 404) { setError('Restaurant introuvable.'); return; }
         if (!restRes.ok) throw new Error('Erreur serveur');
-        const restJson  = await restRes.json();
-        const plansJson = plansRes.ok ? await plansRes.json() : { plans: [] };
+        const restJson    = await restRes.json();
+        const plansJson   = plansRes.ok    ? await plansRes.json()    : { plans: [] };
+        const actionsJson = actionsRes.ok  ? await actionsRes.json()  : { actions: [] };
         setRestaurant(restJson.restaurant);
         setTotals(restJson.totals);
         setTrend(restJson.trend ?? []);
+        setKpiMetrics(restJson.kpiMetrics ?? null);
         setPlans(plansJson.plans ?? []);
         setSelectedPlanId(restJson.restaurant?.plan_id ?? '');
+        setRestaurantActions(actionsJson.actions ?? []);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -178,6 +214,22 @@ export default function AdminRestaurantDetailPage() {
       setPlanMsg('✓ Plan mis à jour');
     } finally {
       setSavingPlan(false);
+    }
+  }
+
+  async function handleDismissAction(actionId: string) {
+    setDismissingId(actionId);
+    try {
+      const res = await fetch(`/api/admin/growth/actions/${actionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'dismissed' }),
+      });
+      if (res.ok) {
+        setRestaurantActions((prev) => prev.filter((a) => a.id !== actionId));
+      }
+    } catch {/* ignore */} finally {
+      setDismissingId(null);
     }
   }
 
@@ -291,6 +343,98 @@ export default function AdminRestaurantDetailPage() {
           <StatCard label="Total scans"   value={totals.scans} />
           <StatCard label="Passes wallet actifs" value={totals.wallet_passes} />
         </div>
+
+        {/* Pre-computed KPI metrics */}
+        {kpiMetrics ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-sm font-semibold text-gray-700">KPIs précomputés · 30 derniers jours</h2>
+              <p className="text-xs text-gray-400">
+                Calculé le {new Date(kpiMetrics.last_computed_at).toLocaleDateString('fr-FR', {
+                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                })}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
+              {[
+                { label: 'Nouveaux 30j',     value: kpiMetrics.new_customers_30d },
+                { label: 'Actifs 30j',       value: kpiMetrics.active_customers_30d },
+                { label: 'Scans 30j',        value: kpiMetrics.visits_30d },
+                { label: 'Taux fidélité',    value: `${Number(kpiMetrics.repeat_rate).toFixed(0)}%` },
+                { label: 'Wallet émis',      value: kpiMetrics.wallet_passes_issued },
+                { label: 'Wallet actifs',    value: kpiMetrics.wallet_active_passes },
+                { label: 'Cartes compl.',    value: kpiMetrics.completed_cards },
+                {
+                  label: 'Revenu estimé',
+                  value: kpiMetrics.estimated_revenue_30d != null
+                    ? `${Number(kpiMetrics.estimated_revenue_30d).toLocaleString('fr-FR')} €`
+                    : '—',
+                },
+                {
+                  label: 'Dernière activité',
+                  value: kpiMetrics.last_activity_at
+                    ? new Date(kpiMetrics.last_activity_at).toLocaleDateString('fr-FR')
+                    : '—',
+                },
+              ].map((m) => (
+                <div key={m.label} className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-lg font-bold text-gray-900 tabular-nums">{String(m.value)}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{m.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gray-50 rounded-2xl border border-gray-100 px-5 py-4 text-sm text-gray-400">
+            KPIs précomputés non disponibles — le cron /api/cron/metrics doit être exécuté au moins une fois.
+          </div>
+        )}
+
+        {/* Growth actions for this restaurant */}
+        {restaurantActions.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <p className="text-sm font-semibold text-gray-900">Actions de croissance en attente</p>
+              <p className="text-xs text-gray-400 mt-0.5">{restaurantActions.length} action{restaurantActions.length > 1 ? 's' : ''} générées par le moteur de triggers</p>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {restaurantActions.map((action) => {
+                const sev = action.payload.severity;
+                const sevColor =
+                  sev === 'high'   ? 'text-red-600 bg-red-50' :
+                  sev === 'medium' ? 'text-amber-700 bg-amber-50' :
+                                     'text-gray-500 bg-gray-100';
+                return (
+                  <div key={action.id} className="px-5 py-4 flex items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${sevColor}`}>
+                          {sev}
+                        </span>
+                        <span className="text-xs text-gray-400">{action.action_type.replace(/_/g, ' ')}</span>
+                        <span className="text-xs text-gray-300">· {action.trigger_key}</span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900">{action.payload.title}</p>
+                      <p className="text-sm text-gray-500 mt-0.5">{action.payload.message}</p>
+                      {action.payload.suggested_plan && (
+                        <p className="text-xs text-primary-600 font-medium mt-1">
+                          Plan suggéré : {action.payload.suggested_plan}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleDismissAction(action.id)}
+                      disabled={dismissingId === action.id}
+                      className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors disabled:opacity-50"
+                    >
+                      {dismissingId === action.id ? '…' : 'Ignorer'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 30-day trend chart */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">

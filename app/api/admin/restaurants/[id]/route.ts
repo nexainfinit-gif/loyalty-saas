@@ -11,12 +11,12 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const guard = await requireOwner(request);
   if (guard instanceof NextResponse) return guard;
 
-  const { id } = params;
+  const { id } = await params;
   const body = await request.json().catch(() => null);
 
   if (!body?.plan_id) {
@@ -58,12 +58,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const guard = await requireOwner(request);
   if (guard instanceof NextResponse) return guard;
 
-  const { id } = params;
+  const { id } = await params;
 
   // Restaurant base info
   const { data: restaurant, error: restErr } = await supabaseAdmin
@@ -76,12 +76,23 @@ export async function GET(
     return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
   }
 
-  // Health snapshot
-  const { data: snapshot } = await supabaseAdmin
-    .from('restaurant_health_snapshot')
-    .select('health_score, upgrade_score, churn_risk_score, reasons, computed_at')
-    .eq('restaurant_id', id)
-    .maybeSingle();
+  // Health snapshot + KPI metrics (parallel)
+  const [{ data: snapshot }, { data: kpiMetrics }] = await Promise.all([
+    supabaseAdmin
+      .from('restaurant_health_snapshot')
+      .select('health_score, upgrade_score, churn_risk_score, reasons, computed_at')
+      .eq('restaurant_id', id)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('restaurant_metrics')
+      .select(
+        'total_customers, new_customers_30d, active_customers_30d, visits_30d,' +
+        'repeat_rate, wallet_passes_issued, wallet_active_passes,' +
+        'completed_cards, estimated_revenue_30d, last_activity_at, last_computed_at',
+      )
+      .eq('restaurant_id', id)
+      .maybeSingle(),
+  ]);
 
   // 30-day metrics trend (ordered ASC for chart)
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400 * 1000).toISOString().slice(0, 10);
@@ -116,16 +127,24 @@ export async function GET(
     wallet_passes: activeWalletPasses ?? 0,
   };
 
+  const rawReasons = snapshot?.reasons ?? [];
+  const reasons: string[] = Array.isArray(rawReasons)
+    ? rawReasons
+    : typeof rawReasons === 'string'
+      ? (() => { try { return JSON.parse(rawReasons); } catch { return []; } })()
+      : [];
+
   return NextResponse.json({
     restaurant: {
       ...restaurant,
       health_score:      snapshot?.health_score      ?? 0,
       upgrade_score:     snapshot?.upgrade_score     ?? 0,
       churn_risk_score:  snapshot?.churn_risk_score  ?? 0,
-      reasons:           snapshot?.reasons           ?? [],
+      reasons,
       snapshot_at:       snapshot?.computed_at       ?? null,
     },
     totals,
-    trend: trend ?? [],
+    trend:      trend ?? [],
+    kpiMetrics: kpiMetrics ?? null,
   });
 }

@@ -12,12 +12,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(
   request: Request,
-  { params }: { params: { planId: string } },
+  { params }: { params: Promise<{ planId: string }> },
 ) {
   const guard = await requireOwner(request);
   if (guard instanceof NextResponse) return guard;
 
-  const { planId } = params;
+  const { planId } = await params;
 
   const { data: plan, error } = await supabaseAdmin
     .from('plans')
@@ -56,12 +56,12 @@ export async function GET(
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { planId: string } },
+  { params }: { params: Promise<{ planId: string }> },
 ) {
   const guard = await requireOwner(request);
   if (guard instanceof NextResponse) return guard;
 
-  const { planId } = params;
+  const { planId } = await params;
   const body = await request.json().catch(() => null);
   if (!body) {
     return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 });

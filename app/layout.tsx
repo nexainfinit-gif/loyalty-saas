@@ -28,6 +28,7 @@ export default function RootLayout({
     <html lang="fr">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         <SupabaseSessionSync />
         {process.env.NODE_ENV === 'development' ? <SupabaseDevExpose /> : null}

@@ -14,12 +14,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function PUT(
   request: Request,
-  { params }: { params: { planId: string } },
+  { params }: { params: Promise<{ planId: string }> },
 ) {
   const guard = await requireOwner(request);
   if (guard instanceof NextResponse) return guard;
 
-  const { planId } = params;
+  const { planId } = await params;
   const body = await request.json().catch(() => null);
 
   if (!body || typeof body !== 'object' || Array.isArray(body)) {

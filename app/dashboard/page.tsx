@@ -78,6 +78,31 @@ interface Campaign {
 
 type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings';
 
+interface GrowthTrigger {
+  key:            string;
+  type:           'upgrade' | 'risk' | 'opportunity';
+  severity:       'low' | 'medium' | 'high';
+  title:          string;
+  message:        string;
+  suggested_plan?: string;
+}
+
+interface RestaurantMetrics {
+  // Tier 0 — free+
+  total_customers:       number;
+  visits_30d:            number;
+  last_computed_at:      string;
+  // Tier 1 — growth+ (analytics feature)
+  new_customers_30d?:    number;
+  active_customers_30d?: number;
+  repeat_rate?:          number;
+  wallet_passes_issued?: number;
+  wallet_active_passes?: number;
+  // Tier 2 — pro+
+  completed_cards?:       number;
+  estimated_revenue_30d?: number | null;
+}
+
 /* ─── Helpers ────────────────────────────────────────────── */
 function getCustomerStatus(c: Customer): 'vip' | 'active' | 'inactive' {
   if (!c.last_visit_at) return 'inactive';
@@ -149,6 +174,20 @@ export default function DashboardPage() {
   const [newCampaign, setNewCampaign] = useState({
     name: '', type: 'custom', subject: '', body: '', segment: 'all', scheduled_at: '',
   });
+  const [restaurantSettings, setRestaurantSettings] = useState<Record<string, string>>({});
+  const [savingRestaurantSettings, setSavingRestaurantSettings] = useState(false);
+  const [restaurantSettingsMsg, setRestaurantSettingsMsg] = useState('');
+  const [growthTriggers, setGrowthTriggers] = useState<GrowthTrigger[]>([]);
+  const [triggersLoading, setTriggersLoading] = useState(false);
+  // undefined = not yet fetched, null = fetched but no row yet (cron hasn't run)
+  const [restaurantMetrics, setRestaurantMetrics] = useState<RestaurantMetrics | null | undefined>(undefined);
+  // Prevents hydration mismatch caused by browser extensions injecting DOM nodes
+  // between SSR and React hydration. The dashboard is auth-gated so SSR has no value.
+  const [mounted, setMounted] = useState(false);
+  // KPI keys enabled for this restaurant's plan (from plan_kpis via /api/restaurant-metrics — no hardcoded checks)
+  const [enabledKpiKeys, setEnabledKpiKeys] = useState<string[]>([]);
+  // Customer IDs that have at least one active wallet pass
+  const [walletPassCustomerIds, setWalletPassCustomerIds] = useState<Set<string>>(new Set());
 
   /* Data load */
   useEffect(() => {
@@ -187,10 +226,67 @@ export default function DashboardPage() {
         .order('created_at', { ascending: false });
       setSentCampaigns(camps ?? []);
 
+      // Load restaurant settings (average_ticket etc.)
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s) {
+        const settingsRes = await fetch('/api/restaurant-settings', {
+          headers: { Authorization: `Bearer ${s.access_token}` },
+        });
+        if (settingsRes.ok) {
+          const { settings } = await settingsRes.json();
+          setRestaurantSettings(settings ?? {});
+        }
+      }
+
       setLoading(false);
     }
     load();
   }, [router]);
+
+  /* Load pre-computed KPI metrics + enabled KPI keys (DB-driven, no hardcoded plan checks) */
+  useEffect(() => {
+    if (!session || !restaurant) return;
+    fetch('/api/restaurant-metrics', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const json = await res.json();
+        setRestaurantMetrics(json.metrics ?? null);
+        setEnabledKpiKeys(json.enabledKpiKeys ?? []);
+      })
+      .catch(() => setRestaurantMetrics(null));
+  }, [session, restaurant]);
+
+  /* Load growth triggers once restaurant + session are available */
+  useEffect(() => {
+    if (!session || !restaurant) return;
+    setTriggersLoading(true);
+    fetch('/api/growth/triggers', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const { triggers } = await res.json();
+        setGrowthTriggers(triggers ?? []);
+      })
+      .catch(() => {/* non-blocking */})
+      .finally(() => setTriggersLoading(false));
+  }, [session, restaurant]);
+
+  /* Load wallet pass customer IDs when the wallet_pass_rate KPI is enabled for this plan */
+  useEffect(() => {
+    if (!session || !enabledKpiKeys.includes('wallet_pass_rate')) return;
+    fetch('/api/restaurant-wallet/active-customers', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const { customerIds } = await res.json();
+        setWalletPassCustomerIds(new Set(customerIds ?? []));
+      })
+      .catch(() => {/* non-blocking */});
+  }, [session, enabledKpiKeys]);
 
   /* Refresh customers on window focus — scanner runs on a separate page/tab,
      so when the owner switches back the client list would otherwise show stale
@@ -223,6 +319,58 @@ export default function DashboardPage() {
   const inactiveCustomers= customers.filter(c => !c.last_visit_at || (now - new Date(c.last_visit_at).getTime()) > day45).length;
   const returnRate       = totalCustomers > 0 ? Math.round((customers.filter(c => c.total_visits > 1).length / totalCustomers) * 100) : 0;
   const avgPoints        = totalCustomers > 0 ? Math.round(customers.reduce((a, c) => a + c.total_points, 0) / totalCustomers) : 0;
+
+  // ── Trend computation: this 30d vs prior 30d ─────────────
+  const MS30 = 30 * 86400000;
+
+  const newThis30 = customers.filter(c => now - new Date(c.created_at).getTime() < MS30).length;
+  const newPrev30 = customers.filter(c => {
+    const age = now - new Date(c.created_at).getTime();
+    return age >= MS30 && age < 2 * MS30;
+  }).length;
+
+  const activeThis30 = new Set(
+    transactions.filter(t => now - new Date(t.created_at).getTime() < MS30).map(t => t.customer_id)
+  ).size;
+  const activePrev30 = new Set(
+    transactions.filter(t => { const age = now - new Date(t.created_at).getTime(); return age >= MS30 && age < 2 * MS30; }).map(t => t.customer_id)
+  ).size;
+
+  function trendPct(a: number, b: number): number | null {
+    if (b === 0) return a > 0 ? 100 : null;
+    return Math.round(((a - b) / b) * 100);
+  }
+  const trendActive = trendPct(activeThis30, activePrev30);
+  const trendNew    = trendPct(newThis30, newPrev30);
+
+  // Resolved KPI values: prefer server-computed, fall back to client-computed
+  const kpiActive = restaurantMetrics?.active_customers_30d ?? activeThis30;
+  const kpiNew    = restaurantMetrics?.new_customers_30d    ?? newThis30;
+  const kpiRepeat: string = restaurantMetrics?.repeat_rate != null
+    ? `${Number(restaurantMetrics.repeat_rate).toFixed(0)}%`
+    : `${returnRate}%`;
+
+  // Business health derived from triggers (used in Section A banner)
+  const highRiskCount = growthTriggers.filter(t => t.type === 'risk' && t.severity === 'high').length;
+  const medRiskCount  = growthTriggers.filter(t => t.type === 'risk' && t.severity === 'medium').length;
+  const oppCount      = growthTriggers.filter(t => t.type === 'opportunity').length;
+  type HealthStatus   = { label: string; bg: string; text: string; dot: string };
+  const healthStatus: HealthStatus = highRiskCount > 0
+    ? { label: 'Attention requise',       bg: 'bg-warning-100', text: 'text-warning-700', dot: 'bg-warning-600' }
+    : medRiskCount > 0
+    ? { label: 'À surveiller',            bg: 'bg-warning-50',  text: 'text-warning-700', dot: 'bg-warning-600' }
+    : { label: 'Activité en bonne santé', bg: 'bg-success-50',  text: 'text-success-700', dot: 'bg-success-600' };
+
+  // Sorted triggers for Priority Actions panel (high→medium→low, max 5 shown)
+  const SEV: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  const sortedTriggers = [...growthTriggers].sort((a, b) => (SEV[a.severity] ?? 9) - (SEV[b.severity] ?? 9));
+
+  // Premium KPI section
+  const hasPremiumKpis = restaurantMetrics != null &&
+    (restaurantMetrics.wallet_active_passes != null ||
+     restaurantMetrics.estimated_revenue_30d != null ||
+     restaurantMetrics.completed_cards != null);
+  const isPaidPlan = (restaurant?.plan ?? 'free') !== 'free';
 
   const chartData = Array.from({ length: 30 }, (_, i) => {
     const d = new Date();
@@ -272,6 +420,11 @@ export default function DashboardPage() {
       metadata: { reason: 'Ajout manuel dashboard' },
     });
     setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, total_points: Math.max(0, c.total_points + delta) } : c));
+  }
+
+  function copyWalletUrl(customerId: string) {
+    const url = `${window.location.origin}/api/wallet/${customerId}`;
+    navigator.clipboard?.writeText?.(url);
   }
 
   async function saveLoyaltySettings() {
@@ -374,6 +527,12 @@ export default function DashboardPage() {
     await supabase.auth.signOut();
     router.replace('/dashboard/login');
   }
+
+  // Set mounted on first client render — must come after all other hooks
+  useEffect(() => { setMounted(true); }, []);
+
+  /* ─── SSR guard — returns null on server, client takes over immediately ─ */
+  if (!mounted) return null;
 
   /* ─── Loading screen ──────────────────────────────────── */
   if (loading) return (
@@ -481,8 +640,8 @@ export default function DashboardPage() {
             {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">Scanner QR</span>}
           </a>
 
-          {/* Wallet Studio — hidden on free plan */}
-          {(restaurant?.plans?.key ?? restaurant?.plan) !== 'free' && (
+          {/* Wallet Studio — visible when wallet_pass_rate KPI is enabled for this plan */}
+          {enabledKpiKeys.includes('wallet_pass_rate') && (
             <a
               href="/dashboard/wallet"
               aria-label="Wallet Studio"
@@ -565,32 +724,67 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              {/* KPI grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
-                {[
-                  { label: 'Clients totaux',   value: totalCustomers,   icon: '👥', color: DS.primary },
-                  { label: 'Nouveaux ce mois', value: newThisMonth,     icon: '➕', color: DS.success },
-                  { label: 'Actifs 30 jours',  value: activeCustomers,  icon: '⭐', color: DS.warning },
-                  { label: 'Taux de retour',   value: `${returnRate}%`, icon: '🔁', color: DS.purple },
-                  { label: 'Points moyens',    value: avgPoints,        icon: '💰', color: DS.primary },
-                  { label: 'Inactifs 45j',     value: inactiveCustomers,icon: '📉', color: DS.danger },
-                ].map((kpi, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-xl">{kpi.icon}</span>
-                      <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: kpi.color }} />
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900 tabular-nums mb-1">{kpi.value}</p>
-                    <p className="text-xs text-gray-500 font-medium leading-tight">{kpi.label}</p>
+              {/* Section A — Business Status Banner */}
+              {!triggersLoading && (
+                <div className={`flex items-center justify-between px-4 py-3 rounded-xl ${healthStatus.bg}`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${healthStatus.dot}`} />
+                    <span className={`text-sm font-semibold ${healthStatus.text}`}>{healthStatus.label}</span>
                   </div>
-                ))}
+                  {growthTriggers.length > 0 && (
+                    <span className={`text-xs ${healthStatus.text} opacity-70`}>
+                      {[
+                        (highRiskCount + medRiskCount) > 0 ? `${highRiskCount + medRiskCount} risque${highRiskCount + medRiskCount > 1 ? 's' : ''}` : '',
+                        oppCount > 0 ? `${oppCount} opportunité${oppCount > 1 ? 's' : ''}` : '',
+                      ].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Section B — 4 Unified KPI Cards with Trends */}
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <p className="text-xs text-gray-500 font-medium mb-2">Clients totaux</p>
+                  <p className="text-2xl font-bold text-gray-900 tabular-nums">{totalCustomers.toLocaleString('fr-FR')}</p>
+                  <p className="text-xs text-gray-400 mt-1.5">Depuis l&apos;ouverture</p>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <p className="text-xs text-gray-500 font-medium mb-2">Actifs ce mois</p>
+                  <p className="text-2xl font-bold text-gray-900 tabular-nums">{kpiActive}</p>
+                  <div className="mt-1.5">
+                    {trendActive === null
+                      ? <span className="text-xs text-gray-400">— données insuffisantes</span>
+                      : trendActive >= 0
+                      ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-success-700 bg-success-50 px-2 py-0.5 rounded-full">↑ {trendActive}% vs mois préc.</span>
+                      : <span className="inline-flex items-center gap-1 text-xs font-semibold text-danger-700 bg-danger-50 px-2 py-0.5 rounded-full">↓ {Math.abs(trendActive)}% vs mois préc.</span>
+                    }
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <p className="text-xs text-gray-500 font-medium mb-2">Nouveaux ce mois</p>
+                  <p className="text-2xl font-bold text-gray-900 tabular-nums">{kpiNew}</p>
+                  <div className="mt-1.5">
+                    {trendNew === null
+                      ? <span className="text-xs text-gray-400">— données insuffisantes</span>
+                      : trendNew >= 0
+                      ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-success-700 bg-success-50 px-2 py-0.5 rounded-full">↑ {trendNew}% vs mois préc.</span>
+                      : <span className="inline-flex items-center gap-1 text-xs font-semibold text-danger-700 bg-danger-50 px-2 py-0.5 rounded-full">↓ {Math.abs(trendNew)}% vs mois préc.</span>
+                    }
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <p className="text-xs text-gray-500 font-medium mb-2">Taux de fidélité</p>
+                  <p className="text-2xl font-bold text-gray-900 tabular-nums">{kpiRepeat}</p>
+                  <p className="text-xs text-gray-400 mt-1.5">Clients avec 2+ visites</p>
+                </div>
               </div>
 
-              {/* Chart + Opportunities */}
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5">
+              {/* Chart + Actions */}
+              <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5">
                 {/* Activity chart */}
                 <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                   <h3 className="text-sm font-semibold text-gray-900 mb-5">Activité — 30 derniers jours</h3>
@@ -619,42 +813,121 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Opportunities */}
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Opportunités du mois</h3>
-                  <div className="flex flex-col gap-3">
-                    {[
-                      { count: inactives45.length,    label: 'clients inactifs 45j',      bg: 'bg-warning-100', text: 'text-warning-700', icon: '😴', cta: 'Relancer' },
-                      { count: birthdaysSoon.length,  label: 'anniversaires cette semaine', bg: 'bg-vip-50',     text: 'text-vip-600',    icon: '🎂', cta: 'Vœux' },
-                      { count: nearReward.length,     label: "proches d'une récompense",  bg: 'bg-success-50',  text: 'text-success-700',icon: '🏆', cta: 'Notifier' },
-                    ].map((opp, i) => (
-                      <div key={i} className={`${opp.bg} rounded-xl p-3.5 flex items-center gap-3`}>
-                        <span className="text-xl flex-shrink-0">{opp.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-lg font-bold tabular-nums ${opp.text}`}>{opp.count}</p>
-                          <p className={`text-xs truncate ${opp.text} opacity-75`}>{opp.label}</p>
-                        </div>
-                        <button
-                          onClick={() => setActiveTab('campaigns')}
-                          className={`flex-shrink-0 ${opp.text} bg-white/60 hover:bg-white/90 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors`}
-                        >
-                          {opp.cta}
-                        </button>
-                      </div>
-                    ))}
+                {/* Priority Actions */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col min-h-[280px]">
+                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-900">Actions prioritaires</h3>
+                    {triggersLoading
+                      ? <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-ds-spin" />
+                      : growthTriggers.length > 0 && (
+                          <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                            {growthTriggers.length}
+                          </span>
+                        )
+                    }
                   </div>
-
-                  {/* Insight */}
-                  <div className="mt-4 p-3.5 bg-primary-50 rounded-xl border-l-2 border-primary-600">
-                    <p className="text-xs text-primary-700 leading-relaxed">
-                      <strong>Insight :</strong>{' '}
-                      {returnRate > 50
-                        ? `${returnRate}% de vos clients reviennent — excellent !`
-                        : `Votre taux de retour est de ${returnRate}%. Lancez une campagne de re-engagement.`}
-                    </p>
+                  <div className="flex-1 p-4 flex flex-col gap-2.5">
+                    {!triggersLoading && growthTriggers.length === 0 && (
+                      <div className="flex-1 flex items-center justify-center">
+                        <p className="text-sm text-gray-400 text-center py-4">✓ Aucune action requise.</p>
+                      </div>
+                    )}
+                    {sortedTriggers.slice(0, 5).map((trigger, i) => {
+                      const accentBorder =
+                        trigger.type === 'risk'        ? 'border-l-2 border-danger-600'  :
+                        trigger.type === 'opportunity' ? 'border-l-2 border-primary-600' :
+                                                         'border-l-2 border-purple-600';
+                      const cardBg =
+                        trigger.type === 'risk'        ? 'bg-danger-50'  :
+                        trigger.type === 'opportunity' ? 'bg-primary-50' : 'bg-purple-50';
+                      const titleColor =
+                        trigger.type === 'risk'        ? 'text-danger-700'  :
+                        trigger.type === 'opportunity' ? 'text-primary-700' : 'text-purple-700';
+                      const ctaLabel =
+                        trigger.type === 'upgrade' ? 'Voir Pro' :
+                        trigger.type === 'risk'    ? 'Agir'     : 'Explorer';
+                      function handleCta() {
+                        const k = trigger.key ?? '';
+                        if (['churn_risk_high','inactive_majority','churn_risk_medium','re_engagement','growth_momentum'].includes(k))
+                          setActiveTab('campaigns');
+                        else if (k === 'engagement_drop') { setFilter('inactive'); setActiveTab('clients'); }
+                        else if (k === 'growth_stalled' && restaurant?.slug)
+                          navigator.clipboard?.writeText?.(`${window.location.origin}/register/${restaurant.slug}`);
+                        else if (k === 'campaign_underused') setCampaignModal(true);
+                        else if (k === 'no_rewards_issued') setActiveTab('loyalty');
+                        else setActiveTab(trigger.type === 'upgrade' ? 'settings' : 'campaigns');
+                      }
+                      return (
+                        <div key={i} className={`flex items-start gap-3 p-3.5 rounded-xl ${cardBg} ${accentBorder}`}>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-semibold ${titleColor} leading-tight`}>{trigger.title}</p>
+                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{trigger.message}</p>
+                          </div>
+                          <button
+                            onClick={handleCta}
+                            className={`flex-shrink-0 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${titleColor} border-current bg-white/70 hover:bg-white transition-colors whitespace-nowrap`}
+                          >
+                            {ctaLabel}
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {sortedTriggers.length > 5 && (
+                      <p className="text-xs text-gray-400 text-center pt-1">
+                        + {sortedTriggers.length - 5} autre{sortedTriggers.length - 5 > 1 ? 's' : ''} suggestion{sortedTriggers.length - 5 > 1 ? 's' : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Section D — Premium KPIs / Upgrade */}
+              {restaurantMetrics !== undefined && (
+                hasPremiumKpis ? (
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <h3 className="text-sm font-semibold text-gray-900">Métriques avancées · 30j</h3>
+                      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-md bg-purple-100 text-purple-700">Pro</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {restaurantMetrics!.wallet_active_passes != null && (
+                        <div className="bg-gray-50 rounded-xl p-3.5">
+                          <p className="text-xl font-bold text-gray-900 tabular-nums">{restaurantMetrics!.wallet_active_passes}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Wallet actifs</p>
+                        </div>
+                      )}
+                      {restaurantMetrics!.estimated_revenue_30d != null && (
+                        <div className="bg-gray-50 rounded-xl p-3.5">
+                          <p className="text-xl font-bold text-gray-900 tabular-nums">
+                            {Number(restaurantMetrics!.estimated_revenue_30d).toLocaleString('fr-FR')} €
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">Revenu estimé 30j</p>
+                        </div>
+                      )}
+                      {restaurantMetrics!.completed_cards != null && (
+                        <div className="bg-gray-50 rounded-xl p-3.5">
+                          <p className="text-xl font-bold text-gray-900 tabular-nums">{restaurantMetrics!.completed_cards}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Cartes complétées</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : !isPaidPlan && (
+                  <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5 flex items-center gap-4">
+                    <span className="text-xl flex-shrink-0">🔒</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">Débloquez les métriques avancées</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Wallet actifs · Revenu estimé · Cartes complétées</p>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('settings')}
+                      className="flex-shrink-0 text-xs font-semibold px-4 py-2 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors whitespace-nowrap"
+                    >
+                      Voir les offres
+                    </button>
+                  </div>
+                )
+              )}
             </div>
           )}
 
@@ -707,7 +980,13 @@ export default function DashboardPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/60">
-                      {['Nom', 'Email', loyaltySettings.program_type === 'stamps' ? 'Tampons' : 'Points', 'Visites', 'Dernière visite', 'Statut', 'Actions'].map(h => (
+                      {[
+                        'Nom', 'Email',
+                        loyaltySettings.program_type === 'stamps' ? 'Tampons' : 'Points',
+                        'Visites', 'Dernière visite', 'Statut',
+                        ...(enabledKpiKeys.includes('wallet_pass_rate') ? ['Wallet'] : []),
+                        'Actions',
+                      ].map(h => (
                         <th key={h} className="px-4 py-3.5 text-left text-xs font-medium text-gray-500 whitespace-nowrap">
                           {h}
                         </th>
@@ -717,7 +996,7 @@ export default function DashboardPage() {
                   <tbody>
                     {filteredCustomers.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="px-4 py-16 text-center">
+                        <td colSpan={enabledKpiKeys.includes('wallet_pass_rate') ? 8 : 7} className="px-4 py-16 text-center">
                           <div className="text-3xl mb-3">🔍</div>
                           <p className="text-sm text-gray-400 font-medium">Aucun client trouvé</p>
                         </td>
@@ -758,6 +1037,18 @@ export default function DashboardPage() {
                           {c.last_visit_at ? new Date(c.last_visit_at).toLocaleDateString('fr-BE') : '—'}
                         </td>
                         <td className="px-4 py-3.5"><StatusBadge status={getCustomerStatus(c)} /></td>
+                        {enabledKpiKeys.includes('wallet_pass_rate') && (
+                          <td className="px-4 py-3.5">
+                            {walletPassCustomerIds.has(c.id)
+                              ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-success-700 bg-success-50 px-2 py-1 rounded-full">🎫 Actif</span>
+                              : <button
+                                  onClick={() => copyWalletUrl(c.id)}
+                                  title="Copier le lien wallet à envoyer au client"
+                                  className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-full hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                                >🎫 Envoyer</button>
+                            }
+                          </td>
+                        )}
                         <td className="px-4 py-3.5">
                           <div className="flex gap-1.5">
                             <button
@@ -1196,6 +1487,79 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-500 mt-0.5">Analyse approfondie de votre programme fidélité</p>
               </div>
 
+              {restaurantMetrics !== undefined && (
+                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">Métriques KPI · 30 derniers jours</h3>
+                      {restaurantMetrics?.last_computed_at && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Calculé le {new Date(restaurantMetrics.last_computed_at).toLocaleDateString('fr-FR')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {restaurantMetrics === null ? (
+                    <p className="text-sm text-gray-400">Métriques disponibles dès demain matin (calcul nocturne).</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+                      <div className="bg-gray-50 rounded-xl p-3.5">
+                        <p className="text-xl font-bold text-gray-900 tabular-nums">{restaurantMetrics.total_customers.toLocaleString('fr-FR')}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Clients totaux</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-3.5">
+                        <p className="text-xl font-bold text-gray-900 tabular-nums">{restaurantMetrics.visits_30d.toLocaleString('fr-FR')}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Scans 30j</p>
+                      </div>
+                      {restaurantMetrics.active_customers_30d !== undefined ? (
+                        <>
+                          <div className="bg-gray-50 rounded-xl p-3.5">
+                            <p className="text-xl font-bold text-gray-900 tabular-nums">{restaurantMetrics.new_customers_30d}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">Nouveaux 30j</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3.5">
+                            <p className="text-xl font-bold text-gray-900 tabular-nums">{restaurantMetrics.active_customers_30d}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">Actifs 30j</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3.5">
+                            <p className="text-xl font-bold text-gray-900 tabular-nums">{Number(restaurantMetrics.repeat_rate).toFixed(0)}%</p>
+                            <p className="text-xs text-gray-500 mt-0.5">Taux fidélité</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3.5">
+                            <p className="text-xl font-bold text-gray-900 tabular-nums">{restaurantMetrics.wallet_active_passes}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">Wallet actifs</p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="col-span-2 sm:col-span-1 xl:col-span-4 rounded-xl p-3.5 border border-dashed border-gray-200 bg-gray-50 flex items-center gap-3">
+                          <span className="text-gray-300 text-base flex-shrink-0">🔒</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-600">Analytics avancés</p>
+                            <p className="text-xs text-gray-400 truncate">Actifs 30j · Fidélité · Wallet</p>
+                          </div>
+                          <button onClick={() => setActiveTab('settings')} className="text-xs font-semibold text-primary-600 flex-shrink-0 hover:underline">Pro →</button>
+                        </div>
+                      )}
+                      {restaurantMetrics.completed_cards !== undefined && (
+                        <>
+                          <div className="bg-gray-50 rounded-xl p-3.5">
+                            <p className="text-xl font-bold text-gray-900 tabular-nums">{restaurantMetrics.completed_cards}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">Cartes compl. 30j</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3.5">
+                            <p className="text-xl font-bold text-gray-900 tabular-nums">
+                              {restaurantMetrics.estimated_revenue_30d != null
+                                ? `${Number(restaurantMetrics.estimated_revenue_30d).toLocaleString('fr-FR')} €` : '—'}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">Revenu estimé 30j</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {[
                   {
@@ -1338,6 +1702,66 @@ export default function DashboardPage() {
                   {logoSaved && (
                     <p className="mt-2 text-xs text-emerald-600">✓ Logo enregistré</p>
                   )}
+                </div>
+
+                {/* KPI parameters — restaurant-level settings inputs */}
+                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-1">Paramètres analytiques</h3>
+                  <p className="text-xs text-gray-400 mb-4">Ces valeurs sont utilisées pour calculer vos KPIs de revenus.</p>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                        Ticket moyen <span className="text-gray-300">(€)</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mb-1.5">Valeur moyenne d'une transaction client</p>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={restaurantSettings['average_ticket'] ?? ''}
+                        onChange={(e) => {
+                          setRestaurantSettings((prev) => ({ ...prev, average_ticket: e.target.value }));
+                          setRestaurantSettingsMsg('');
+                        }}
+                        placeholder="ex: 18.50"
+                        className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 mt-4">
+                    <button
+                      onClick={async () => {
+                        setSavingRestaurantSettings(true);
+                        setRestaurantSettingsMsg('');
+                        try {
+                          const { data: { session: s } } = await supabase.auth.getSession();
+                          const res = await fetch('/api/restaurant-settings', {
+                            method: 'PUT',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              Authorization: `Bearer ${s?.access_token ?? ''}`,
+                            },
+                            body: JSON.stringify(restaurantSettings),
+                          });
+                          const json = await res.json();
+                          if (!res.ok) { setRestaurantSettingsMsg(json.error ?? 'Erreur.'); return; }
+                          setRestaurantSettings(json.settings ?? restaurantSettings);
+                          setRestaurantSettingsMsg('✓ Paramètres sauvegardés');
+                        } finally {
+                          setSavingRestaurantSettings(false);
+                        }
+                      }}
+                      disabled={savingRestaurantSettings}
+                      className="px-4 py-2 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
+                    >
+                      {savingRestaurantSettings ? 'Sauvegarde…' : 'Enregistrer'}
+                    </button>
+                    {restaurantSettingsMsg && (
+                      <span className={`text-xs font-medium ${restaurantSettingsMsg.startsWith('✓') ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {restaurantSettingsMsg}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Plan info */}
