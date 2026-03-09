@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useCallback } from 'react';
 
 type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings';
 
@@ -12,23 +12,57 @@ interface Props {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
   onSignOut: () => void;
+  drawerOpen: boolean;
+  onDrawerToggle: (open: boolean) => void;
+  enabledKpiKeys?: string[];
+  showUpgrade?: boolean;
+  onUpgrade?: () => void;
 }
 
 const BUSINESS_TYPE_EMOJI: Record<string, string> = {
   restaurant: '🍽️', cafe: '☕', salon_beaute: '💅', salon_coiffure: '💇', boutique: '🛍️',
 };
 
-const MORE_TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'loyalty',   label: 'Fidélité',   icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' },
-  { id: 'analytics', label: 'Analytics',  icon: 'M12 20V10m6 10V4M6 20v-4' },
-  { id: 'settings',  label: 'Paramètres', icon: 'M12 15a3 3 0 100-6 3 3 0 000 6z' },
+const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'overview',   label: "Vue d'ensemble", icon: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z' },
+  { id: 'clients',    label: 'Clients',        icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 7a4 4 0 100-8 4 4 0 000 8z M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75' },
+  { id: 'loyalty',    label: 'Fidélité',       icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' },
+  { id: 'campaigns',  label: 'Campagnes',      icon: 'M3 11l19-9-9 19-2-8-8-2z' },
+  { id: 'analytics',  label: 'Analytics',      icon: 'M12 20V10m6 10V4M6 20v-4' },
+  { id: 'settings',   label: 'Paramètres',     icon: 'M12 15a3 3 0 100-6 3 3 0 000 6z' },
+];
+
+const EXTRA_LINKS: { label: string; href: string; icon: string }[] = [
+  { label: 'Scanner QR', href: '/dashboard/scanner', icon: 'M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z M12 13a4 4 0 100-8 4 4 0 000 8z' },
 ];
 
 export default function MobileHeader({
   restaurantName, logoUrl, primaryColor, businessType, planName,
   activeTab, onTabChange, onSignOut,
+  drawerOpen, onDrawerToggle,
+  enabledKpiKeys = [], showUpgrade, onUpgrade,
 }: Props) {
-  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Lock body scroll when drawer is open
+  useEffect(() => {
+    if (drawerOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [drawerOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onDrawerToggle(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [drawerOpen, onDrawerToggle]);
+
+  const handleTabClick = useCallback((tab: Tab) => {
+    onTabChange(tab);
+    onDrawerToggle(false);
+  }, [onTabChange, onDrawerToggle]);
 
   const tabLabels: Record<Tab, string> = {
     overview: "Vue d'ensemble",
@@ -39,84 +73,176 @@ export default function MobileHeader({
     settings: 'Paramètres',
   };
 
+  const showWalletLink = enabledKpiKeys.includes('wallet_pass_rate');
+
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-100 md:hidden pt-safe">
+      {/* ── Top bar ── */}
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-100 lg:hidden pt-safe">
         <div className="flex items-center justify-between px-4 h-14">
-          {/* Left: logo + name */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center text-lg shadow-sm"
-              style={{ background: `color-mix(in srgb, ${primaryColor} 15%, white)` }}
+          {/* Left: hamburger + title */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => onDrawerToggle(true)}
+              className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors -ml-1"
+              aria-label="Ouvrir le menu"
             >
-              {logoUrl
-                ? <img src={logoUrl} alt="" className="w-full h-full object-contain" />
-                : (BUSINESS_TYPE_EMOJI[businessType ?? ''] ?? '🏪')}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate max-w-[160px]">{tabLabels[activeTab]}</p>
-            </div>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <p className="text-sm font-semibold text-gray-900 truncate">{tabLabels[activeTab]}</p>
           </div>
 
-          {/* Right: more menu */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors tap-target"
+          {/* Right: logo */}
+          <div
+            className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center text-sm shadow-sm"
+            style={{ background: `color-mix(in srgb, ${primaryColor} 15%, white)` }}
           >
-            {menuOpen ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-            )}
-          </button>
+            {logoUrl
+              ? <img src={logoUrl} alt="" className="w-full h-full object-contain" />
+              : (BUSINESS_TYPE_EMOJI[businessType ?? ''] ?? '🏪')}
+          </div>
         </div>
       </header>
 
-      {/* Dropdown menu */}
-      {menuOpen && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/20 md:hidden" onClick={() => setMenuOpen(false)} />
-          <div className="fixed top-14 right-3 z-50 w-56 bg-white rounded-2xl border border-gray-100 shadow-[0_8px_32px_rgba(0,0,0,0.12)] overflow-hidden md:hidden animate-fade-up">
-            {/* Restaurant info */}
-            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
-              <p className="text-sm font-semibold text-gray-900 truncate">{restaurantName}</p>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{planName}</span>
-            </div>
+      {/* ── Overlay ── */}
+      <div
+        className={[
+          'fixed inset-0 z-50 bg-black/40 transition-opacity duration-300 lg:hidden',
+          drawerOpen ? 'opacity-100' : 'opacity-0 pointer-events-none',
+        ].join(' ')}
+        onClick={() => onDrawerToggle(false)}
+        aria-hidden="true"
+      />
 
-            {/* Extra tabs not in bottom nav */}
-            <div className="py-1.5">
-              {MORE_TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => { onTabChange(tab.id); setMenuOpen(false); }}
-                  className={[
-                    'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors active:bg-gray-50',
-                    activeTab === tab.id ? 'text-primary-600 bg-primary-50' : 'text-gray-700',
-                  ].join(' ')}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d={tab.icon} />
-                  </svg>
-                  <span className="text-sm font-medium">{tab.label}</span>
-                </button>
-              ))}
-            </div>
+      {/* ── Drawer sidebar ── */}
+      <aside
+        className={[
+          'fixed top-0 left-0 bottom-0 z-50 w-72 bg-white flex flex-col',
+          'shadow-[4px_0_24px_rgba(0,0,0,0.12)]',
+          'transition-transform duration-300 ease-out lg:hidden',
+          drawerOpen ? 'translate-x-0' : '-translate-x-full',
+        ].join(' ')}
+      >
+        {/* Brand header */}
+        <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-100">
+          <div
+            className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center text-xl shadow-sm"
+            style={{ background: `color-mix(in srgb, ${primaryColor} 15%, white)` }}
+          >
+            {logoUrl
+              ? <img src={logoUrl} alt="" className="w-full h-full object-contain" />
+              : (BUSINESS_TYPE_EMOJI[businessType ?? ''] ?? '🏪')}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-gray-900 truncate">{restaurantName}</p>
+            <span className={[
+              'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md inline-block mt-0.5',
+              planName === 'pro'     ? 'bg-purple-100 text-purple-700' :
+              planName === 'starter' ? 'bg-primary-100 text-primary-700' :
+                                       'bg-gray-100 text-gray-500',
+            ].join(' ')}>
+              {planName}
+            </span>
+          </div>
+          {/* Close button */}
+          <button
+            onClick={() => onDrawerToggle(false)}
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+            aria-label="Fermer le menu"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-            {/* Sign out */}
-            <div className="border-t border-gray-100 py-1.5">
+        {/* Navigation */}
+        <nav className="flex-1 p-3 flex flex-col gap-0.5 overflow-y-auto">
+          {NAV_ITEMS.map(item => {
+            const isActive = activeTab === item.id;
+            return (
               <button
-                onClick={() => { onSignOut(); setMenuOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-400 active:bg-gray-50 transition-colors"
+                key={item.id}
+                onClick={() => handleTabClick(item.id)}
+                className={[
+                  'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-150',
+                  isActive
+                    ? 'bg-primary-50 text-primary-600'
+                    : 'text-gray-600 hover:bg-gray-50 active:bg-gray-100',
+                ].join(' ')}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <path d={item.icon} />
                 </svg>
-                <span className="text-sm font-medium">Déconnexion</span>
+                <span className={`text-sm ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Divider */}
+          <div className="h-px bg-gray-100 my-2" />
+
+          {/* Extra links */}
+          {EXTRA_LINKS.map(link => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-all"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d={link.icon} />
+              </svg>
+              <span className="text-sm font-medium">{link.label}</span>
+            </a>
+          ))}
+
+          {/* Wallet Studio (conditional) */}
+          {showWalletLink && (
+            <a
+              href="/dashboard/wallet"
+              className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-all"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12V7H5a2 2 0 010-4h14v4" /><path d="M3 5v14a2 2 0 002 2h16v-5" /><path d="M18 12a2 2 0 000 4h4v-4Z" />
+              </svg>
+              <span className="text-sm font-medium">Wallet Studio</span>
+            </a>
+          )}
+        </nav>
+
+        {/* Bottom section */}
+        <div className="p-3 border-t border-gray-100">
+          {/* Upgrade card */}
+          {showUpgrade && onUpgrade && (
+            <div className="rounded-xl p-3 mb-2 bg-gradient-to-br from-purple-600 to-primary-600 text-white">
+              <p className="text-xs font-bold mb-0.5">Passer à Pro</p>
+              <p className="text-[11px] text-white/70 mb-2.5">Campagnes illimitées + Analytics</p>
+              <button
+                onClick={() => { onUpgrade(); onDrawerToggle(false); }}
+                className="w-full bg-white text-purple-700 text-xs font-bold py-1.5 rounded-xl hover:bg-white/90 transition-colors"
+              >
+                Upgrader
               </button>
             </div>
-          </div>
-        </>
-      )}
+          )}
+          {/* Sign out */}
+          <button
+            onClick={() => { onSignOut(); onDrawerToggle(false); }}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-gray-400 hover:bg-gray-50 active:bg-gray-100 transition-all"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            <span className="text-sm font-medium">Déconnexion</span>
+          </button>
+        </div>
+      </aside>
     </>
   );
 }

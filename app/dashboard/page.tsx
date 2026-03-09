@@ -209,6 +209,7 @@ export default function DashboardPage() {
   // First-visit tutorial + plan selection
   const [showTutorial, setShowTutorial] = useState(false);
   const [showPlanSelection, setShowPlanSelection] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   /* Data load */
   useEffect(() => {
@@ -576,7 +577,7 @@ export default function DashboardPage() {
           'relative flex-col bg-white border-r border-gray-100 flex-shrink-0',
           'shadow-[1px_0_0_rgba(17,24,39,0.04)] sticky top-0 h-screen z-10',
           'transition-[width] duration-200 ease-in-out',
-          'hidden md:flex',
+          'hidden lg:flex',
           sidebarOpen ? 'w-60' : 'w-16',
         ].join(' ')}
       >
@@ -701,10 +702,15 @@ export default function DashboardPage() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           onSignOut={handleSignOut}
+          drawerOpen={mobileDrawerOpen}
+          onDrawerToggle={setMobileDrawerOpen}
+          enabledKpiKeys={enabledKpiKeys}
+          showUpgrade={(restaurant?.plans?.key ?? restaurant?.plan) === 'free'}
+          onUpgrade={() => setShowPlanSelection(true)}
         />
 
         {/* Top nav bar (desktop only) */}
-        <header className="sticky top-0 z-10 bg-white border-b border-gray-100 h-16 hidden md:flex items-center px-6 gap-4 shadow-[0_1px_0_rgba(17,24,39,0.04)]">
+        <header className="sticky top-0 z-10 bg-white border-b border-gray-100 h-16 hidden lg:flex items-center px-6 gap-4 shadow-[0_1px_0_rgba(17,24,39,0.04)]">
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-semibold text-gray-900 truncate">
               {navItems.find(n => n.id === activeTab)?.label}
