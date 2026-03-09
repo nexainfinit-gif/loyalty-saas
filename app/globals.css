@@ -74,6 +74,28 @@
   box-sizing: border-box;
 }
 
+html {
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  html { font-size: 17px; }
+}
+
+/* ─── Mobile utilities ──────────────────────────────────── */
+/* Safe area padding for notched devices (iPhone X+) */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+
+/* Hide scrollbar on mobile nav */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* Touch-friendly tap area (minimum 44px) */
+.tap-target { min-height: 44px; min-width: 44px; }
+
+/* Prevent pull-to-refresh on dashboard */
+.no-overscroll { overscroll-behavior-y: contain; }
+
 body {
   background: #f6f8fb;
   color: #111827;

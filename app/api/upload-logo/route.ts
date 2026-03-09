@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requireOwner } from '@/lib/server-auth';
+import { requireAuth } from '@/lib/server-auth';
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
@@ -11,8 +11,8 @@ const ALLOWED_MIME: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
-  // Auth: platform owner only — userId is derived from the session, never from the client
-  const guard = await requireOwner(req);
+  // Auth: any authenticated restaurant owner
+  const guard = await requireAuth(req);
   if (guard instanceof NextResponse) return guard;
   if (!guard.restaurantId) {
     return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });

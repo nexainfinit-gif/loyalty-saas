@@ -1,16 +1,34 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
   const [email, setEmail]   = useState('');
   const [otp, setOtp]       = useState('');
   const [step, setStep]     = useState<'email' | 'otp'>('email');
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [cooldown, setCooldown] = useState(0);
 
-  async function handleSendOtp(e: React.FormEvent) {
-    e.preventDefault();
+  // Handle ?error= from auth callback
+  useEffect(() => {
+    const error = searchParams.get('error');
+    if (error) {
+      setErrorMsg('Lien expiré ou invalide. Veuillez réessayer.');
+      setStatus('error');
+    }
+  }, [searchParams]);
+
+  // Cooldown timer for resend
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const sendOtp = useCallback(async () => {
     setStatus('loading');
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -22,19 +40,28 @@ export default function LoginPage() {
     } else {
       setStep('otp');
       setStatus('idle');
+      setCooldown(60);
     }
+  }, [email]);
+
+  async function handleSendOtp(e: React.FormEvent) {
+    e.preventDefault();
+    await sendOtp();
+  }
+
+  async function handleResendOtp() {
+    if (cooldown > 0) return;
+    await sendOtp();
   }
 
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     setStatus('loading');
-    const { data, error } = await supabase.auth.verifyOtp({
+    const { error } = await supabase.auth.verifyOtp({
       email,
       token: otp,
       type: 'magiclink',
     });
-    console.log('Session:', data.session);
-    console.log('Erreur:', error);
     if (error) {
       setErrorMsg('Code invalide. Réessayez.');
       setStatus('error');
@@ -54,8 +81,12 @@ export default function LoginPage() {
       <div className="relative w-full max-w-sm animate-fade-up">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex w-14 h-14 items-center justify-center rounded-2xl bg-gray-900 text-white text-2xl shadow-[0_4px_16px_rgba(17,24,39,0.15)] mb-4">
-            🍽
+          <div className="inline-flex w-14 h-14 items-center justify-center rounded-2xl bg-gray-900 text-white shadow-[0_4px_16px_rgba(17,24,39,0.15)] mb-4">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+              <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
+              <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
+            </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -135,7 +166,16 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => { setStep('email'); setStatus('idle'); setOtp(''); }}
+                onClick={handleResendOtp}
+                disabled={cooldown > 0 || status === 'loading'}
+                className="w-full text-sm text-primary-600 hover:text-primary-700 disabled:text-gray-400 transition-colors py-1 font-medium"
+              >
+                {cooldown > 0 ? `Renvoyer le code dans ${cooldown}s` : 'Renvoyer le code'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setStep('email'); setStatus('idle'); setOtp(''); setCooldown(0); }}
                 className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors py-1"
               >
                 ← Changer d&apos;adresse email

@@ -9,7 +9,15 @@
       "Bash(rm:*)",
       "Bash(grep:*)",
       "Bash(npx tsc:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(xargs ls:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "Bash(npx next:*)",
+      "Bash(ipconfig:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx vercel:*)",
+      "Bash(git add:*)"
     ]
   },
   "enabledPlugins": {

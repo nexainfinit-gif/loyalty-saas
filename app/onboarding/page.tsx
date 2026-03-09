@@ -1,21 +1,25 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 const BUSINESS_TYPES = [
   { value: 'restaurant', label: '🍽️ Restaurant' },
   { value: 'cafe', label: '☕ Café' },
-  { value: 'salon', label: '💇 Salon' },
+  { value: 'salon_beaute', label: '💅 Salon de beauté' },
+  { value: 'salon_coiffure', label: '💇 Salon de coiffure' },
+  { value: 'boutique', label: '🛍️ Boutique' },
   { value: 'autre', label: '✏️ Autre' },
 ];
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [checking, setChecking] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [businessType, setBusinessType] = useState('restaurant');
   const [customType, setCustomType] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
 
   function generateSlug(name: string) {
     return name
@@ -38,7 +42,12 @@ export default function OnboardingPage() {
         .select('id')
         .eq('owner_id', session.user.id)
         .single();
-      if (existing) window.location.href = '/dashboard';
+      if (existing) {
+        window.location.href = '/dashboard';
+        return;
+      }
+      setAuthEmail(session.user.email ?? '');
+      setChecking(false);
     }
     checkExisting();
   }, [router]);
@@ -60,17 +69,6 @@ export default function OnboardingPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       router.push('/dashboard/login');
-      return;
-    }
-
-    // Vérifie si restaurant existe déjà
-    const { data: existingResto } = await supabase
-      .from('restaurants')
-      .select('id')
-      .eq('owner_id', session.user.id)
-      .single();
-    if (existingResto) {
-      window.location.href = '/dashboard';
       return;
     }
 
@@ -112,92 +110,81 @@ export default function OnboardingPage() {
     }
   }
 
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#fafafa',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '1rem',
-      fontFamily: "'DM Sans', sans-serif",
-    }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap');
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .form-card { animation: fadeUp 0.5s ease; }
-        .field input, .field select {
-          width: 100%;
-          padding: 0.875rem 1rem;
-          border-radius: 12px;
-          border: 1.5px solid #e5e5e5;
-          font-size: 0.9rem;
-          outline: none;
-          font-family: 'DM Sans', sans-serif;
-          box-sizing: border-box;
-          background: white;
-          transition: border-color 0.2s;
-        }
-        .field input:focus, .field select:focus { border-color: #111; }
-        .submit-btn:hover:not(:disabled) { transform: translateY(-1px); }
-        .submit-btn { transition: all 0.2s ease; }
-      `}</style>
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="text-center animate-fade-up">
+          <div className="w-10 h-10 border-3 border-gray-200 border-t-primary-600 rounded-full animate-ds-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-500">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
-      <div className="form-card" style={{
-        background: 'white',
-        borderRadius: '24px',
-        overflow: 'hidden',
-        maxWidth: '480px',
-        width: '100%',
-        boxShadow: '0 4px 40px rgba(0,0,0,0.08)',
-      }}>
+  return (
+    <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-primary-100 opacity-40 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-purple-100 opacity-30 blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-md animate-fade-up">
         {/* Header */}
-        <div style={{ background: '#111', padding: '2rem', textAlign: 'center' }}>
-          <div style={{
-            width: '48px', height: '48px',
-            background: 'rgba(255,255,255,0.1)',
-            borderRadius: '14px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 1rem', fontSize: '1.5rem',
-          }}>🍽️</div>
-          <h1 style={{
-            fontFamily: "'Playfair Display', serif",
-            color: 'white', fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.25rem',
-          }}>Créer votre commerce</h1>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', margin: 0 }}>
-            Configurez votre programme fidélité
-          </p>
+        <div className="bg-gray-900 rounded-t-2xl px-8 py-8 text-center">
+          <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+              <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
+              <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-white mb-1">Créer votre commerce</h1>
+          <p className="text-sm text-white/60">Configurez votre programme fidélité</p>
         </div>
 
         {/* Form */}
-        <div style={{ padding: '2rem' }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+        <div className="bg-white rounded-b-2xl border border-t-0 border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.06)] p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
 
             {/* Email */}
-            <div className="field">
-              <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
                 Email du commerce *
               </label>
-              <input name="email" type="email" placeholder="contact@moncommerce.be" required />
+              <input
+                name="email"
+                type="email"
+                defaultValue={authEmail}
+                placeholder="contact@moncommerce.be"
+                required
+                className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
+              />
             </div>
 
             {/* Nom */}
-            <div className="field">
-              <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
                 Nom du commerce *
               </label>
-              <input name="name" placeholder="Ex: Le Petit Bistro" required />
+              <input
+                name="name"
+                placeholder="Ex: Le Petit Bistro"
+                required
+                className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
+              />
             </div>
 
             {/* Type activité */}
-            <div className="field">
-              <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
                 Type d&apos;activité *
               </label>
-              <select value={businessType} onChange={(e) => setBusinessType(e.target.value)}>
+              <select
+                value={businessType}
+                onChange={(e) => setBusinessType(e.target.value)}
+                className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl transition-colors focus:border-gray-900 focus:outline-none"
+              >
                 {BUSINESS_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
@@ -206,8 +193,8 @@ export default function OnboardingPage() {
 
             {/* Champ custom si "autre" */}
             {businessType === 'autre' && (
-              <div className="field">
-                <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">
                   Précisez votre activité *
                 </label>
                 <input
@@ -215,39 +202,50 @@ export default function OnboardingPage() {
                   onChange={(e) => setCustomType(e.target.value)}
                   placeholder="Ex: Boulangerie, Épicerie..."
                   required
+                  className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
                 />
               </div>
             )}
 
             {/* Ville */}
-            <div className="field">
-              <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
                 Ville *
               </label>
-              <input name="city" placeholder="Ex: Bruxelles" required />
+              <input
+                name="city"
+                placeholder="Ex: Bruxelles"
+                required
+                className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
+              />
             </div>
 
             {/* Téléphone */}
-            <div className="field">
-              <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
-                Téléphone <span style={{ color: '#bbb' }}>(optionnel)</span>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Téléphone <span className="text-gray-400">(optionnel)</span>
               </label>
-              <input name="phone" type="tel" placeholder="Ex: +32 470 00 00 00" />
+              <input
+                name="phone"
+                type="tel"
+                placeholder="Ex: +32 470 00 00 00"
+                className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
+              />
             </div>
 
             {/* Couleur */}
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
                 Couleur principale
               </label>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <div className="flex gap-3 items-center">
                 <input
                   name="color"
                   type="color"
                   defaultValue="#e85d04"
-                  style={{ width: '48px', height: '48px', borderRadius: '10px', border: '1.5px solid #e5e5e5', cursor: 'pointer', padding: '2px' }}
+                  className="w-12 h-12 rounded-xl border border-gray-200 cursor-pointer p-0.5"
                 />
-                <span style={{ fontSize: '0.8rem', color: '#999' }}>
+                <span className="text-xs text-gray-400">
                   Utilisée sur votre carte fidélité
                 </span>
               </div>
@@ -255,30 +253,27 @@ export default function OnboardingPage() {
 
             {/* Erreur */}
             {status === 'error' && (
-              <p style={{ color: '#ef4444', fontSize: '0.85rem', textAlign: 'center', background: '#fef2f2', padding: '0.75rem', borderRadius: '10px', margin: 0 }}>
-                {errorMsg}
-              </p>
+              <div className="flex items-center gap-2 bg-danger-50 text-danger-700 text-sm px-3.5 py-2.5 rounded-xl">
+                <span>⚠️</span> {errorMsg}
+              </div>
             )}
 
             {/* Submit */}
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="submit-btn"
-              style={{
-                background: status === 'loading' ? '#ccc' : '#111',
-                color: 'white', border: 'none',
-                padding: '1rem', borderRadius: '12px',
-                fontSize: '0.95rem', fontWeight: 600,
-                cursor: status === 'loading' ? 'not-allowed' : 'pointer',
-                fontFamily: "'DM Sans', sans-serif",
-                marginTop: '0.5rem',
-              }}
+              className="w-full bg-gray-900 text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-all mt-2 cursor-pointer disabled:cursor-not-allowed"
             >
-              {status === 'loading' ? '⏳ Création...' : '✨ Créer mon commerce'}
+              {status === 'loading'
+                ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-ds-spin" /> Création...</span>
+                : 'Créer mon commerce →'}
             </button>
           </form>
         </div>
+
+        <p className="text-center text-xs text-gray-400 mt-5">
+          Plateforme de fidélité · ReBites
+        </p>
       </div>
     </div>
   );

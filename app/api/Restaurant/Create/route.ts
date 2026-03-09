@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       business_type: business_type ?? 'restaurant',
       plan: 'free',
       plan_id: freePlan?.id ?? null,
-      primary_color: primary_color ?? '#FF6B35',
+      primary_color: primary_color ?? '#e85d04',
       logo_url: logo_url ?? null,
     })
     .select()
@@ -66,4 +66,52 @@ export async function POST(req: Request) {
   if (error) return Response.json({ error: error.message }, { status: 500 })
 
   return Response.json({ restaurant: data })
+}
+
+export async function PATCH(req: Request) {
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader) return Response.json({ error: 'No token' }, { status: 401 })
+
+  const token = authHeader.replace('Bearer ', '')
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: restaurant } = await supabase
+    .from('restaurants')
+    .select('id')
+    .eq('owner_id', user.id)
+    .single()
+
+  if (!restaurant) return Response.json({ error: 'Restaurant introuvable' }, { status: 404 })
+
+  const { name, slug } = await req.json()
+
+  if (!name?.trim() || !slug?.trim()) {
+    return Response.json({ error: 'Nom et slug requis.' }, { status: 400 })
+  }
+
+  // Check slug uniqueness (exclude own restaurant)
+  const { data: existingSlug } = await supabase
+    .from('restaurants')
+    .select('id')
+    .eq('slug', slug.trim())
+    .neq('id', restaurant.id)
+    .maybeSingle()
+
+  if (existingSlug) return Response.json({ error: 'Ce slug est déjà utilisé.' }, { status: 409 })
+
+  const { error } = await supabase
+    .from('restaurants')
+    .update({ name: name.trim(), slug: slug.trim() })
+    .eq('id', restaurant.id)
+
+  if (error) return Response.json({ error: error.message }, { status: 500 })
+
+  return Response.json({ ok: true })
 }
