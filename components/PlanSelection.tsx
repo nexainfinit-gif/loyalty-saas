@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import { PLAN_FEATURE_KEYS } from '@/lib/plan-features';
 
 interface Plan {
@@ -48,11 +49,16 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
     try {
       // Paid plans → redirect to Stripe Checkout
       if (plan.price_monthly && plan.price_monthly > 0) {
+        // Refresh token to ensure it's not expired
+        const { data: { session: freshSession } } = await supabase.auth.getSession();
+        const token = freshSession?.access_token ?? accessToken;
+
         const res = await fetch('/api/stripe/checkout', {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({ planId: plan.id }),
         });
