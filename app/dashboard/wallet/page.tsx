@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useSubscriptionGate } from '@/lib/use-subscription-gate';
 import AddToAppleWalletButton from '@/components/AddToAppleWalletButton';
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
@@ -1106,6 +1107,7 @@ function RecoverPassesButton({ token }: { token: string }) {
 
 export default function WalletStudioPage() {
   const router = useRouter();
+  const { ready: subReady } = useSubscriptionGate();
 
   const [token,        setToken]        = useState('');
   const [restaurantId, setRestaurantId] = useState('');

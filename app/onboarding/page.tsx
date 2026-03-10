@@ -43,7 +43,7 @@ export default function OnboardingPage() {
         .eq('owner_id', session.user.id)
         .single();
       if (existing) {
-        window.location.href = '/dashboard';
+        window.location.href = '/choose-plan';
         return;
       }
       setAuthEmail(session.user.email ?? '');
@@ -102,7 +102,7 @@ export default function OnboardingPage() {
         return;
       }
 
-      window.location.href = '/dashboard';
+      window.location.href = '/choose-plan';
     } catch (err) {
       console.error('Create error:', err);
       setErrorMsg('Erreur réseau. Réessayez.');

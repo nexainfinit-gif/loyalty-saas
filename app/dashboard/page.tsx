@@ -55,6 +55,7 @@ interface Restaurant {
   subscription_status: string | null;
   current_period_end: string | null;
   stripe_customer_id: string | null;
+  tutorial_completed_at: string | null;
 }
 
 interface Transaction {
@@ -234,9 +235,14 @@ export default function DashboardPage() {
       setSession(session);
 
       const { data: resto } = await supabase
-        .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, plans(name, key)')
+        .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
         .eq('owner_id', session.user.id).maybeSingle();
       if (!resto) { router.replace('/onboarding'); return; }
+      // Gate: require active subscription
+      if (resto.subscription_status !== 'active') {
+        router.replace('/choose-plan');
+        return;
+      }
       setRestaurant(resto as unknown as Restaurant);
       setEditName(resto.name ?? '');
       setEditSlug(resto.slug ?? '');
@@ -278,16 +284,12 @@ export default function DashboardPage() {
 
       setLoading(false);
 
-      // Show tutorial on first visit, then plan selection
-      const onboardingKey = `onboarding_done_${resto.id}`;
-      const tutorialKey = `tutorial_done_${resto.id}`;
-      if (!localStorage.getItem(onboardingKey)) {
-        if (!localStorage.getItem(tutorialKey)) {
-          setShowTutorial(true);
-        } else {
-          // Tutorial was done but plan not yet selected
-          setShowPlanSelection(true);
-        }
+      // Auto-launch tutorial once after first payment (billing=success in URL)
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('billing') === 'success' && !resto.tutorial_completed_at) {
+        // Clean URL without reload
+        window.history.replaceState({}, '', '/dashboard');
+        setShowTutorial(true);
       }
     }
     load();
@@ -560,12 +562,16 @@ export default function DashboardPage() {
       {/* ── TUTORIAL (first visit) ───────────────────── */}
       {showTutorial && (
         <DashboardTutorial
-          onComplete={() => {
+          onComplete={async () => {
             setShowTutorial(false);
             setActiveTab('overview');
-            if (restaurant) localStorage.setItem(`tutorial_done_${restaurant.id}`, '1');
-            // Delay to ensure tutorial unmounts before plan selection mounts
-            setTimeout(() => setShowPlanSelection(true), 100);
+            // Mark tutorial as completed in DB
+            if (restaurant) {
+              await supabase
+                .from('restaurants')
+                .update({ tutorial_completed_at: new Date().toISOString() })
+                .eq('id', restaurant.id);
+            }
           }}
           onTabChange={(tab: Tab) => setActiveTab(tab)}
         />
@@ -1570,6 +1576,17 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
+
+                {/* Relaunch tutorial */}
+                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Aide</h3>
+                  <button
+                    onClick={() => setShowTutorial(true)}
+                    className="text-sm text-primary-600 font-medium hover:text-primary-700 transition-colors"
+                  >
+                    Relancer le tutoriel de découverte →
+                  </button>
+                </div>
             </div>
           )}
 

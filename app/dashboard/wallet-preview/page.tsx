@@ -2,6 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSubscriptionGate } from '@/lib/use-subscription-gate';
 import QRCode from 'react-qr-code';
 import { supabase } from '@/lib/supabase';
 
@@ -834,6 +835,7 @@ function SigningGuide({ imagesRequired }: { imagesRequired: ImageRow[] }) {
 
 export default function WalletPreviewPage() {
   const router = useRouter();
+  const { ready: subReady } = useSubscriptionGate();
   const [data, setData]         = useState<PreviewData | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');

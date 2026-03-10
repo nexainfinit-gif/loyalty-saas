@@ -13,8 +13,10 @@ import type {
   AppointmentStatus,
 } from '@/types/appointments'
 import { api } from '@/lib/use-api'
+import { useSubscriptionGate } from '@/lib/use-subscription-gate'
 
 export default function AgendaPage() {
+  const { ready: subReady } = useSubscriptionGate()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [view, setView] = useState<CalendarViewType>('day')
   const [appointments, setAppointments] = useState<Appointment[]>([])

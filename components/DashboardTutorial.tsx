@@ -166,7 +166,7 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
                 onClick={onComplete}
                 className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
               >
-                Passer aux plans →
+                Passer
               </button>
 
               <div className="flex items-center gap-2">

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { useSubscriptionGate } from '@/lib/use-subscription-gate';
 import jsQR from 'jsqr';
 
 interface ScanResult {
@@ -23,6 +24,7 @@ interface ScanResult {
 
 export default function ScannerPage() {
   const router = useRouter();
+  const { ready: subReady } = useSubscriptionGate();
   const [session, setSession]         = useState<any>(null);
   const [scannerUrl, setScannerUrl]   = useState<string | null>(null);
   const [urlCopied, setUrlCopied]     = useState(false);
