@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react'
 import { format, addMinutes, parse } from 'date-fns'
-import { Plus } from 'lucide-react'
 import CalendarView from '@/components/appointments/CalendarView'
 import CreateAppointmentModal from '@/components/appointments/CreateModal'
 import AppointmentDetailModal from '@/components/appointments/DetailModal'
@@ -56,18 +55,6 @@ export default function AgendaPage() {
     time?: string
   }>({})
 
-  const todayStats = useMemo(() => {
-    const todayAppts = appointments.filter((a) => a.date === today)
-    return {
-      total: todayAppts.length,
-      confirmed: todayAppts.filter((a) => a.status === 'confirmed').length,
-      completed: todayAppts.filter((a) => a.status === 'completed').length,
-      revenue: todayAppts
-        .filter((a) => a.status !== 'cancelled')
-        .reduce((sum, a) => sum + (a.service?.price || 0), 0),
-    }
-  }, [appointments])
-
   const handleCreateAppointment = (staffId: string, date: Date, time: string) => {
     setCreateDefaults({ staffId, date, time })
     setShowCreateModal(true)
@@ -119,47 +106,7 @@ export default function AgendaPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Agenda</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Gérez vos rendez-vous et plannings
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setCreateDefaults({})
-            setShowCreateModal(true)
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
-        >
-          <Plus size={16} />
-          Nouveau rendez-vous
-        </button>
-      </div>
-
-      {/* Stats bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {[
-          { label: 'Total aujourd\'hui', value: todayStats.total, color: '#1A1A1A' },
-          { label: 'Confirmés', value: todayStats.confirmed, color: '#3B82F6' },
-          { label: 'Terminés', value: todayStats.completed, color: '#22C55E' },
-          { label: 'Revenu prévu', value: `€${todayStats.revenue}`, color: '#0D9668' },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-white rounded-xl border border-gray-200 px-4 py-3"
-          >
-            <p className="text-lg font-semibold" style={{ color: stat.color }}>
-              {stat.value}
-            </p>
-            <p className="text-[11px] text-gray-400">{stat.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Calendar */}
+      {/* Calendar — takes full available height */}
       <CalendarView
         appointments={appointments}
         staff={DEMO_STAFF}
@@ -169,6 +116,7 @@ export default function AgendaPage() {
         onViewChange={setView}
         onCreateAppointment={handleCreateAppointment}
         onAppointmentClick={setSelectedAppointment}
+        onNewAppointment={() => { setCreateDefaults({}); setShowCreateModal(true) }}
       />
 
       {/* Create Modal */}

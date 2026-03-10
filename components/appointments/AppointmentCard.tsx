@@ -2,77 +2,75 @@
 
 import type { Appointment, AppointmentStatus } from '@/types/appointments'
 
-const statusConfig: Record<AppointmentStatus, { bg: string; text: string; label: string }> = {
-  confirmed: { bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700', label: 'Confirmé' },
-  completed: { bg: 'bg-green-50 border-green-200', text: 'text-green-700', label: 'Terminé' },
-  cancelled: { bg: 'bg-red-50 border-red-200', text: 'text-red-700', label: 'Annulé' },
-  no_show: { bg: 'bg-orange-50 border-orange-200', text: 'text-orange-700', label: 'Absent' },
+const STATUS_STYLES: Record<AppointmentStatus, { border: string; bg: string; text: string; label: string }> = {
+  confirmed:  { border: 'border-l-blue-500',    bg: 'bg-blue-50/60',    text: 'text-blue-700',    label: 'Confirmé' },
+  completed:  { border: 'border-l-emerald-500',  bg: 'bg-emerald-50/60',  text: 'text-emerald-700',  label: 'Terminé' },
+  cancelled:  { border: 'border-l-red-400',      bg: 'bg-red-50/40',      text: 'text-red-400',      label: 'Annulé' },
+  no_show:    { border: 'border-l-orange-500',   bg: 'bg-orange-50/60',   text: 'text-orange-700',   label: 'Absent' },
 }
 
 interface AppointmentCardProps {
   appointment: Appointment
   onClick: () => void
-  compact?: boolean
-  mini?: boolean
+  heightPx: number
 }
 
-export default function AppointmentCard({ appointment, onClick, compact, mini }: AppointmentCardProps) {
-  const config = statusConfig[appointment.status]
+export default function AppointmentCard({ appointment, onClick, heightPx }: AppointmentCardProps) {
+  const style = STATUS_STYLES[appointment.status]
+  const isCancelled = appointment.status === 'cancelled'
 
-  if (mini) {
+  // Auto-select variant based on pixel height
+  // mini: single line (<32px), compact: 2 lines (<52px), full: 3 lines
+  if (heightPx < 32) {
     return (
       <button
         onClick={onClick}
-        className={`w-full h-full rounded-md border px-1.5 py-0.5 text-left cursor-pointer transition-all hover:shadow-sm ${config.bg}`}
+        className={`w-full h-full rounded-md border-l-[3px] ${style.border} ${style.bg} px-1.5 flex items-center gap-1 text-left cursor-pointer transition-shadow hover:shadow-sm ${isCancelled ? 'opacity-50' : ''}`}
       >
-        <p className={`text-[10px] font-medium truncate ${config.text}`}>
-          {appointment.start_time} {appointment.client_name}
-        </p>
+        <span className={`text-[10px] font-semibold ${style.text} shrink-0`}>
+          {appointment.start_time}
+        </span>
+        <span className={`text-[10px] font-medium text-gray-700 truncate ${isCancelled ? 'line-through' : ''}`}>
+          {appointment.client_name}
+        </span>
       </button>
     )
   }
 
-  if (compact) {
+  if (heightPx < 52) {
     return (
       <button
         onClick={onClick}
-        className={`w-full h-full rounded-lg border px-2.5 py-1.5 text-left cursor-pointer transition-all hover:shadow-md ${config.bg}`}
+        className={`w-full h-full rounded-md border-l-[3px] ${style.border} ${style.bg} px-1.5 py-0.5 text-left cursor-pointer transition-shadow hover:shadow-sm overflow-hidden ${isCancelled ? 'opacity-50' : ''}`}
       >
-        <p className={`text-[11px] font-semibold ${config.text}`}>
+        <p className={`text-[10px] font-semibold ${style.text} leading-tight`}>
           {appointment.start_time} – {appointment.end_time}
         </p>
-        <p className="text-[11px] font-medium text-gray-900 truncate mt-0.5">
+        <p className={`text-[10px] font-medium text-gray-800 truncate leading-tight ${isCancelled ? 'line-through' : ''}`}>
           {appointment.client_name}
         </p>
-        {appointment.service && (
-          <p className="text-[10px] text-gray-400 truncate">
-            {appointment.service.name}
-          </p>
-        )}
       </button>
     )
   }
 
   return (
-    <div
+    <button
       onClick={onClick}
-      className="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-all duration-200"
+      className={`w-full h-full rounded-md border-l-[3px] ${style.border} ${style.bg} px-1.5 py-0.5 text-left cursor-pointer transition-shadow hover:shadow-sm overflow-hidden ${isCancelled ? 'opacity-50' : ''}`}
     >
-      <div className="flex items-center justify-between mb-2">
-        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${config.bg} ${config.text}`}>
-          {config.label}
-        </span>
-        <span className="text-xs text-gray-400">
-          {appointment.start_time} – {appointment.end_time}
-        </span>
-      </div>
-      <p className="text-sm font-semibold">{appointment.client_name}</p>
+      <p className={`text-[10px] font-semibold ${style.text} leading-tight`}>
+        {appointment.start_time} – {appointment.end_time}
+      </p>
+      <p className={`text-[11px] font-semibold text-gray-800 truncate leading-tight ${isCancelled ? 'line-through' : ''}`}>
+        {appointment.client_name}
+      </p>
       {appointment.service && (
-        <p className="text-xs text-gray-500 mt-1">{appointment.service.name}</p>
+        <p className="text-[10px] text-gray-500 truncate leading-tight">
+          {appointment.service.name}{appointment.service.price ? ` · €${appointment.service.price}` : ''}
+        </p>
       )}
-      {appointment.staff && (
-        <p className="text-xs text-gray-400 mt-0.5">avec {appointment.staff.name}</p>
-      )}
-    </div>
+    </button>
   )
 }
+
+export { STATUS_STYLES }
