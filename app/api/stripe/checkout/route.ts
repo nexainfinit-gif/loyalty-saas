@@ -13,8 +13,14 @@ export const dynamic = 'force-dynamic';
  * Returns: { url: string }
  */
 export async function POST(request: Request) {
+  const authHeader = request.headers.get('Authorization');
+  console.log('[stripe-checkout] Auth header present:', !!authHeader, 'starts with Bearer:', authHeader?.startsWith('Bearer '));
+
   const guard = await requireAuth(request);
-  if (guard instanceof NextResponse) return guard;
+  if (guard instanceof NextResponse) {
+    console.log('[stripe-checkout] Auth failed, status:', guard.status);
+    return guard;
+  }
   if (!guard.restaurantId) {
     return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
   }
