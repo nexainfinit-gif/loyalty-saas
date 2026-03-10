@@ -39,7 +39,7 @@ export const KPI_REQUIRED_SETTINGS: Partial<Record<KpiKey, string[]>> = {
 export const RESTAURANT_SETTING_LABELS: Record<string, { label: string; description: string; unit?: string }> = {
   average_ticket: {
     label:       'Ticket moyen',
-    description: 'Valeur moyenne d'une transaction client (utilisé pour estimer le CA)',
+    description: "Valeur moyenne d'une transaction client (utilisé pour estimer le CA)",
     unit:        '€',
   },
 };

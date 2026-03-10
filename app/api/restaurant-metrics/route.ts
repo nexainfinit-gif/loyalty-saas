@@ -6,6 +6,19 @@ import { getEnabledKpis } from '@/lib/kpi-engine';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+interface RestaurantMetricsRow {
+  total_customers: number;
+  new_customers_30d: number;
+  active_customers_30d: number;
+  visits_30d: number;
+  repeat_rate: number;
+  wallet_passes_issued: number;
+  wallet_active_passes: number;
+  completed_cards: number;
+  estimated_revenue_30d: number;
+  last_computed_at: string;
+}
+
 /**
  * GET /api/restaurant-metrics
  *
@@ -69,6 +82,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ metrics: null });
   }
 
+  const data = raw as unknown as RestaurantMetricsRow;
+
   /* ── Resolve enabled KPI keys ─────────────────────────────────────────── */
 
   let enabled: Set<string>;
@@ -97,36 +112,36 @@ export async function GET(request: Request) {
 
   const metrics: Record<string, unknown> = {
     // Tier 0 — always visible
-    total_customers:  raw.total_customers,
-    visits_30d:       raw.visits_30d,
-    last_computed_at: raw.last_computed_at,
+    total_customers:  data.total_customers,
+    visits_30d:       data.visits_30d,
+    last_computed_at: data.last_computed_at,
   };
 
   // new_customers_30d
   if (enabled.has('new_customers_30d')) {
-    metrics.new_customers_30d = raw.new_customers_30d;
+    metrics.new_customers_30d = data.new_customers_30d;
   }
 
   // active_customers_30d always carries repeat_rate alongside it
   if (enabled.has('active_customers_30d')) {
-    metrics.active_customers_30d = raw.active_customers_30d;
-    metrics.repeat_rate          = raw.repeat_rate;
+    metrics.active_customers_30d = data.active_customers_30d;
+    metrics.repeat_rate          = data.repeat_rate;
   }
 
   // wallet_pass_rate unlocks both wallet counters
   if (enabled.has('wallet_pass_rate')) {
-    metrics.wallet_passes_issued = raw.wallet_passes_issued;
-    metrics.wallet_active_passes = raw.wallet_active_passes;
+    metrics.wallet_passes_issued = data.wallet_passes_issued;
+    metrics.wallet_active_passes = data.wallet_active_passes;
   }
 
   // revenue_estimate → pre-computed revenue field
   if (enabled.has('revenue_estimate')) {
-    metrics.estimated_revenue_30d = raw.estimated_revenue_30d;
+    metrics.estimated_revenue_30d = data.estimated_revenue_30d;
   }
 
   // rewards_issued → completed loyalty cards
   if (enabled.has('rewards_issued')) {
-    metrics.completed_cards = raw.completed_cards;
+    metrics.completed_cards = data.completed_cards;
   }
 
   // Expose the full enabled set so the client can drive UI feature flags

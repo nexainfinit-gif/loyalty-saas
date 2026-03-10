@@ -108,8 +108,8 @@ export async function GET(req: NextRequest) {
     const restaurant = restaurantMap.get(apt.restaurant_id);
     if (!restaurant || !apt.client_email) continue;
 
-    const service = apt.service as { name: string; duration_minutes: number } | null;
-    const staff = apt.staff as { name: string } | null;
+    const service = apt.service as unknown as { name: string; duration_minutes: number } | null;
+    const staff = apt.staff as unknown as { name: string } | null;
     if (!service || !staff) continue;
 
     // Determine which reminders to send

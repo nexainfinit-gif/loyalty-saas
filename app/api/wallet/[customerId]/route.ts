@@ -53,7 +53,7 @@ export async function GET(
     // Resolve passKind BEFORE the update call — it controls which field/format is written.
     // Bug fix: previously passKind was resolved after the update, so every call used the
     // default 'points' format and overwrote the stamps display with "X pts" instead of "X/Y".
-    const passKind = (existingPass.wallet_pass_templates as { pass_kind: string } | null)?.pass_kind ?? 'points';
+    const passKind = (existingPass.wallet_pass_templates as unknown as { pass_kind: string } | null)?.pass_kind ?? 'points';
 
     // For stamps passes, fetch stamps_total so the counter renders correctly.
     const { data: lsForSync } = passKind === 'stamps'

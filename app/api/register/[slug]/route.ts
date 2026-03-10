@@ -41,7 +41,7 @@ export async function POST(
   // Validate input with Zod
   const parsed = parseBody(registerSlugSchema, body)
   if (!parsed.success) {
-    return Response.json({ error: parsed.error }, { status: 400 })
+    return Response.json({ error: (parsed as { success: false; error: string }).error }, { status: 400 })
   }
 
   const { first_name, email, birth_date, phone, consent_marketing } = parsed.data

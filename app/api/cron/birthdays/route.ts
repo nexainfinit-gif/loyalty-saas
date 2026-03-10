@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
   const results = await Promise.allSettled(
     birthdayCustomers.map((c) => {
-      const restaurant = c.restaurants as { name: string; primary_color: string } | null;
+      const restaurant = c.restaurants as unknown as { name: string; primary_color: string } | null;
       if (!restaurant) return Promise.resolve();
 
       return sendBirthdayEmail({

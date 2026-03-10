@@ -46,6 +46,24 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
   async function selectPlan(plan: Plan) {
     setSelecting(plan.id);
     try {
+      // Paid plans → redirect to Stripe Checkout
+      if (plan.price_monthly && plan.price_monthly > 0) {
+        const res = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planId: plan.id }),
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+        alert(data.error || 'Erreur lors de la création du paiement.');
+        setSelecting(null);
+        return;
+      }
+
+      // Free plan → direct selection
       await fetch('/api/select-plan', {
         method: 'POST',
         headers: {
@@ -56,7 +74,7 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
       });
       onComplete();
     } catch {
-      onComplete();
+      setSelecting(null);
     }
   }
 

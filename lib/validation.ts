@@ -23,13 +23,15 @@ export const registerSlugSchema = z.object({
   consent_marketing: z.boolean().optional().default(false),
 });
 
+export type ParseResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+
 /**
  * Parse and validate request body with a Zod schema.
  * Returns either the validated data or a formatted error string.
  */
-export function parseBody<T>(schema: z.ZodSchema<T>, body: unknown):
-  | { success: true; data: T }
-  | { success: false; error: string } {
+export function parseBody<T>(schema: z.ZodSchema<T>, body: unknown): ParseResult<T> {
   const result = schema.safeParse(body);
   if (result.success) {
     return { success: true, data: result.data };

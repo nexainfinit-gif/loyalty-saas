@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   // Validate input with Zod
   const parsed = parseBody(registerSchema, body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: (parsed as { success: false; error: string }).error }, { status: 400 });
   }
 
   const {

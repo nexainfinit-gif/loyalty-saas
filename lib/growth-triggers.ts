@@ -47,7 +47,9 @@ interface TriggerContext {
   enabledKeys: Set<string>;
 }
 
-type RuleFn = (kpis: KpiMap, ctx: TriggerContext) => Trigger | null;
+type TriggerPayload = Omit<Trigger, 'key'>;
+
+type RuleFn = (kpis: KpiMap, ctx: TriggerContext) => TriggerPayload | null;
 
 interface RuleDefinition {
   id: string;

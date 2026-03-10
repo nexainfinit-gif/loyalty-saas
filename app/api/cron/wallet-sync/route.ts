@@ -51,7 +51,7 @@ export async function GET(req: Request) {
 
     if (!customer) { failed++; return; }
 
-    const passKind = (pass.wallet_pass_templates as { pass_kind: string } | null)?.pass_kind ?? 'points';
+    const passKind = (pass.wallet_pass_templates as unknown as { pass_kind: string } | null)?.pass_kind ?? 'points';
 
     const { data: settings } = await supabaseAdmin
       .from('loyalty_settings')

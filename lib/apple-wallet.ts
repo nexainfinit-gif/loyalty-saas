@@ -275,7 +275,7 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
 /* ── HTTP response helper ───────────────────────────────────────────────────── */
 
 export function pkpassResponse(buffer: Buffer, filename = 'pass.pkpass'): Response {
-  return new Response(buffer, {
+  return new Response(new Uint8Array(buffer), {
     headers: {
       'Content-Type':        'application/vnd.apple.pkpass',
       'Content-Disposition': `attachment; filename="${filename}"`,

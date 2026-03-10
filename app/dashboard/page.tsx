@@ -52,6 +52,9 @@ interface Restaurant {
   plan: string;
   plan_id: string | null;
   plans: { name: string; key: string } | null;
+  subscription_status: string | null;
+  current_period_end: string | null;
+  stripe_customer_id: string | null;
 }
 
 interface Transaction {
@@ -229,10 +232,10 @@ export default function DashboardPage() {
       setSession(session);
 
       const { data: resto } = await supabase
-        .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, plans(name, key)')
+        .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, plans(name, key)')
         .eq('owner_id', session.user.id).maybeSingle();
       if (!resto) { router.replace('/onboarding'); return; }
-      setRestaurant(resto);
+      setRestaurant(resto as unknown as Restaurant);
       setEditName(resto.name ?? '');
       setEditSlug(resto.slug ?? '');
 
@@ -1500,12 +1503,51 @@ export default function DashboardPage() {
                       <p className="text-sm text-gray-500 mt-0.5">
                         {(restaurant?.plans?.key ?? restaurant?.plan) === 'free' ? 'Limité à 500 clients' : 'Clients illimités'}
                       </p>
+                      {restaurant?.subscription_status && restaurant.subscription_status !== 'inactive' && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          Statut : <span className={
+                            restaurant.subscription_status === 'active' ? 'text-success-600 font-medium' :
+                            restaurant.subscription_status === 'past_due' ? 'text-warning-600 font-medium' :
+                            restaurant.subscription_status === 'canceled' ? 'text-danger-600 font-medium' :
+                            'text-gray-500 font-medium'
+                          }>
+                            {restaurant.subscription_status === 'active' ? 'Actif' :
+                             restaurant.subscription_status === 'trialing' ? 'Essai' :
+                             restaurant.subscription_status === 'past_due' ? 'Paiement en retard' :
+                             restaurant.subscription_status === 'canceled' ? 'Annulé' :
+                             restaurant.subscription_status}
+                          </span>
+                          {restaurant.current_period_end && restaurant.subscription_status === 'active' && (
+                            <> · Renouvellement le {new Date(restaurant.current_period_end).toLocaleDateString('fr-FR')}</>
+                          )}
+                        </p>
+                      )}
                     </div>
-                    {(restaurant?.plans?.key ?? restaurant?.plan) === 'free' && (
-                      <button onClick={() => setShowPlanSelection(true)} className="bg-gradient-to-r from-purple-600 to-primary-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
-                        Upgrader ✨
-                      </button>
-                    )}
+                    <div className="flex gap-2">
+                      {restaurant?.stripe_customer_id && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/stripe/portal', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                              });
+                              const data = await res.json();
+                              if (data.url) window.location.href = data.url;
+                              else alert(data.error || 'Erreur lors de l\'ouverture du portail.');
+                            } catch { alert('Erreur réseau.'); }
+                          }}
+                          className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+                        >
+                          Gérer
+                        </button>
+                      )}
+                      {(restaurant?.plans?.key ?? restaurant?.plan) === 'free' && (
+                        <button onClick={() => setShowPlanSelection(true)} className="bg-gradient-to-r from-purple-600 to-primary-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+                          Upgrader
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

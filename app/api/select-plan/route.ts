@@ -35,7 +35,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Plan invalide.' }, { status: 400 });
   }
 
-  // Update restaurant
+  // Check if plan requires Stripe payment
+  const { data: planFull } = await supabaseAdmin
+    .from('plans')
+    .select('id, key, stripe_price_id')
+    .eq('id', body.plan_id)
+    .maybeSingle();
+
+  if (planFull?.stripe_price_id) {
+    return NextResponse.json(
+      { error: 'Ce plan nécessite un abonnement Stripe. Utilisez /api/stripe/checkout.' },
+      { status: 400 },
+    );
+  }
+
+  // Update restaurant (free plan only)
   const { error } = await supabaseAdmin
     .from('restaurants')
     .update({ plan_id: plan.id, plan: plan.key })

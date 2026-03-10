@@ -77,7 +77,7 @@ export async function GET(request: Request) {
       name:              r.name,
       slug:              r.slug,
       plan:              r.plan ?? 'free',
-      plan_name:         (r.plans as { name: string } | null)?.name ?? r.plan ?? 'free',
+      plan_name:         (r.plans as unknown as { name: string } | null)?.name ?? r.plan ?? 'free',
       created_at:        r.created_at,
       health_score:      snap?.health_score      ?? 0,
       upgrade_score:     snap?.upgrade_score     ?? 0,
