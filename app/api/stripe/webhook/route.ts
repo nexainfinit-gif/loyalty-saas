@@ -56,8 +56,10 @@ export async function POST(request: Request) {
         break;
     }
   } catch (err) {
-    console.error(`[stripe-webhook] Error handling ${event.type}:`, err);
-    return NextResponse.json({ error: 'Webhook handler error.' }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : '';
+    console.error(`[stripe-webhook] Error handling ${event.type}:`, message, stack);
+    return NextResponse.json({ error: 'Webhook handler error.', detail: message }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
