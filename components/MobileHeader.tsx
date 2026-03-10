@@ -23,6 +23,10 @@ const BUSINESS_TYPE_EMOJI: Record<string, string> = {
   restaurant: '🍽️', cafe: '☕', salon_beaute: '💅', salon_coiffure: '💇', boutique: '🛍️',
 };
 
+const BOOKING_ELIGIBLE_TYPES = new Set([
+  'salon_coiffure', 'salon_beaute', 'barbershop', 'spa', 'bien_etre',
+]);
+
 const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
   { id: 'overview',   label: "Vue d'ensemble", icon: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z' },
   { id: 'clients',    label: 'Clients',        icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 7a4 4 0 100-8 4 4 0 000 8z M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75' },
@@ -212,6 +216,19 @@ export default function MobileHeader({
                 <path d="M21 12V7H5a2 2 0 010-4h14v4" /><path d="M3 5v14a2 2 0 002 2h16v-5" /><path d="M18 12a2 2 0 000 4h4v-4Z" />
               </svg>
               <span className="text-sm font-medium">Wallet Studio</span>
+            </a>
+          )}
+
+          {/* Booking Rebites (conditional — salons, spas, beauty & wellness) */}
+          {BOOKING_ELIGIBLE_TYPES.has(businessType ?? '') && (
+            <a
+              href="/dashboard/appointments"
+              className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-all"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
+              </svg>
+              <span className="text-sm font-medium">Booking Rebites</span>
             </a>
           )}
         </nav>
