@@ -32,6 +32,16 @@ const START_HOUR = 8
 const END_HOUR = 20
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i)
 
+// Staff avatar color rotation (soft, professional)
+const AVATAR_COLORS = [
+  { bg: 'bg-indigo-100', text: 'text-indigo-600' },
+  { bg: 'bg-violet-100', text: 'text-violet-600' },
+  { bg: 'bg-sky-100',    text: 'text-sky-600' },
+  { bg: 'bg-amber-100',  text: 'text-amber-600' },
+  { bg: 'bg-rose-100',   text: 'text-rose-600' },
+  { bg: 'bg-teal-100',   text: 'text-teal-600' },
+]
+
 export default function CalendarViewComponent({
   appointments,
   staff,
@@ -49,7 +59,6 @@ export default function CalendarViewComponent({
     return n.getHours() * 60 + n.getMinutes()
   })
 
-  // Update "now" indicator every minute
   useEffect(() => {
     const interval = setInterval(() => {
       const n = new Date()
@@ -68,6 +77,7 @@ export default function CalendarViewComponent({
   const isToday = isSameDay(selectedDate, new Date())
   const showNowLine = isToday && nowMinutes >= START_HOUR * 60 && nowMinutes < END_HOUR * 60
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT
+  const nowTimeStr = `${String(Math.floor(nowMinutes / 60)).padStart(2, '0')}:${String(nowMinutes % 60).padStart(2, '0')}`
 
   const getAppointmentsForStaffAndDay = (staffId: string, day: Date) =>
     appointments.filter(
@@ -81,7 +91,7 @@ export default function CalendarViewComponent({
     const duration = differenceInMinutes(end, start)
     const top = ((startMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT
     const height = (duration / 60) * HOUR_HEIGHT
-    return { top, height: Math.max(height, 20) }
+    return { top, height: Math.max(height, 18) }
   }
 
   const navigateDate = (direction: number) => {
@@ -89,7 +99,6 @@ export default function CalendarViewComponent({
     onDateChange(addDays(selectedDate, direction * days))
   }
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return
@@ -103,7 +112,6 @@ export default function CalendarViewComponent({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, selectedDate])
 
-  // Count appointments per staff for today
   const staffApptCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     staff.forEach((s) => {
@@ -115,29 +123,29 @@ export default function CalendarViewComponent({
   }, [staff, appointments, selectedDate])
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 160px)', minHeight: '500px' }}>
-      {/* ── Toolbar — 44px single line ── */}
-      <div className="flex items-center justify-between px-3 h-11 border-b border-gray-200 shrink-0">
-        <div className="flex items-center gap-2">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 180px)', minHeight: '480px' }}>
+      {/* ── Toolbar ── */}
+      <div className="flex items-center justify-between px-3 h-11 border-b border-gray-100 shrink-0 bg-white">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => navigateDate(-1)}
-            className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+            className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-500"
           >
             <ChevronLeft size={14} />
           </button>
           <button
             onClick={() => onDateChange(new Date())}
-            className="px-2.5 py-1 text-[11px] font-medium rounded-md border border-gray-200 hover:bg-gray-50 transition-colors"
+            className="px-2.5 py-1 text-[11px] font-medium rounded-md border border-gray-200 hover:bg-gray-50 transition-colors text-gray-600"
           >
             Aujourd&apos;hui
           </button>
           <button
             onClick={() => navigateDate(1)}
-            className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+            className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-500"
           >
             <ChevronRight size={14} />
           </button>
-          <h2 className="text-[13px] font-semibold ml-1 capitalize">
+          <h2 className="text-[13px] font-semibold ml-2 text-gray-800 capitalize">
             {view === 'day'
               ? format(selectedDate, 'EEEE d MMMM yyyy', { locale: fr })
               : `${format(weekDays[0], 'd MMM', { locale: fr })} — ${format(weekDays[6], 'd MMM yyyy', { locale: fr })}`}
@@ -145,7 +153,6 @@ export default function CalendarViewComponent({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* View toggle */}
           <div className="flex bg-gray-100 rounded-md p-0.5">
             {(['day', 'week'] as const).map((v) => (
               <button
@@ -154,19 +161,18 @@ export default function CalendarViewComponent({
                 className={`px-2.5 py-1 text-[11px] font-medium rounded transition-all duration-150 ${
                   view === v
                     ? 'bg-white shadow-sm text-gray-900'
-                    : 'text-gray-500 hover:text-gray-700'
+                    : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
                 {v === 'day' ? 'Jour' : 'Semaine'}
               </button>
             ))}
           </div>
-          {/* Primary CTA */}
           <button
             onClick={onNewAppointment}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary-600 text-white text-[11px] font-semibold hover:bg-primary-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-500 text-white text-[11px] font-semibold hover:bg-indigo-600 transition-colors shadow-sm"
           >
-            <Plus size={13} />
+            <Plus size={13} strokeWidth={2.5} />
             Nouveau RDV
           </button>
         </div>
@@ -175,42 +181,42 @@ export default function CalendarViewComponent({
       {/* ── Calendar body ── */}
       <div className="flex-1 overflow-auto">
         {view === 'day' ? (
-          /* ═══ DAY VIEW — columns = staff ═══ */
           <div className="min-w-[640px]">
-            {/* Sticky staff header — 48px */}
-            <div className="flex sticky top-0 z-20 bg-white border-b border-gray-200">
-              <div className="w-12 shrink-0" />
-              {staff.map((s, i) => (
-                <div
-                  key={s.id}
-                  className={`flex-1 min-w-[200px] px-3 py-2 border-l border-gray-200 flex items-center gap-2.5 ${
-                    i % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'
-                  }`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
-                    <span className="text-[10px] font-bold text-primary-700">
-                      {s.name.split(' ').map((n) => n[0]).join('')}
-                    </span>
+            {/* Sticky staff header */}
+            <div className="flex sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+              <div className="w-[52px] shrink-0" />
+              {staff.map((s, i) => {
+                const color = AVATAR_COLORS[i % AVATAR_COLORS.length]
+                return (
+                  <div
+                    key={s.id}
+                    className="flex-1 min-w-[200px] px-3 py-2 border-l border-gray-100 flex items-center gap-2.5"
+                  >
+                    <div className={`w-7 h-7 rounded-full ${color.bg} flex items-center justify-center shrink-0`}>
+                      <span className={`text-[10px] font-bold ${color.text}`}>
+                        {s.name.split(' ').map((n) => n[0]).join('')}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-semibold text-gray-800 truncate leading-tight">{s.name}</p>
+                      <p className="text-[10px] text-gray-400 leading-tight">{staffApptCounts[s.id] || 0} rdv</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-gray-900 truncate">{s.name}</p>
-                    <p className="text-[10px] text-gray-400">{staffApptCounts[s.id] || 0} rdv</p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Time grid */}
             <div className="flex relative">
-              {/* Time labels — sticky left */}
-              <div className="w-12 shrink-0 sticky left-0 z-10 bg-white">
+              {/* Time labels */}
+              <div className="w-[52px] shrink-0 sticky left-0 z-10 bg-white">
                 {HOURS.map((hour) => (
                   <div
                     key={hour}
-                    className="border-b border-gray-100 relative"
+                    className="border-b border-gray-50 relative"
                     style={{ height: `${HOUR_HEIGHT}px` }}
                   >
-                    <span className="absolute -top-[7px] right-2 text-[10px] font-medium text-gray-400">
+                    <span className="absolute -top-[6px] right-2.5 text-[10px] font-medium text-gray-300 tabular-nums">
                       {String(hour).padStart(2, '0')}:00
                     </span>
                   </div>
@@ -224,17 +230,16 @@ export default function CalendarViewComponent({
                 return (
                   <div
                     key={s.id}
-                    className={`flex-1 min-w-[200px] border-l border-gray-200 relative ${isAlt ? 'bg-gray-50/40' : ''}`}
+                    className={`flex-1 min-w-[200px] border-l border-gray-100 relative ${isAlt ? 'bg-gray-50/30' : ''}`}
                   >
-                    {/* Hour rows */}
                     {HOURS.map((hour) => {
                       const slotKey = `${s.id}-${hour}`
                       const isHovered = hoveredSlot === slotKey
                       return (
                         <div
                           key={hour}
-                          className={`border-b border-gray-100 cursor-pointer transition-colors duration-100 ${
-                            isHovered ? 'bg-primary-50/40' : ''
+                          className={`border-b border-gray-50 cursor-pointer transition-colors duration-75 ${
+                            isHovered ? 'bg-indigo-50/30' : ''
                           }`}
                           style={{ height: `${HOUR_HEIGHT}px` }}
                           onMouseEnter={() => setHoveredSlot(slotKey)}
@@ -244,9 +249,9 @@ export default function CalendarViewComponent({
                           }
                         >
                           {isHovered && (
-                            <div className="flex items-center gap-1 px-2 pt-0.5 opacity-50">
-                              <Plus size={10} className="text-primary-600" />
-                              <span className="text-[10px] text-primary-600 font-medium">
+                            <div className="flex items-center gap-1 px-1.5 pt-0.5 opacity-40">
+                              <Plus size={9} className="text-indigo-500" strokeWidth={2.5} />
+                              <span className="text-[9px] text-indigo-500 font-semibold tabular-nums">
                                 {String(hour).padStart(2, '0')}:00
                               </span>
                             </div>
@@ -255,7 +260,6 @@ export default function CalendarViewComponent({
                       )
                     })}
 
-                    {/* Appointment blocks */}
                     {staffAppts.map((appt) => {
                       const pos = getAppointmentPosition(appt)
                       return (
@@ -276,40 +280,46 @@ export default function CalendarViewComponent({
                 )
               })}
 
-              {/* Current time indicator */}
+              {/* ── Current time indicator ── */}
               {showNowLine && (
                 <div
                   className="absolute left-0 right-0 z-30 pointer-events-none"
                   style={{ top: `${nowTop}px` }}
                 >
-                  <div className="relative flex items-center">
-                    <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 shrink-0" />
-                    <div className="flex-1 border-t-2 border-red-500" />
+                  {/* Time badge on left */}
+                  <div className="absolute -left-0 -top-[9px] z-40">
+                    <span className="bg-rose-500 text-white text-[9px] font-bold px-1 py-[1px] rounded-sm tabular-nums shadow-sm">
+                      {nowTimeStr}
+                    </span>
+                  </div>
+                  {/* Line with dot */}
+                  <div className="relative flex items-center ml-[52px]">
+                    <div className="w-[7px] h-[7px] rounded-full bg-rose-500 -ml-[3px] shrink-0 shadow-[0_0_4px_rgba(244,63,94,0.4)]" />
+                    <div className="flex-1 h-px bg-rose-400/60" />
                   </div>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          /* ═══ WEEK VIEW — columns = days ═══ */
+          /* ═══ WEEK VIEW ═══ */
           <div className="min-w-[800px]">
-            {/* Sticky day headers */}
-            <div className="flex sticky top-0 z-20 bg-white border-b border-gray-200">
-              <div className="w-12 shrink-0" />
+            <div className="flex sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+              <div className="w-[52px] shrink-0" />
               {visibleDays.map((day, i) => {
                 const isDayToday = isSameDay(day, new Date())
                 return (
                   <div
                     key={day.toISOString()}
-                    className={`flex-1 min-w-[100px] px-2 py-2 border-l border-gray-200 text-center cursor-pointer hover:bg-gray-50 transition-colors ${
-                      isDayToday ? 'bg-primary-50/40' : i % 2 === 1 ? 'bg-gray-50/30' : ''
+                    className={`flex-1 min-w-[100px] px-2 py-2 border-l border-gray-100 text-center cursor-pointer hover:bg-gray-50 transition-colors ${
+                      isDayToday ? 'bg-indigo-50/30' : ''
                     }`}
                     onClick={() => { onDateChange(day); onViewChange('day') }}
                   >
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">
                       {format(day, 'EEE', { locale: fr })}
                     </p>
-                    <p className={`text-base font-semibold mt-0.5 ${isDayToday ? 'text-primary-600' : 'text-gray-900'}`}>
+                    <p className={`text-base font-semibold mt-0.5 ${isDayToday ? 'text-indigo-500' : 'text-gray-800'}`}>
                       {format(day, 'd')}
                     </p>
                   </div>
@@ -317,16 +327,15 @@ export default function CalendarViewComponent({
               })}
             </div>
 
-            {/* Time grid */}
             <div className="flex relative">
-              <div className="w-12 shrink-0 sticky left-0 z-10 bg-white">
+              <div className="w-[52px] shrink-0 sticky left-0 z-10 bg-white">
                 {HOURS.map((hour) => (
                   <div
                     key={hour}
-                    className="border-b border-gray-100 relative"
+                    className="border-b border-gray-50 relative"
                     style={{ height: `${HOUR_HEIGHT}px` }}
                   >
-                    <span className="absolute -top-[7px] right-2 text-[10px] font-medium text-gray-400">
+                    <span className="absolute -top-[6px] right-2.5 text-[10px] font-medium text-gray-300 tabular-nums">
                       {String(hour).padStart(2, '0')}:00
                     </span>
                   </div>
@@ -341,14 +350,14 @@ export default function CalendarViewComponent({
                 return (
                   <div
                     key={day.toISOString()}
-                    className={`flex-1 min-w-[100px] border-l border-gray-200 relative ${
-                      isDayToday ? 'bg-primary-50/20' : i % 2 === 1 ? 'bg-gray-50/30' : ''
+                    className={`flex-1 min-w-[100px] border-l border-gray-100 relative ${
+                      isDayToday ? 'bg-indigo-50/15' : i % 2 === 1 ? 'bg-gray-50/25' : ''
                     }`}
                   >
                     {HOURS.map((hour) => (
                       <div
                         key={hour}
-                        className="border-b border-gray-100"
+                        className="border-b border-gray-50"
                         style={{ height: `${HOUR_HEIGHT}px` }}
                       />
                     ))}

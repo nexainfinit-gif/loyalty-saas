@@ -2,13 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Calendar, Scissors, Users, Settings } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/dashboard/appointments', label: 'Agenda', icon: Calendar },
-  { href: '/dashboard/appointments/services', label: 'Services', icon: Scissors },
-  { href: '/dashboard/appointments/staff', label: 'Staff', icon: Users },
-  { href: '/dashboard/appointments/settings', label: 'Paramètres', icon: Settings },
+  { href: '/dashboard/appointments', label: 'Agenda' },
+  { href: '/dashboard/appointments/services', label: 'Services' },
+  { href: '/dashboard/appointments/staff', label: 'Staff' },
+  { href: '/dashboard/appointments/settings', label: 'Paramètres' },
 ]
 
 export default function AppointmentsLayout({ children }: { children: React.ReactNode }) {
@@ -16,26 +15,30 @@ export default function AppointmentsLayout({ children }: { children: React.React
 
   return (
     <div>
-      {/* Sub-navigation */}
-      <div className="flex gap-1 mb-6 overflow-x-auto pb-1 scrollbar-hide">
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href
-          const Icon = item.icon
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 ${
-                isActive
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-50 text-gray-500 hover:bg-gray-200'
-              }`}
-            >
-              <Icon size={15} />
-              {item.label}
-            </Link>
-          )
-        })}
+      {/* Underline tabs — professional SaaS pattern */}
+      <div className="border-b border-gray-200 mb-5">
+        <nav className="flex gap-0 -mb-px overflow-x-auto scrollbar-hide">
+          {NAV_ITEMS.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`relative px-4 py-2.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 ${
+                  isActive
+                    ? 'text-gray-900'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                {item.label}
+                {/* Active indicator */}
+                {isActive && (
+                  <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-gray-900 rounded-full" />
+                )}
+              </Link>
+            )
+          })}
+        </nav>
       </div>
 
       {children}
