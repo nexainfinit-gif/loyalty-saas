@@ -22,8 +22,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   // ── DEV-ONLY bypass: ?demo=1 skips auth and returns mock data ────────────
-  // This block is dead code in production (NODE_ENV === 'production').
-  if (process.env.NODE_ENV !== 'production' && searchParams.get('demo') === '1') {
+  // Requires explicit opt-in via WALLET_PREVIEW_DEMO=true (never set on hosted envs).
+  const DEMO_ENABLED = process.env.WALLET_PREVIEW_DEMO === 'true';
+  if (DEMO_ENABLED && searchParams.get('demo') === '1') {
     const demoColor  = '#4f6bed';
     const demoStamps = 4;
     const demoTotal  = 10;

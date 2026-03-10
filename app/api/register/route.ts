@@ -3,13 +3,31 @@ import { supabaseAdmin as supabase } from '@/lib/supabase-admin';
 import { sendWelcomeEmail } from '@/lib/email';
 import { generateWalletUrl } from '@/lib/google-wallet';
 import { autoIssueApplePass } from '@/lib/wallet-auto-issue';
+import { registerSchema, parseBody } from '@/lib/validation';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
-// Rate limiting constants — per restaurant, sliding window
-const RATE_WINDOW_MS = 60_000; // 1 minute
-const RATE_MAX       = 20;     // max 20 registrations per restaurant per minute
+// Rate limiting: IP-based (10 req/min) + per-restaurant (20 reg/min)
+const ipLimiter = rateLimit({ prefix: 'register-ip', limit: 10, windowMs: 60_000 });
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX       = 20;
 
 export async function POST(req: NextRequest) {
+  // IP-based rate limit
+  const ip = getClientIp(req);
+  if (!ipLimiter.check(ip).success) {
+    return NextResponse.json(
+      { error: 'Trop de requêtes. Réessayez dans une minute.' },
+      { status: 429 },
+    );
+  }
+
   const body = await req.json();
+
+  // Validate input with Zod
+  const parsed = parseBody(registerSchema, body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
 
   const {
     restaurantSlug,
@@ -19,14 +37,7 @@ export async function POST(req: NextRequest) {
     birthDate,
     postalCode,
     marketingConsent,
-  } = body;
-
-  if (!firstName || !lastName || !email || !marketingConsent) {
-    return NextResponse.json(
-      { error: 'Champs requis manquants' },
-      { status: 400 }
-    );
-  }
+  } = parsed.data;
 
   const { data: restaurant, error: restError } = await supabase
     .from('restaurants')

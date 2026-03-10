@@ -4,6 +4,10 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { buildPkpass, pkpassResponse } from '@/lib/apple-wallet';
 import type { PassBuildInput } from '@/lib/apple-wallet';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
+
+// 10 downloads per minute per IP — pkpass generation is CPU-intensive (Sharp + JSZip + signing)
+const limiter = rateLimit({ prefix: 'pkpass-download', limit: 10, windowMs: 60_000 });
 
 /*
  * GET /api/wallet/passes/:id/pkpass
@@ -16,6 +20,7 @@ import type { PassBuildInput } from '@/lib/apple-wallet';
  * Errors:
  *   404  — pass not found or not an Apple pass
  *   409  — pass is not active (revoked / expired)
+ *   429  — too many requests
  *   503  — Apple Wallet env vars not configured
  *   500  — unexpected build/signing error
  */
@@ -23,6 +28,13 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const ip = getClientIp(_request);
+  if (!limiter.check(ip).success) {
+    return NextResponse.json(
+      { error: 'Trop de requêtes. Réessayez dans une minute.' },
+      { status: 429 },
+    );
+  }
   const { id: passId } = await params;
 
   // ── Fetch pass + template ────────────────────────────────────────────────

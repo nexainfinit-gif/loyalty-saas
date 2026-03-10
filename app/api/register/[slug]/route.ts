@@ -1,17 +1,29 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 import { Resend } from 'resend'
 import { autoIssueApplePass } from '@/lib/wallet-auto-issue'
+import { registerSlugSchema, parseBody } from '@/lib/validation'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-// Rate limiting constants — per restaurant, sliding window
-const RATE_WINDOW_MS = 60_000; // 1 minute
-const RATE_MAX       = 20;     // max 20 registrations per restaurant per minute
+// Rate limiting: IP-based (10 req/min) + per-restaurant (20 reg/min)
+const ipLimiter = rateLimit({ prefix: 'register-slug-ip', limit: 10, windowMs: 60_000 })
+const RATE_WINDOW_MS = 60_000
+const RATE_MAX       = 20
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  // IP-based rate limit
+  const ip = getClientIp(req)
+  if (!ipLimiter.check(ip).success) {
+    return Response.json(
+      { error: 'Trop de requêtes. Réessayez dans une minute.' },
+      { status: 429 },
+    )
+  }
+
   const { slug } = await params
 
   const { data: restaurant, error: rErr } = await supabase
@@ -25,11 +37,14 @@ export async function POST(
   }
 
   const body = await req.json()
-  const { first_name, email, birth_date, phone, consent_marketing } = body
 
-  if (!first_name || !email) {
-    return Response.json({ error: 'Prénom et email requis' }, { status: 400 })
+  // Validate input with Zod
+  const parsed = parseBody(registerSlugSchema, body)
+  if (!parsed.success) {
+    return Response.json({ error: parsed.error }, { status: 400 })
   }
+
+  const { first_name, email, birth_date, phone, consent_marketing } = parsed.data
 
   // ── Rate limit: max RATE_MAX registrations per restaurant per RATE_WINDOW_MS ──
   const windowStart = new Date(Date.now() - RATE_WINDOW_MS).toISOString();

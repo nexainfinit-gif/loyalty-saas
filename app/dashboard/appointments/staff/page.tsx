@@ -1,58 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Pencil, Trash2, X, ToggleLeft, ToggleRight, Clock, Scissors } from 'lucide-react'
-import type { StaffMember, StaffAvailability } from '@/types/appointments'
+import { useState, useEffect } from 'react'
+import { Plus, Pencil, Trash2, X, ToggleLeft, ToggleRight, Clock, Scissors, Loader2 } from 'lucide-react'
+import type { StaffMember, StaffAvailability, Service } from '@/types/appointments'
+import { api } from '@/lib/use-api'
 
 const DAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 const DAYS_SHORT = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
-
-const SERVICES_LIST = [
-  { id: 's1', name: 'Coupe homme' },
-  { id: 's2', name: 'Coupe femme' },
-  { id: 's3', name: 'Brushing' },
-  { id: 's4', name: 'Couleur complète' },
-  { id: 's5', name: 'Mèches / Balayage' },
-  { id: 's6', name: 'Barbe' },
-  { id: 's7', name: 'Soin visage' },
-  { id: 's8', name: 'Massage crânien' },
-]
-
-const INITIAL_STAFF: StaffMember[] = [
-  { id: 'st1', restaurant_id: 'b1', name: 'Sophie Martin', email: 'sophie@salon.be', phone: '0470 11 22 33', avatar_url: null, service_ids: ['s1', 's2', 's3', 's4'], active: true, created_at: '' },
-  { id: 'st2', restaurant_id: 'b1', name: 'Lucas Dubois', email: 'lucas@salon.be', phone: '0475 44 55 66', avatar_url: null, service_ids: ['s1', 's3', 's6', 's8'], active: true, created_at: '' },
-  { id: 'st3', restaurant_id: 'b1', name: 'Emma Laurent', email: 'emma@salon.be', phone: '0486 77 88 99', avatar_url: null, service_ids: ['s2', 's3', 's4', 's5', 's7'], active: true, created_at: '' },
-]
-
-const INITIAL_AVAILABILITY: Record<string, StaffAvailability[]> = {
-  st1: [1, 2, 3, 4, 5, 6].map((day) => ({
-    id: `av-st1-${day}`,
-    staff_id: 'st1',
-    restaurant_id: 'b1',
-    day_of_week: day,
-    start_time: '09:00',
-    end_time: day === 6 ? '14:00' : '18:00',
-    is_working: true,
-  })),
-  st2: [1, 2, 3, 4, 5].map((day) => ({
-    id: `av-st2-${day}`,
-    staff_id: 'st2',
-    restaurant_id: 'b1',
-    day_of_week: day,
-    start_time: '10:00',
-    end_time: '19:00',
-    is_working: true,
-  })),
-  st3: [1, 2, 4, 5, 6].map((day) => ({
-    id: `av-st3-${day}`,
-    staff_id: 'st3',
-    restaurant_id: 'b1',
-    day_of_week: day,
-    start_time: '09:00',
-    end_time: '17:00',
-    is_working: true,
-  })),
-}
 
 const emptyForm = {
   name: '',
@@ -65,12 +19,31 @@ const emptyForm = {
 type ModalView = 'list' | 'form' | 'schedule'
 
 export default function StaffPage() {
-  const [staff, setStaff] = useState<StaffMember[]>(INITIAL_STAFF)
-  const [availability, setAvailability] = useState(INITIAL_AVAILABILITY)
+  const [staff, setStaff] = useState<StaffMember[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [availability, setAvailability] = useState<Record<string, StaffAvailability[]>>({})
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [modalView, setModalView] = useState<ModalView>('list')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [scheduleStaffId, setScheduleStaffId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
+
+  useEffect(() => {
+    async function fetchData() {
+      const [staffRes, servicesRes] = await Promise.all([
+        api<{ staff: StaffMember[]; availability: Record<string, StaffAvailability[]> }>('/api/appointments/staff'),
+        api<{ services: Service[] }>('/api/appointments/services'),
+      ])
+      if (staffRes.data) {
+        setStaff(staffRes.data.staff)
+        setAvailability(staffRes.data.availability)
+      }
+      if (servicesRes.data) setServices(servicesRes.data.services)
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
 
   const openCreate = () => {
     setEditingId(null)
@@ -95,48 +68,47 @@ export default function StaffPage() {
     setModalView('schedule')
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSaving(true)
     if (editingId) {
-      setStaff((prev) =>
-        prev.map((s) =>
-          s.id === editingId ? { ...s, ...form } : s
-        )
-      )
-    } else {
-      const id = `st${Date.now()}`
-      const newMember: StaffMember = {
-        id,
-        restaurant_id: 'b1',
-        ...form,
-        avatar_url: null,
-        created_at: new Date().toISOString(),
+      const res = await api<{ staff: StaffMember }>('/api/appointments/staff', {
+        method: 'PUT',
+        body: JSON.stringify({ id: editingId, ...form }),
+      })
+      if (res.data) {
+        setStaff((prev) => prev.map((s) => (s.id === editingId ? res.data!.staff : s)))
       }
-      setStaff((prev) => [...prev, newMember])
-      setAvailability((prev) => ({
-        ...prev,
-        [id]: [1, 2, 3, 4, 5].map((day) => ({
-          id: `av-${id}-${day}`,
-          staff_id: id,
-          restaurant_id: 'b1',
-          day_of_week: day,
-          start_time: '09:00',
-          end_time: '18:00',
-          is_working: true,
-        })),
-      }))
+    } else {
+      const res = await api<{ staff: StaffMember }>('/api/appointments/staff', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      })
+      if (res.data) {
+        setStaff((prev) => [...prev, res.data!.staff])
+      }
     }
+    setSaving(false)
     setModalView('list')
   }
 
-  const toggleActive = (id: string) => {
-    setStaff((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, active: !s.active } : s))
-    )
+  const toggleActive = async (id: string) => {
+    const member = staff.find((s) => s.id === id)
+    if (!member) return
+    const res = await api<{ staff: StaffMember }>('/api/appointments/staff', {
+      method: 'PUT',
+      body: JSON.stringify({ id, active: !member.active }),
+    })
+    if (res.data) {
+      setStaff((prev) => prev.map((s) => (s.id === id ? res.data!.staff : s)))
+    }
   }
 
-  const deleteMember = (id: string) => {
-    setStaff((prev) => prev.filter((s) => s.id !== id))
+  const deleteMember = async (id: string) => {
+    const res = await api('/api/appointments/staff?id=' + id, { method: 'DELETE' })
+    if (!res.error) {
+      setStaff((prev) => prev.filter((s) => s.id !== id))
+    }
   }
 
   const toggleService = (serviceId: string) => {
@@ -159,22 +131,21 @@ export default function StaffPage() {
             a.day_of_week === dayOfWeek ? { ...a, is_working: !a.is_working } : a
           ),
         }
-      } else {
-        return {
-          ...prev,
-          [staffId]: [
-            ...staffAvail,
-            {
-              id: `av-${staffId}-${dayOfWeek}`,
-              staff_id: staffId,
-              restaurant_id: 'b1',
-              day_of_week: dayOfWeek,
-              start_time: '09:00',
-              end_time: '18:00',
-              is_working: true,
-            },
-          ],
-        }
+      }
+      return {
+        ...prev,
+        [staffId]: [
+          ...staffAvail,
+          {
+            id: `av-${staffId}-${dayOfWeek}`,
+            staff_id: staffId,
+            restaurant_id: '',
+            day_of_week: dayOfWeek,
+            start_time: '09:00',
+            end_time: '18:00',
+            is_working: true,
+          },
+        ],
       }
     })
   }
@@ -188,7 +159,30 @@ export default function StaffPage() {
     }))
   }
 
+  const saveSchedule = async () => {
+    if (!scheduleStaffId) return
+    setSaving(true)
+    const staffAvail = availability[scheduleStaffId] || []
+    await api('/api/appointments/staff', {
+      method: 'PUT',
+      body: JSON.stringify({
+        staffId: scheduleStaffId,
+        schedule: staffAvail,
+      }),
+    })
+    setSaving(false)
+    setModalView('list')
+  }
+
   const scheduleStaff = scheduleStaffId ? staff.find((s) => s.id === scheduleStaffId) : null
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={24} className="animate-spin text-gray-400" />
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -210,97 +204,103 @@ export default function StaffPage() {
       </div>
 
       {/* Staff cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {staff.map((member) => {
-          const memberAvail = availability[member.id] || []
+      {staff.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-12">
+          Aucun employé. Cliquez sur "Ajouter un employé" pour commencer.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {staff.map((member) => {
+            const memberAvail = availability[member.id] || []
 
-          return (
-            <div
-              key={member.id}
-              className={`bg-white rounded-xl border border-gray-200 p-5 transition-all duration-200 hover:border-gray-300 ${
-                !member.active ? 'opacity-50' : ''
-              }`}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                    <span className="text-sm font-semibold text-gray-500">
-                      {member.name.split(' ').map((n) => n[0]).join('')}
-                    </span>
+            return (
+              <div
+                key={member.id}
+                className={`bg-white rounded-xl border border-gray-200 p-5 transition-all duration-200 hover:border-gray-300 ${
+                  !member.active ? 'opacity-50' : ''
+                }`}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
+                      <span className="text-sm font-semibold text-gray-500">
+                        {member.name.split(' ').map((n) => n[0]).join('')}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{member.name}</p>
+                      <p className="text-[11px] text-gray-400">{member.email}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold">{member.name}</p>
-                    <p className="text-[11px] text-gray-400">{member.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => openEdit(member)}
-                    className="w-7 h-7 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
-                  >
-                    <Pencil size={13} className="text-gray-400" />
-                  </button>
-                  <button
-                    onClick={() => deleteMember(member.id)}
-                    className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors"
-                  >
-                    <Trash2 size={13} className="text-red-400" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
-                <Scissors size={13} />
-                {member.service_ids.length} services autorisés
-              </div>
-
-              <div className="flex gap-1 mb-3">
-                {[1, 2, 3, 4, 5, 6, 0].map((day) => {
-                  const isWorking = memberAvail.some(
-                    (a) => a.day_of_week === day && a.is_working
-                  )
-                  return (
-                    <span
-                      key={day}
-                      className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                        isWorking
-                          ? 'bg-green-50 text-green-600'
-                          : 'bg-gray-50 text-gray-400'
-                      }`}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEdit(member)}
+                      className="w-7 h-7 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
                     >
-                      {DAYS_SHORT[day]}
+                      <Pencil size={13} className="text-gray-400" />
+                    </button>
+                    <button
+                      onClick={() => deleteMember(member.id)}
+                      className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors"
+                    >
+                      <Trash2 size={13} className="text-red-400" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
+                  <Scissors size={13} />
+                  {member.service_ids.length} services autorisés
+                </div>
+
+                <div className="flex gap-1 mb-3">
+                  {[1, 2, 3, 4, 5, 6, 0].map((day) => {
+                    const isWorking = memberAvail.some(
+                      (a) => a.day_of_week === day && a.is_working
+                    )
+                    return (
+                      <span
+                        key={day}
+                        className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                          isWorking
+                            ? 'bg-green-50 text-green-600'
+                            : 'bg-gray-50 text-gray-400'
+                        }`}
+                      >
+                        {DAYS_SHORT[day]}
+                      </span>
+                    )
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                  <button
+                    onClick={() => toggleActive(member.id)}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    {member.active ? (
+                      <ToggleRight size={20} className="text-green-500" />
+                    ) : (
+                      <ToggleLeft size={20} className="text-gray-400" />
+                    )}
+                    <span className={member.active ? 'text-green-600' : 'text-gray-400'}>
+                      {member.active ? 'Actif' : 'Inactif'}
                     </span>
-                  )
-                })}
-              </div>
+                  </button>
 
-              <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                <button
-                  onClick={() => toggleActive(member.id)}
-                  className="flex items-center gap-2 text-xs"
-                >
-                  {member.active ? (
-                    <ToggleRight size={20} className="text-green-500" />
-                  ) : (
-                    <ToggleLeft size={20} className="text-gray-400" />
-                  )}
-                  <span className={member.active ? 'text-green-600' : 'text-gray-400'}>
-                    {member.active ? 'Actif' : 'Inactif'}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => openSchedule(member.id)}
-                  className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  <Clock size={13} />
-                  Horaires
-                </button>
+                  <button
+                    onClick={() => openSchedule(member.id)}
+                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors"
+                  >
+                    <Clock size={13} />
+                    Horaires
+                  </button>
+                </div>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Staff form modal */}
       {modalView === 'form' && (
@@ -339,7 +339,6 @@ export default function StaffPage() {
                     type="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    required
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
                   />
                 </div>
@@ -359,7 +358,7 @@ export default function StaffPage() {
                   Services autorisés
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {SERVICES_LIST.map((service) => (
+                  {services.map((service) => (
                     <button
                       key={service.id}
                       type="button"
@@ -386,8 +385,10 @@ export default function StaffPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+                  disabled={saving}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {saving && <Loader2 size={14} className="animate-spin" />}
                   {editingId ? 'Enregistrer' : 'Créer'}
                 </button>
               </div>
@@ -468,10 +469,12 @@ export default function StaffPage() {
 
             <div className="px-6 py-4 border-t border-gray-200">
               <button
-                onClick={() => setModalView('list')}
-                className="w-full px-4 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+                onClick={saveSchedule}
+                disabled={saving}
+                className="w-full px-4 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Fermer
+                {saving && <Loader2 size={14} className="animate-spin" />}
+                Enregistrer les horaires
               </button>
             </div>
           </div>

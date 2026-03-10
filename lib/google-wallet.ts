@@ -2,11 +2,33 @@
 import jwt from 'jsonwebtoken';
 import { GoogleAuth } from 'google-auth-library';
 
-const ISSUER_ID    = process.env.GOOGLE_WALLET_ISSUER_ID!;
-const CLIENT_EMAIL = process.env.GOOGLE_WALLET_CLIENT_EMAIL!;
-const PRIVATE_KEY  = process.env.GOOGLE_WALLET_PRIVATE_KEY!.replace(/\\n/g, '\n');
-
 const BASE = 'https://walletobjects.googleapis.com/walletobjects/v1';
+
+/**
+ * Lazily resolve Google Wallet env vars at call time (not module load time).
+ * Throws a clear error if any required variable is missing — prevents
+ * a raw TypeError crash that would take down unrelated routes.
+ */
+function getWalletConfig() {
+  const ISSUER_ID    = process.env.GOOGLE_WALLET_ISSUER_ID;
+  const CLIENT_EMAIL = process.env.GOOGLE_WALLET_CLIENT_EMAIL;
+  const RAW_KEY      = process.env.GOOGLE_WALLET_PRIVATE_KEY;
+
+  if (!ISSUER_ID || !CLIENT_EMAIL || !RAW_KEY) {
+    const missing = [
+      !ISSUER_ID    && 'GOOGLE_WALLET_ISSUER_ID',
+      !CLIENT_EMAIL && 'GOOGLE_WALLET_CLIENT_EMAIL',
+      !RAW_KEY      && 'GOOGLE_WALLET_PRIVATE_KEY',
+    ].filter(Boolean).join(', ');
+    throw new Error(`Google Wallet non configuré (variables manquantes : ${missing})`);
+  }
+
+  return {
+    ISSUER_ID,
+    CLIENT_EMAIL,
+    PRIVATE_KEY: RAW_KEY.replace(/\\n/g, '\n'),
+  };
+}
 
 /* ── Backward-compat interface (kept for existing callers) ────────────────── */
 
@@ -47,6 +69,7 @@ let _auth: GoogleAuth | null = null;
 
 function getAuth(): GoogleAuth {
   if (!_auth) {
+    const { CLIENT_EMAIL, PRIVATE_KEY } = getWalletConfig();
     _auth = new GoogleAuth({
       credentials: {
         client_email: CLIENT_EMAIL,
@@ -380,10 +403,12 @@ function buildLoyaltyObject(data: GooglePassData): Record<string, unknown> {
  * One class per (restaurant × passKind): different program UX per type.
  */
 export function computeClassId(restaurantId: string, passKind: string): string {
+  const { ISSUER_ID } = getWalletConfig();
   return `${ISSUER_ID}.r${restaurantId.replace(/-/g, '')}_${passKind}`;
 }
 
 export function generateSaveJwt(data: GooglePassData): string {
+  const { CLIENT_EMAIL, PRIVATE_KEY } = getWalletConfig();
   const claims = {
     iss:     CLIENT_EMAIL,
     aud:     'google',
@@ -425,6 +450,7 @@ export async function issueGooglePass(params: {
     primaryColor, logoUrl, passKind, configJson,
   } = params;
 
+  const { ISSUER_ID } = getWalletConfig();
   const classId  = `${ISSUER_ID}.r${restaurantId.replace(/-/g, '')}_${passKind}`;
   const objectId = `${ISSUER_ID}.p${passId.replace(/-/g, '')}`;
 
@@ -472,6 +498,7 @@ export async function generateWalletUrl(params: CreateCardParams): Promise<strin
   // Use restaurantId-based naming (same convention as issueGooglePass) so classIds
   // remain stable even if the restaurant's slug is later renamed.
   // Default passKind 'points' for this legacy JWT-only path (no REST API call).
+  const { ISSUER_ID } = getWalletConfig();
   const classId  = computeClassId(restaurantId, 'points');
   const objectId = `${ISSUER_ID}.p${customerId.replace(/-/g, '')}`;
 

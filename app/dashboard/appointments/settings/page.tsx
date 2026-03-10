@@ -1,43 +1,37 @@
 'use client'
 
-import { useState } from 'react'
-import { Save, Clock, Calendar, Bell, Star, Shield } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Save, Clock, Calendar, Bell, Star, Shield, Loader2 } from 'lucide-react'
 import type { AppointmentSettings } from '@/types/appointments'
+import { api } from '@/lib/use-api'
 
 const DAYS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
 
-const INITIAL_SETTINGS: AppointmentSettings = {
-  id: 'set1',
-  restaurant_id: 'b1',
-  slot_duration_minutes: 15,
-  buffer_minutes: 5,
-  max_advance_days: 30,
-  min_advance_hours: 2,
-  allow_cancellation: true,
-  cancellation_deadline_hours: 24,
-  confirmation_message: 'Merci pour votre réservation ! Nous avons hâte de vous accueillir.',
-  reminder_hours_before: 24,
-  auto_loyalty_points: true,
-  loyalty_points_per_visit: 10,
-  working_days: [1, 2, 3, 4, 5, 6],
-  opening_time: '09:00',
-  closing_time: '19:00',
-  created_at: '',
-}
-
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<AppointmentSettings>(INITIAL_SETTINGS)
+  const [settings, setSettings] = useState<AppointmentSettings | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    async function fetchSettings() {
+      const res = await api<{ settings: AppointmentSettings }>('/api/appointments/settings')
+      if (res.data) setSettings(res.data.settings)
+      setLoading(false)
+    }
+    fetchSettings()
+  }, [])
 
   const update = <K extends keyof AppointmentSettings>(
     key: K,
     value: AppointmentSettings[K]
   ) => {
-    setSettings((prev) => ({ ...prev, [key]: value }))
+    setSettings((prev) => prev ? { ...prev, [key]: value } : prev)
     setSaved(false)
   }
 
   const toggleDay = (day: number) => {
+    if (!settings) return
     const current = settings.working_days
     const next = current.includes(day)
       ? current.filter((d) => d !== day)
@@ -45,10 +39,27 @@ export default function SettingsPage() {
     update('working_days', next)
   }
 
-  const handleSave = () => {
-    // TODO: save to Supabase
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleSave = async () => {
+    if (!settings) return
+    setSaving(true)
+    const { id, restaurant_id, created_at, ...payload } = settings
+    const res = await api('/api/appointments/settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+    setSaving(false)
+    if (!res.error) {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }
+  }
+
+  if (loading || !settings) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={24} className="animate-spin text-gray-400" />
+      </div>
+    )
   }
 
   return (
@@ -63,13 +74,14 @@ export default function SettingsPage() {
         </div>
         <button
           onClick={handleSave}
+          disabled={saving}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
             saved
               ? 'bg-green-600 text-white'
               : 'bg-gray-900 text-white hover:bg-gray-800'
-          }`}
+          } disabled:opacity-50`}
         >
-          <Save size={16} />
+          {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
           {saved ? 'Enregistré !' : 'Enregistrer'}
         </button>
       </div>

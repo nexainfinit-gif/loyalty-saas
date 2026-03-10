@@ -1,21 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Pencil, Trash2, X, Clock, Euro, ToggleLeft, ToggleRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Pencil, Trash2, X, Clock, Euro, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react'
 import type { Service } from '@/types/appointments'
+import { api } from '@/lib/use-api'
 
 const CATEGORIES = ['Coupe', 'Coiffure', 'Couleur', 'Barbe', 'Soin', 'Massage', 'Autre']
-
-const INITIAL_SERVICES: Service[] = [
-  { id: 's1', restaurant_id: 'b1', name: 'Coupe homme', duration_minutes: 30, price: 25, category: 'Coupe', active: true, created_at: '' },
-  { id: 's2', restaurant_id: 'b1', name: 'Coupe femme', duration_minutes: 45, price: 35, category: 'Coupe', active: true, created_at: '' },
-  { id: 's3', restaurant_id: 'b1', name: 'Brushing', duration_minutes: 30, price: 20, category: 'Coiffure', active: true, created_at: '' },
-  { id: 's4', restaurant_id: 'b1', name: 'Couleur complète', duration_minutes: 90, price: 65, category: 'Couleur', active: true, created_at: '' },
-  { id: 's5', restaurant_id: 'b1', name: 'Mèches / Balayage', duration_minutes: 120, price: 85, category: 'Couleur', active: true, created_at: '' },
-  { id: 's6', restaurant_id: 'b1', name: 'Barbe', duration_minutes: 20, price: 15, category: 'Barbe', active: true, created_at: '' },
-  { id: 's7', restaurant_id: 'b1', name: 'Soin visage', duration_minutes: 60, price: 50, category: 'Soin', active: true, created_at: '' },
-  { id: 's8', restaurant_id: 'b1', name: 'Massage crânien', duration_minutes: 20, price: 18, category: 'Massage', active: false, created_at: '' },
-]
 
 const emptyForm = {
   name: '',
@@ -26,11 +16,22 @@ const emptyForm = {
 }
 
 export default function ServicesPage() {
-  const [services, setServices] = useState<Service[]>(INITIAL_SERVICES)
+  const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [filterCategory, setFilterCategory] = useState<string>('all')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    async function fetch() {
+      const res = await api<{ services: Service[] }>('/api/appointments/services')
+      if (res.data) setServices(res.data.services)
+      setLoading(false)
+    }
+    fetch()
+  }, [])
 
   const filteredServices =
     filterCategory === 'all'
@@ -57,34 +58,59 @@ export default function ServicesPage() {
     setShowForm(true)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSaving(true)
     if (editingId) {
-      setServices((prev) =>
-        prev.map((s) =>
-          s.id === editingId ? { ...s, ...form } : s
+      const res = await api<{ service: Service }>('/api/appointments/services', {
+        method: 'PUT',
+        body: JSON.stringify({ id: editingId, ...form }),
+      })
+      if (res.data) {
+        setServices((prev) =>
+          prev.map((s) => (s.id === editingId ? res.data!.service : s))
         )
-      )
-    } else {
-      const newService: Service = {
-        id: `s${Date.now()}`,
-        restaurant_id: 'b1',
-        ...form,
-        created_at: new Date().toISOString(),
       }
-      setServices((prev) => [...prev, newService])
+    } else {
+      const res = await api<{ service: Service }>('/api/appointments/services', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      })
+      if (res.data) {
+        setServices((prev) => [...prev, res.data!.service])
+      }
     }
+    setSaving(false)
     setShowForm(false)
   }
 
-  const toggleActive = (id: string) => {
-    setServices((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, active: !s.active } : s))
-    )
+  const toggleActive = async (id: string) => {
+    const service = services.find((s) => s.id === id)
+    if (!service) return
+    const res = await api<{ service: Service }>('/api/appointments/services', {
+      method: 'PUT',
+      body: JSON.stringify({ id, active: !service.active }),
+    })
+    if (res.data) {
+      setServices((prev) =>
+        prev.map((s) => (s.id === id ? res.data!.service : s))
+      )
+    }
   }
 
-  const deleteService = (id: string) => {
-    setServices((prev) => prev.filter((s) => s.id !== id))
+  const deleteService = async (id: string) => {
+    const res = await api('/api/appointments/services?id=' + id, { method: 'DELETE' })
+    if (!res.error) {
+      setServices((prev) => prev.filter((s) => s.id !== id))
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={24} className="animate-spin text-gray-400" />
+      </div>
+    )
   }
 
   return (
@@ -124,64 +150,70 @@ export default function ServicesPage() {
       </div>
 
       {/* Services grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredServices.map((service) => (
-          <div
-            key={service.id}
-            className={`bg-white rounded-xl border border-gray-200 p-5 transition-all duration-200 hover:border-gray-300 ${
-              !service.active ? 'opacity-50' : ''
-            }`}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-sm font-semibold">{service.name}</p>
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 mt-1 inline-block">
-                  {service.category}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => openEdit(service)}
-                  className="w-7 h-7 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
-                >
-                  <Pencil size={13} className="text-gray-400" />
-                </button>
-                <button
-                  onClick={() => deleteService(service.id)}
-                  className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors"
-                >
-                  <Trash2 size={13} className="text-red-400" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 mt-3">
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Clock size={13} />
-                {service.duration_minutes} min
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Euro size={13} />
-                {service.price}
-              </div>
-            </div>
-
-            <button
-              onClick={() => toggleActive(service.id)}
-              className="flex items-center gap-2 mt-3 text-xs"
+      {filteredServices.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-12">
+          Aucun service. Cliquez sur "Ajouter un service" pour commencer.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredServices.map((service) => (
+            <div
+              key={service.id}
+              className={`bg-white rounded-xl border border-gray-200 p-5 transition-all duration-200 hover:border-gray-300 ${
+                !service.active ? 'opacity-50' : ''
+              }`}
             >
-              {service.active ? (
-                <ToggleRight size={20} className="text-green-500" />
-              ) : (
-                <ToggleLeft size={20} className="text-gray-400" />
-              )}
-              <span className={service.active ? 'text-green-600' : 'text-gray-400'}>
-                {service.active ? 'Actif' : 'Inactif'}
-              </span>
-            </button>
-          </div>
-        ))}
-      </div>
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="text-sm font-semibold">{service.name}</p>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 mt-1 inline-block">
+                    {service.category}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => openEdit(service)}
+                    className="w-7 h-7 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
+                  >
+                    <Pencil size={13} className="text-gray-400" />
+                  </button>
+                  <button
+                    onClick={() => deleteService(service.id)}
+                    className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors"
+                  >
+                    <Trash2 size={13} className="text-red-400" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Clock size={13} />
+                  {service.duration_minutes} min
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Euro size={13} />
+                  {service.price}
+                </div>
+              </div>
+
+              <button
+                onClick={() => toggleActive(service.id)}
+                className="flex items-center gap-2 mt-3 text-xs"
+              >
+                {service.active ? (
+                  <ToggleRight size={20} className="text-green-500" />
+                ) : (
+                  <ToggleLeft size={20} className="text-gray-400" />
+                )}
+                <span className={service.active ? 'text-green-600' : 'text-gray-400'}>
+                  {service.active ? 'Actif' : 'Inactif'}
+                </span>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Form modal */}
       {showForm && (
@@ -271,8 +303,10 @@ export default function ServicesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+                  disabled={saving}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {saving && <Loader2 size={14} className="animate-spin" />}
                   {editingId ? 'Enregistrer' : 'Créer'}
                 </button>
               </div>

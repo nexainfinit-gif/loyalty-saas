@@ -1,7 +1,9 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { X, Check, XCircle, AlertTriangle, Phone, Mail, Clock, User } from 'lucide-react'
 import type { Appointment, AppointmentStatus } from '@/types/appointments'
+import { api } from '@/lib/use-api'
 
 const statusConfig: Record<AppointmentStatus, { bg: string; text: string; label: string }> = {
   confirmed: { bg: 'bg-blue-50', text: 'text-blue-700', label: 'Confirmé' },
@@ -21,6 +23,21 @@ export default function AppointmentDetailModal({
   onClose,
   onStatusChange,
 }: AppointmentDetailModalProps) {
+  const [noShowCount, setNoShowCount] = useState(0)
+
+  // Fetch no-show count when modal opens with a client email
+  useEffect(() => {
+    if (!appointment?.client_email) {
+      setNoShowCount(0)
+      return
+    }
+    api<{ noShowCount: number }>(
+      `/api/appointments/no-show-stats?email=${encodeURIComponent(appointment.client_email)}`
+    ).then((res) => {
+      setNoShowCount(res.data?.noShowCount ?? 0)
+    })
+  }, [appointment?.id, appointment?.client_email])
+
   if (!appointment) return null
 
   const config = statusConfig[appointment.status]
@@ -46,6 +63,21 @@ export default function AppointmentDetailModal({
         </div>
 
         <div className="p-6 space-y-4">
+          {/* No-show warning banner */}
+          {noShowCount >= 2 && (
+            <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl ${
+              noShowCount >= 3
+                ? 'bg-red-50 border border-red-200'
+                : 'bg-orange-50 border border-orange-200'
+            }`}>
+              <AlertTriangle size={14} className={noShowCount >= 3 ? 'text-red-600' : 'text-orange-600'} />
+              <p className={`text-xs font-medium ${noShowCount >= 3 ? 'text-red-700' : 'text-orange-700'}`}>
+                Ce client a {noShowCount} absence{noShowCount > 1 ? 's' : ''} enregistrée{noShowCount > 1 ? 's' : ''}
+                {noShowCount >= 3 && ' — client à risque'}
+              </p>
+            </div>
+          )}
+
           {/* Service + Time */}
           <div className="bg-gray-50 rounded-xl p-4">
             <p className="text-sm font-semibold">
@@ -65,7 +97,20 @@ export default function AppointmentDetailModal({
 
           {/* Client info */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 mb-2">Client</p>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-xs font-semibold text-gray-500">Client</p>
+              {noShowCount >= 1 && (
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                  noShowCount >= 3
+                    ? 'bg-red-100 text-red-700'
+                    : noShowCount >= 2
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {noShowCount} absence{noShowCount > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
             <p className="text-sm font-medium">{appointment.client_name}</p>
             {appointment.client_email && (
               <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">

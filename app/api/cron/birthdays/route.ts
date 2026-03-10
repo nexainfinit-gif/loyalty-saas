@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendBirthdayEmail } from '@/lib/email';
 
+function timingSafeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 export async function GET(req: NextRequest) {
-  // Security: validate CRON_SECRET before any DB access
-  const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Security: validate CRON_SECRET with timing-safe comparison
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+  }
+  const authHeader = req.headers.get('authorization') ?? '';
+  const expected = `Bearer ${secret}`;
+  if (!timingSafeCompare(authHeader, expected)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
