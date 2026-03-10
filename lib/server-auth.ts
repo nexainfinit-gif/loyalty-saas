@@ -29,19 +29,23 @@ export interface AuthContext {
 /* ── Internal: resolve user ID from Bearer header or cookie session ────────── */
 
 async function resolveUserId(request: Request): Promise<string | null> {
-  const supabase = await createClient();
-
   const raw   = request.headers.get('Authorization') ?? '';
   const token = raw.startsWith('Bearer ') ? raw.slice(7).trim() : '';
 
+  // Path 1: Bearer token (API calls from client components)
   if (token) {
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
     if (!error && user) return user.id;
   }
 
-  // Cookie session fallback (browser navigation after SupabaseSessionSync writes cookies)
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
+  // Path 2: Cookie session fallback (server components / browser navigation)
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /* ── Internal: build full auth context (parallel DB queries) ──────────────── */
