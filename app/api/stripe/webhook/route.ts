@@ -95,7 +95,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     .update({
       stripe_subscription_id: subscription.id,
       subscription_status: subscription.status,
-      current_period_end: new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000).toISOString(),
+      current_period_end: toISO((subscription as unknown as Record<string, unknown>).current_period_end),
       plan_id: planId,
       plan: planKey ?? 'pro',
     })
@@ -188,6 +188,14 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
+/** Convert Stripe timestamp (unix seconds) or ISO string to ISO string */
+function toISO(value: unknown): string | null {
+  if (!value) return null;
+  if (typeof value === 'number') return new Date(value * 1000).toISOString();
+  if (typeof value === 'string') return new Date(value).toISOString();
+  return null;
+}
+
 async function updateSubscriptionFields(
   restaurantId: string,
   subscription: Stripe.Subscription,
@@ -197,7 +205,7 @@ async function updateSubscriptionFields(
 
   const update: Record<string, unknown> = {
     subscription_status: subscription.status,
-    current_period_end: new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000).toISOString(),
+    current_period_end: toISO((subscription as unknown as Record<string, unknown>).current_period_end),
   };
 
   if (planId) update.plan_id = planId;
