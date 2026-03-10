@@ -50,7 +50,7 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
       // Paid plans → redirect to Stripe Checkout
       if (plan.price_monthly && plan.price_monthly > 0) {
         // Refresh token to ensure it's not expired
-        const { data: { session: freshSession } } = await supabase.auth.getSession();
+        const { data: { session: freshSession } } = await supabase.auth.refreshSession();
         const token = freshSession?.access_token ?? accessToken;
 
         const res = await fetch('/api/stripe/checkout', {

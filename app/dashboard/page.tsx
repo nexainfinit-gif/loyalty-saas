@@ -227,7 +227,9 @@ export default function DashboardPage() {
   /* Data load */
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Use refreshSession to get a fresh access token (getSession returns cached/expired)
+      const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+      const session = refreshed;
       if (!session) { router.replace('/dashboard/login'); return; }
       setSession(session);
 
@@ -264,10 +266,9 @@ export default function DashboardPage() {
       setSentCampaigns(camps ?? []);
 
       // Load restaurant settings (average_ticket etc.)
-      const { data: { session: s } } = await supabase.auth.getSession();
-      if (s) {
+      if (session) {
         const settingsRes = await fetch('/api/restaurant-settings', {
-          headers: { Authorization: `Bearer ${s.access_token}` },
+          headers: { Authorization: `Bearer ${session.access_token}` },
         });
         if (settingsRes.ok) {
           const { settings } = await settingsRes.json();
