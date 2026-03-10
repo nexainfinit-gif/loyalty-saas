@@ -1,6 +1,6 @@
 // app/api/campaigns/route.ts
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { requireAuth } from '@/lib/server-auth'
+import { requireAuth, requireFeature } from '@/lib/server-auth'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
@@ -12,6 +12,8 @@ export async function POST(req: Request) {
   if (!guard.restaurantId) {
     return Response.json({ error: 'Restaurant introuvable' }, { status: 404 })
   }
+  const featureGate = requireFeature(guard, 'campaigns_email', 'Campagnes email')
+  if (featureGate) return featureGate
 
   const { data: restaurant } = await supabaseAdmin
     .from('restaurants').select('id, name, primary_color, slug')

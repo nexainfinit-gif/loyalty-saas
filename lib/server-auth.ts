@@ -174,6 +174,27 @@ export async function requireScannerAuth(
   return { restaurantId: ctx.restaurantId };
 }
 
+/**
+ * Feature gate — checks plan_features for a specific feature key.
+ * Call AFTER requireAuth/requireOwner to get the AuthContext.
+ * Returns 403 with upgrade message if feature is not enabled.
+ */
+export function requireFeature(
+  ctx: AuthContext,
+  featureKey: string,
+  label?: string,
+): NextResponse | null {
+  if (ctx.features[featureKey]) return null; // allowed
+  return NextResponse.json(
+    {
+      error: `Fonctionnalité "${label ?? featureKey}" non disponible avec votre plan. Passez à un plan supérieur.`,
+      upgrade: true,
+      feature: featureKey,
+    },
+    { status: 403 },
+  );
+}
+
 export async function requireWalletAccess(
   request: Request,
 ): Promise<AuthContext | NextResponse> {

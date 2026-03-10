@@ -1015,6 +1015,23 @@ export default function DashboardPage() {
           {/* ══ CAMPAIGNS ══════════════════════════════════ */}
           {activeTab === 'campaigns' && (
             <div className="space-y-5 animate-fade-up">
+              {/* Upgrade gate for free plans */}
+              {!isPaidPlan && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-8 text-center">
+                  <div className="text-4xl mb-4">📧</div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Campagnes email</h3>
+                  <p className="text-sm text-gray-500 mb-5 max-w-md mx-auto">
+                    Envoyez des emails ciblés à vos clients pour booster vos visites. Disponible avec un plan payant.
+                  </p>
+                  <button
+                    onClick={() => setShowPlanSelection(true)}
+                    className="bg-gradient-to-r from-purple-600 to-primary-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+                  >
+                    Passer à Pro
+                  </button>
+                </div>
+              )}
+              {isPaidPlan && (<>
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
@@ -1288,6 +1305,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
+              </>)}
             </div>
           )}
 
