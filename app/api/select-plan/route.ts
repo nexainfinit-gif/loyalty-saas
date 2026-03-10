@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   // Verify plan exists and is public + active
   const { data: plan, error: planError } = await supabaseAdmin
     .from('plans')
-    .select('id, key')
+    .select('id, key, stripe_price_id')
     .eq('id', body.plan_id)
     .eq('is_public', true)
     .eq('is_active', true)
@@ -35,14 +35,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Plan invalide.' }, { status: 400 });
   }
 
-  // Check if plan requires Stripe payment
-  const { data: planFull } = await supabaseAdmin
-    .from('plans')
-    .select('id, key, stripe_price_id')
-    .eq('id', body.plan_id)
-    .maybeSingle();
-
-  if (planFull?.stripe_price_id) {
+  // Paid plans must go through Stripe checkout
+  if (plan.stripe_price_id) {
     return NextResponse.json(
       { error: 'Ce plan nécessite un abonnement Stripe. Utilisez /api/stripe/checkout.' },
       { status: 400 },

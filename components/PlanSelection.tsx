@@ -50,7 +50,10 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
       if (plan.price_monthly && plan.price_monthly > 0) {
         const res = await fetch('/api/stripe/checkout', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
           body: JSON.stringify({ planId: plan.id }),
         });
         const data = await res.json();
