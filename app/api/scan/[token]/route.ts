@@ -4,6 +4,7 @@ import { requireAuth, requireScannerAuth } from '@/lib/server-auth';
 import { NextResponse } from 'next/server';
 import { updateLoyaltyObject } from '@/lib/google-wallet';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 // Rate limiting: max 30 scans per IP per minute (covers busy service periods)
 const scanLimiter = rateLimit({ prefix: 'scan-ip', limit: 30, windowMs: 60_000 });
@@ -95,7 +96,7 @@ export async function POST(
 
   const { customer, resolvedBy } = await resolveScanToken(scanToken, restaurantId);
 
-  console.log(`[scan/POST] token="${scanToken}" resolvedBy="${resolvedBy}"`);
+  logger.info({ ctx: 'scan', rid: restaurantId, msg: `token="${scanToken}" resolvedBy="${resolvedBy}"` });
 
   if (!customer) {
     return Response.json({ error: 'Client introuvable' }, { status: 404 });
@@ -158,7 +159,7 @@ export async function POST(
   });
 
   if (insertError) {
-    console.error('[scan/POST] transaction insert failed:', insertError.message);
+    logger.error({ ctx: 'scan', rid: restaurantId, msg: 'transaction insert failed', err: insertError.message });
     return Response.json(
       { error: 'Erreur lors de l\'enregistrement du scan. Réessayez.' },
       { status: 500 },
@@ -193,12 +194,17 @@ export async function POST(
     const syncStamps = freshCustomer?.stamps_count ?? newStampsCount;
 
     await Promise.allSettled(googlePasses.map(async (p) => {
-      console.log(
-        `[GWallet/scan] objectId=${p.object_id} customer=${customer.id}` +
-        ` stamps_before=${customer.stamps_count} stamps_after=${syncStamps}` +
-        ` points_before=${customer.total_points} points_after=${syncPoints}` +
-        ` passKind=${programType}`,
-      );
+      logger.info({
+        ctx: 'scan/gwallet',
+        rid: restaurantId,
+        msg: `syncing pass objectId=${p.object_id}`,
+        customerId: customer.id,
+        stamps_before: customer.stamps_count,
+        stamps_after: syncStamps,
+        points_before: customer.total_points,
+        points_after: syncPoints,
+        passKind: programType,
+      });
 
       const result = await updateLoyaltyObject(p.object_id!, {
         passKind:    programType as 'stamps' | 'points',
@@ -207,10 +213,12 @@ export async function POST(
         stampsTotal: settings?.stamps_total ?? 10,
       });
 
-      console.log(
-        `[GWallet/scan] objectId=${p.object_id} GW_response: ok=${result.ok} HTTP ${result.status}` +
-        (!result.ok ? ` error=${result.error ?? JSON.stringify(result.data).slice(0, 200)}` : ''),
-      );
+      logger.info({
+        ctx: 'scan/gwallet',
+        rid: restaurantId,
+        msg: `GW response objectId=${p.object_id} ok=${result.ok} HTTP ${result.status}`,
+        err: !result.ok ? (result.error ?? JSON.stringify(result.data).slice(0, 200)) : undefined,
+      });
 
       await supabaseAdmin
         .from('wallet_passes')
@@ -221,7 +229,7 @@ export async function POST(
         .eq('id', p.id);
     }));
   })().catch((err) => {
-    console.error('[GWallet/scan] wallet sync unhandled error:', err instanceof Error ? err.message : String(err));
+    logger.error({ ctx: 'scan/gwallet', rid: restaurantId, msg: 'wallet sync unhandled error', err });
   });
 
   return Response.json({

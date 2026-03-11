@@ -3,6 +3,8 @@ import { Resend } from 'resend'
 import { autoIssueApplePass } from '@/lib/wallet-auto-issue'
 import { registerSlugSchema, parseBody } from '@/lib/validation'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { checkPlanLimit, planLimitError } from '@/lib/plan-limits'
+import { logger } from '@/lib/logger'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -28,7 +30,7 @@ export async function POST(
 
   const { data: restaurant, error: rErr } = await supabase
     .from('restaurants')
-    .select('id, name, primary_color')
+    .select('id, name, primary_color, plan')
     .eq('slug', slug)
     .single()
 
@@ -36,7 +38,48 @@ export async function POST(
     return Response.json({ error: 'Restaurant introuvable' }, { status: 404 })
   }
 
+  // ── Plan limit: maxCustomers ──
+  const { allowed, limit, current } = await checkPlanLimit(restaurant.id, restaurant.plan, 'customers')
+  if (!allowed) {
+    return Response.json(planLimitError('customers', current, limit), { status: 403 })
+  }
+
   const body = await req.json()
+
+  // Turnstile CAPTCHA verification (skip if secret not configured)
+  if (process.env.TURNSTILE_SECRET_KEY) {
+    const captchaToken = body.captchaToken
+    if (!captchaToken) {
+      return Response.json(
+        { error: 'Vérification anti-spam échouée. Veuillez réessayer.' },
+        { status: 400 },
+      )
+    }
+    try {
+      const turnstileRes = await fetch(
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            secret: process.env.TURNSTILE_SECRET_KEY,
+            response: captchaToken,
+            remoteip: ip,
+          }),
+        },
+      )
+      const turnstileData = await turnstileRes.json()
+      if (!turnstileData.success) {
+        return Response.json(
+          { error: 'Vérification anti-spam échouée. Veuillez réessayer.' },
+          { status: 400 },
+        )
+      }
+    } catch {
+      // If Turnstile is down, let the request through rather than blocking legitimate users
+      logger.warn({ ctx: 'register/slug', msg: 'Turnstile verification failed — skipping' })
+    }
+  }
 
   // Validate input with Zod
   const parsed = parseBody(registerSlugSchema, body)
@@ -129,7 +172,7 @@ export async function POST(
         `,
       })
     } catch (emailErr) {
-      console.error('Email error:', emailErr)
+      logger.error({ ctx: 'register/slug', rid: restaurant.id, msg: 'Welcome email failed', err: emailErr })
     }
   }
 

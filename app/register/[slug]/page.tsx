@@ -1,7 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import AddToAppleWalletButton from '@/components/AddToAppleWalletButton';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 interface Restaurant {
   id: string;
@@ -26,7 +28,45 @@ export default function RegisterPage() {
   const [customerName, setCustomerName] = useState('');
   const [walletUrl, setWalletUrl] = useState<string | null>(null);
   const [appleWalletUrl, setAppleWalletUrl] = useState<string | null>(null);
-  
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY) return;
+
+    const scriptId = 'cf-turnstile-script';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
+    function renderWidget() {
+      if (
+        turnstileRef.current &&
+        (window as any).turnstile &&
+        !turnstileRef.current.hasChildNodes()
+      ) {
+        (window as any).turnstile.render(turnstileRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (token: string) => setCaptchaToken(token),
+          'expired-callback': () => setCaptchaToken(null),
+          theme: 'light',
+        });
+      }
+    }
+
+    if ((window as any).turnstile) {
+      renderWidget();
+    } else {
+      const script = document.getElementById(scriptId);
+      script?.addEventListener('load', renderWidget);
+      return () => script?.removeEventListener('load', renderWidget);
+    }
+  }, []);
+
   useEffect(() => {
     async function loadRestaurant() {
       const res = await fetch(`/api/register/${slug}/restaurant`);
@@ -59,7 +99,7 @@ export default function RegisterPage() {
     const res = await fetch(`/api/register/${slug}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ first_name, email, birth_date: birth_date || null, phone: phone || null, consent_marketing }),
+      body: JSON.stringify({ first_name, email, birth_date: birth_date || null, phone: phone || null, consent_marketing, ...(captchaToken ? { captchaToken } : {}) }),
     });
 
     const data = await res.json();
@@ -261,6 +301,18 @@ export default function RegisterPage() {
                 }}>
                   {errorMsg}
                 </p>
+              )}
+
+              {/* Turnstile CAPTCHA */}
+              {TURNSTILE_SITE_KEY && (
+                <div
+                  ref={turnstileRef}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    marginTop: '0.25rem',
+                  }}
+                />
               )}
 
               {/* Submit */}

@@ -5,6 +5,8 @@ import { generateWalletUrl } from '@/lib/google-wallet';
 import { autoIssueApplePass } from '@/lib/wallet-auto-issue';
 import { registerSchema, parseBody } from '@/lib/validation';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { checkPlanLimit, planLimitError } from '@/lib/plan-limits';
+import { logger } from '@/lib/logger';
 
 // Rate limiting: IP-based (10 req/min) + per-restaurant (20 reg/min)
 const ipLimiter = rateLimit({ prefix: 'register-ip', limit: 10, windowMs: 60_000 });
@@ -22,6 +24,41 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
+
+  // Turnstile CAPTCHA verification (skip if secret not configured)
+  if (process.env.TURNSTILE_SECRET_KEY) {
+    const captchaToken = body.captchaToken;
+    if (!captchaToken) {
+      return NextResponse.json(
+        { error: 'Vérification anti-spam échouée. Veuillez réessayer.' },
+        { status: 400 },
+      );
+    }
+    try {
+      const turnstileRes = await fetch(
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            secret: process.env.TURNSTILE_SECRET_KEY,
+            response: captchaToken,
+            remoteip: ip,
+          }),
+        },
+      );
+      const turnstileData = await turnstileRes.json();
+      if (!turnstileData.success) {
+        return NextResponse.json(
+          { error: 'Vérification anti-spam échouée. Veuillez réessayer.' },
+          { status: 400 },
+        );
+      }
+    } catch {
+      // If Turnstile is down, let the request through rather than blocking legitimate users
+      logger.warn({ ctx: 'register', msg: 'Turnstile verification failed — skipping' });
+    }
+  }
 
   // Validate input with Zod
   const parsed = parseBody(registerSchema, body);
@@ -50,6 +87,12 @@ export async function POST(req: NextRequest) {
       { error: 'Restaurant introuvable' },
       { status: 404 }
     );
+  }
+
+  // ── Plan limit: maxCustomers ──
+  const { allowed, limit, current } = await checkPlanLimit(restaurant.id, restaurant.plan, 'customers');
+  if (!allowed) {
+    return NextResponse.json(planLimitError('customers', current, limit), { status: 403 });
   }
 
   // ── Rate limit: max RATE_MAX registrations per restaurant per RATE_WINDOW_MS ──
@@ -105,7 +148,7 @@ export async function POST(req: NextRequest) {
       logoUrl:        restaurant.logo_url ?? null,
     });
   } catch (walletError) {
-    console.error('Erreur Google Wallet:', walletError);
+    logger.error({ ctx: 'register', rid: restaurant.id, msg: 'Google Wallet URL generation failed', err: walletError });
   }
 
   // Auto-issue Apple Wallet pass if the restaurant has a default template configured.
@@ -128,7 +171,7 @@ export async function POST(req: NextRequest) {
       appleWalletUrl,
     });
   } catch (emailError) {
-    console.error('Erreur email:', emailError);
+    logger.error({ ctx: 'register', rid: restaurant.id, msg: 'Welcome email failed', err: emailError });
   }
 
   return NextResponse.json({

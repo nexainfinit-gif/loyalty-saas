@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireOwner } from '@/lib/server-auth';
+import { checkPlanLimit, planLimitError } from '@/lib/plan-limits';
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 
@@ -73,6 +74,12 @@ export async function POST(request: Request) {
   const guard = await requireOwner(request);
   if (guard instanceof NextResponse) return guard;
   if (!guard.restaurantId) return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
+
+  // ── Plan limit: maxTemplates ──
+  const { allowed, limit, current } = await checkPlanLimit(guard.restaurantId, guard.plan, 'templates');
+  if (!allowed) {
+    return NextResponse.json(planLimitError('templates', current, limit), { status: 403 });
+  }
 
   let body: Partial<CreateBody>;
   try {

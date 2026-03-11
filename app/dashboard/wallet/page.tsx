@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useSubscriptionGate } from '@/lib/use-subscription-gate';
@@ -693,12 +693,70 @@ interface TemplatesTableProps {
   onArchive:    (templateId: string) => void;
 }
 
+interface TemplatePassEntry {
+  id:         string;
+  status:     PassStatus;
+  platform:   Platform;
+  issued_at:  string;
+  customer: {
+    id:         string;
+    first_name: string;
+    last_name:  string;
+    email:      string;
+    total_points:  number;
+    stamps_count:  number;
+  } | null;
+}
+
 function TemplatesTable({ templates, token, onIssue, onSetDefault, onEdit, onArchive }: TemplatesTableProps) {
   const [settingDefault, setSettingDefault] = useState<string | null>(null);
   const [archiving,      setArchiving]      = useState<string | null>(null);
   const [archiveErr,     setArchiveErr]     = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templatePasses,     setTemplatePasses]     = useState<TemplatePassEntry[]>([]);
+  const [loadingPasses,      setLoadingPasses]      = useState(false);
+  const [passesErr,          setPassesErr]          = useState<string | null>(null);
 
   const visible = templates.filter(t => t.status !== 'archived');
+
+  async function toggleTemplatePasses(templateId: string) {
+    if (selectedTemplateId === templateId) {
+      setSelectedTemplateId(null);
+      setTemplatePasses([]);
+      return;
+    }
+    setSelectedTemplateId(templateId);
+    setLoadingPasses(true);
+    setPassesErr(null);
+    setTemplatePasses([]);
+
+    const { data, error } = await supabase
+      .from('wallet_passes')
+      .select(`
+        id,
+        status,
+        platform,
+        issued_at,
+        customer:customers (
+          id,
+          first_name,
+          last_name,
+          email,
+          total_points,
+          stamps_count
+        )
+      `)
+      .eq('template_id', templateId)
+      .eq('status', 'active')
+      .order('issued_at', { ascending: false });
+
+    setLoadingPasses(false);
+    if (error) {
+      setPassesErr(error.message);
+      return;
+    }
+    setTemplatePasses((data ?? []) as unknown as TemplatePassEntry[]);
+  }
 
   async function handleSetDefault(templateId: string) {
     setSettingDefault(templateId);
@@ -754,7 +812,8 @@ function TemplatesTable({ templates, token, onIssue, onSetDefault, onEdit, onArc
           </thead>
           <tbody className="divide-y divide-gray-100">
             {visible.map(t => (
-              <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+              <React.Fragment key={t.id}>
+              <tr className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 font-medium text-gray-900">
                   <div className="flex items-center gap-2 flex-wrap">
                     {t.primary_color && (
@@ -773,7 +832,28 @@ function TemplatesTable({ templates, token, onIssue, onSetDefault, onEdit, onArc
                     <span className="text-gray-600 capitalize">{t.status}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-semibold text-gray-800">{t.active_passes}</td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={() => t.active_passes > 0 && toggleTemplatePasses(t.id)}
+                    disabled={t.active_passes === 0}
+                    className={`inline-flex items-center gap-1 font-semibold transition-colors ${
+                      t.active_passes > 0
+                        ? 'text-primary-600 hover:text-primary-700 cursor-pointer'
+                        : 'text-gray-400 cursor-default'
+                    }`}
+                    title={t.active_passes > 0 ? 'Voir les passes actifs' : ''}
+                  >
+                    {t.active_passes}
+                    {t.active_passes > 0 && (
+                      <svg
+                        width="14" height="14" viewBox="0 0 16 16" fill="none"
+                        className={`transition-transform duration-200 ${selectedTemplateId === t.id ? 'rotate-180' : ''}`}
+                      >
+                        <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </button>
+                </td>
                 <td className="px-4 py-3 text-gray-500">
                   {t.valid_to ? new Date(t.valid_to).toLocaleDateString('fr-FR') : '—'}
                 </td>
@@ -814,6 +894,70 @@ function TemplatesTable({ templates, token, onIssue, onSetDefault, onEdit, onArc
                   </div>
                 </td>
               </tr>
+
+              {/* ── Expandable pass list panel ── */}
+              {selectedTemplateId === t.id && (
+                <tr>
+                  <td colSpan={6} className="p-0">
+                    <div className="bg-gray-50 border-t border-gray-100 px-6 py-4">
+                      {loadingPasses && (
+                        <p className="text-sm text-gray-500 py-2">Chargement des passes...</p>
+                      )}
+                      {passesErr && (
+                        <p className="text-sm text-danger-600 bg-red-50 rounded-lg px-3 py-2">{passesErr}</p>
+                      )}
+                      {!loadingPasses && !passesErr && templatePasses.length === 0 && (
+                        <p className="text-sm text-gray-400 py-2">Aucun pass actif pour ce template.</p>
+                      )}
+                      {!loadingPasses && !passesErr && templatePasses.length > 0 && (
+                        <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                              <tr>
+                                <th className="px-4 py-2.5 text-left">Client</th>
+                                <th className="px-4 py-2.5 text-left">Email</th>
+                                <th className="px-4 py-2.5 text-left">Statut</th>
+                                <th className="px-4 py-2.5 text-left">{`Émis le`}</th>
+                                <th className="px-4 py-2.5 text-right">
+                                  {t.pass_kind === 'stamps' ? 'Tampons' : 'Points'}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {templatePasses.map(p => (
+                                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                                  <td className="px-4 py-2.5 text-gray-900 font-medium">
+                                    {p.customer
+                                      ? `${p.customer.first_name} ${p.customer.last_name}`
+                                      : '—'}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-gray-500">
+                                    {p.customer?.email ?? '—'}
+                                  </td>
+                                  <td className="px-4 py-2.5">
+                                    <PassStatusBadge status={p.status} />
+                                  </td>
+                                  <td className="px-4 py-2.5 text-gray-500">
+                                    {new Date(p.issued_at).toLocaleDateString('fr-FR')}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-right font-semibold text-gray-800">
+                                    {p.customer
+                                      ? (t.pass_kind === 'stamps'
+                                          ? p.customer.stamps_count
+                                          : p.customer.total_points)
+                                      : '—'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

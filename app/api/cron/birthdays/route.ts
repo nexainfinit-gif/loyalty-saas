@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendBirthdayEmail } from '@/lib/email';
+import { logger } from '@/lib/logger';
 
 function timingSafeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     .not('email', 'is', null);
 
   if (error || !customers) {
-    console.error('[cron/birthdays] DB error:', error);
+    logger.error({ ctx: 'cron/birthdays', msg: 'DB query failed', err: error });
     return NextResponse.json({ error: 'Erreur base de données' }, { status: 500 });
   }
 
@@ -59,7 +60,7 @@ export async function GET(req: NextRequest) {
   for (const [restaurantId, group] of byRestaurant) {
     const capped = group.slice(0, MAX_BIRTHDAY_EMAILS_PER_RESTAURANT);
     if (capped.length < group.length) {
-      console.warn(`[cron/birthdays] restaurant ${restaurantId}: capped ${group.length} → ${capped.length}`);
+      logger.warn({ ctx: 'cron/birthdays', rid: restaurantId, msg: `capped ${group.length} birthday emails to ${capped.length}` });
     }
     for (const c of capped) {
       const restaurant = c.restaurants as unknown as { name: string; primary_color: string } | null;
@@ -81,7 +82,7 @@ export async function GET(req: NextRequest) {
   const sent   = results.filter((r) => r.status === 'fulfilled').length;
   const failed = results.filter((r) => r.status === 'rejected').length;
 
-  console.log(`[cron/birthdays] sent=${sent} failed=${failed} total=${birthdayCustomers.length} restaurants=${byRestaurant.size}`);
+  logger.info({ ctx: 'cron/birthdays', msg: `completed: sent=${sent} failed=${failed} total=${birthdayCustomers.length} restaurants=${byRestaurant.size}` });
 
   return NextResponse.json({
     success: true,

@@ -3,6 +3,9 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAuth, requireFeature } from '@/lib/server-auth'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { checkPlanLimit, planLimitError } from '@/lib/plan-limits'
+import { logger } from '@/lib/logger'
+import { auditLog } from '@/lib/audit'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -14,6 +17,12 @@ export async function POST(req: Request) {
   }
   const featureGate = requireFeature(guard, 'campaigns_email', 'Campagnes email')
   if (featureGate) return featureGate
+
+  // ── Plan limit: maxCampaignsPerMonth ──
+  const { allowed, limit, current } = await checkPlanLimit(guard.restaurantId, guard.plan, 'campaigns')
+  if (!allowed) {
+    return Response.json(planLimitError('campaigns', current, limit), { status: 403 })
+  }
 
   const { data: restaurant } = await supabaseAdmin
     .from('restaurants').select('id, name, primary_color, slug')
@@ -130,14 +139,14 @@ export async function POST(req: Request) {
       } else {
         const { data, error: batchErr } = await resend.batch.send(batch)
         if (batchErr) {
-          console.error(`Batch ${i / BATCH_SIZE} failed:`, batchErr)
+          logger.error({ ctx: 'campaigns', rid: restaurant.id, msg: `Batch ${i / BATCH_SIZE} failed`, err: batchErr })
           failCount += batch.length
         } else {
           sentCount += data?.data?.length ?? batch.length
         }
       }
     } catch (err) {
-      console.error(`Batch ${i / BATCH_SIZE} error:`, err)
+      logger.error({ ctx: 'campaigns', rid: restaurant.id, msg: `Batch ${i / BATCH_SIZE} error`, err })
       failCount += batch.length
     }
   }
@@ -148,6 +157,22 @@ export async function POST(req: Request) {
     sent_at: new Date().toISOString(),
     recipients_count: sentCount,
   }).eq('id', campaign.id)
+
+  // Fire-and-forget audit log
+  auditLog({
+    restaurantId: restaurant.id,
+    actorId: guard.userId,
+    action: 'campaign_send',
+    targetType: 'campaign',
+    targetId: campaign.id,
+    metadata: {
+      name,
+      segment,
+      sent: sentCount,
+      failed: failCount,
+      total: recipients.length,
+    },
+  })
 
   return Response.json({
     success: true,

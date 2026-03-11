@@ -1,7 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import QRCode from 'react-qr-code';
 import AddToAppleWalletButton from '@/components/AddToAppleWalletButton';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 interface Restaurant {
   id: string;
@@ -23,6 +25,45 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
   } | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY) return;
+
+    const scriptId = 'cf-turnstile-script';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
+    function renderWidget() {
+      if (
+        turnstileRef.current &&
+        (window as any).turnstile &&
+        !turnstileRef.current.hasChildNodes()
+      ) {
+        (window as any).turnstile.render(turnstileRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (token: string) => setCaptchaToken(token),
+          'expired-callback': () => setCaptchaToken(null),
+          theme: 'light',
+        });
+      }
+    }
+
+    // If script already loaded, render immediately; otherwise wait for load
+    if ((window as any).turnstile) {
+      renderWidget();
+    } else {
+      const script = document.getElementById(scriptId);
+      script?.addEventListener('load', renderWidget);
+      return () => script?.removeEventListener('load', renderWidget);
+    }
+  }, []);
 
   const validateField = (name: string, value: string) => {
     let error = '';
@@ -56,6 +97,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
         birthDate: form.get('birthDate') || null,
         postalCode: form.get('postalCode') || null,
         marketingConsent: form.get('marketingConsent') === 'on',
+        ...(captchaToken ? { captchaToken } : {}),
       }),
     });
 
@@ -489,6 +531,18 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
               }}>
                 {errorMsg}
               </p>
+            )}
+
+            {/* Turnstile CAPTCHA */}
+            {TURNSTILE_SITE_KEY && (
+              <div
+                ref={turnstileRef}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  marginTop: '0.25rem',
+                }}
+              />
             )}
 
             {/* Bouton submit */}

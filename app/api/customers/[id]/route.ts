@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireOwner } from '@/lib/server-auth';
+import { auditLog } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 
 /**
  * DELETE /api/customers/:id
@@ -58,9 +60,23 @@ export async function DELETE(
     .eq('restaurant_id', guard.restaurantId);
 
   if (delErr) {
-    console.error('[GDPR/delete] Failed to delete customer:', delErr.message);
+    logger.error({ ctx: 'customers/delete', rid: guard.restaurantId, msg: 'Failed to delete customer', err: delErr.message });
     return NextResponse.json({ error: 'Erreur lors de la suppression.' }, { status: 500 });
   }
+
+  // Fire-and-forget audit log
+  auditLog({
+    restaurantId: guard.restaurantId,
+    actorId: guard.userId,
+    action: 'customer_delete',
+    targetType: 'customer',
+    targetId: customerId,
+    metadata: {
+      first_name: customer.first_name,
+      last_name: customer.last_name,
+      email: customer.email,
+    },
+  });
 
   return NextResponse.json({
     success: true,

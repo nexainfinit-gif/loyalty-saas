@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { buildPkpass, pkpassResponse } from '@/lib/apple-wallet';
 import type { PassBuildInput } from '@/lib/apple-wallet';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { pkpassCache } from '@/lib/pkpass-cache';
 
 // 10 downloads per minute per IP — pkpass generation is CPU-intensive (Sharp + JSZip + signing)
 const limiter = rateLimit({ prefix: 'pkpass-download', limit: 10, windowMs: 60_000 });
@@ -47,6 +48,7 @@ export async function GET(
       serial_number,
       customer_id,
       restaurant_id,
+      pass_version,
       template:wallet_pass_templates (
         pass_kind,
         primary_color,
@@ -139,7 +141,18 @@ export async function GET(
   };
 
   try {
-    const buffer   = await buildPkpass(input);
+    const passVersion = (pass as { pass_version?: number }).pass_version ?? 1;
+    const cacheKey    = `${passId}:${passVersion}`;
+    const cached      = pkpassCache.get(cacheKey);
+
+    let buffer: Buffer;
+    if (cached) {
+      buffer = cached;
+    } else {
+      buffer = await buildPkpass(input);
+      pkpassCache.set(cacheKey, buffer);
+    }
+
     const filename = `${restaurant.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-pass.pkpass`;
     return pkpassResponse(buffer, filename);
   } catch (err: unknown) {

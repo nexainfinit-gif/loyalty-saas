@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireOwner } from '@/lib/server-auth';
 import { revokeLoyaltyObject, updateLoyaltyObject } from '@/lib/google-wallet';
+import { auditLog } from '@/lib/audit';
 
 /*
  * GET  /api/wallet/passes/:id   — single pass details
@@ -123,6 +124,20 @@ export async function PATCH(
     if (pass.platform === 'google' && pass.object_id) {
       void revokeLoyaltyObject(pass.object_id).catch(() => {/* silent */});
     }
+
+    // Fire-and-forget audit log
+    auditLog({
+      restaurantId: guard.restaurantId!,
+      actorId: guard.userId,
+      action: 'pass_revoke',
+      targetType: 'pass',
+      targetId: passId,
+      metadata: {
+        platform: pass.platform,
+        customer_id: pass.customer_id,
+        object_id: pass.object_id,
+      },
+    });
 
     return NextResponse.json({ pass: updated });
   }
