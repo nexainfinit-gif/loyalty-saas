@@ -129,6 +129,8 @@ function LoginForm() {
               </label>
               <input
                 type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 placeholder="• • • • • • • •"
                 value={otp}
                 onChange={e => setOtp(e.target.value)}
