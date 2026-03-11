@@ -155,7 +155,11 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
 
                     {/* Features list */}
                     <ul className="space-y-2.5 mb-6">
-                      {PLAN_FEATURE_KEYS.map(f => {
+                      {[...PLAN_FEATURE_KEYS].sort((a, b) => {
+                        const ae = plan.features[a.key] ?? false;
+                        const be = plan.features[b.key] ?? false;
+                        return ae === be ? 0 : ae ? -1 : 1;
+                      }).map(f => {
                         const enabled = plan.features[f.key] ?? false;
                         return (
                           <li key={f.key} className="flex items-center gap-2.5">
