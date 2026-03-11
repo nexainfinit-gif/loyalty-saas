@@ -1403,6 +1403,7 @@ export default function DashboardPage() {
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1.5">Nom</label>
                       <input
+                        autoComplete="organization"
                         value={editName}
                         onChange={e => { setEditName(e.target.value); setInfoMsg(''); }}
                         className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-primary-600/20"
@@ -1411,6 +1412,7 @@ export default function DashboardPage() {
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1.5">Slug</label>
                       <input
+                        autoComplete="off"
                         value={editSlug}
                         onChange={e => { setEditSlug(e.target.value); setInfoMsg(''); }}
                         className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-primary-600/20"

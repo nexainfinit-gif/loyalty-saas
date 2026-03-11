@@ -155,6 +155,7 @@ export default function OnboardingPage() {
               <input
                 name="email"
                 type="email"
+                autoComplete="email"
                 defaultValue={authEmail}
                 placeholder="contact@moncommerce.be"
                 required
@@ -169,6 +170,7 @@ export default function OnboardingPage() {
               </label>
               <input
                 name="name"
+                autoComplete="organization"
                 placeholder="Ex: Le Petit Bistro"
                 required
                 className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
@@ -214,6 +216,7 @@ export default function OnboardingPage() {
               </label>
               <input
                 name="city"
+                autoComplete="address-level2"
                 placeholder="Ex: Bruxelles"
                 required
                 className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
@@ -228,6 +231,7 @@ export default function OnboardingPage() {
               <input
                 name="phone"
                 type="tel"
+                autoComplete="tel"
                 placeholder="Ex: +32 470 00 00 00"
                 className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
               />

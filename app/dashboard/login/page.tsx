@@ -97,6 +97,7 @@ function LoginForm() {
               </label>
               <input
                 type="email"
+                autoComplete="email"
                 placeholder="vous@restaurant.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}

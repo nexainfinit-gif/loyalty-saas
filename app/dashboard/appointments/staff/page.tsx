@@ -327,6 +327,7 @@ export default function StaffPage() {
                 <label className="text-xs font-medium text-gray-500 mb-1.5 block">Nom complet</label>
                 <input
                   type="text"
+                  autoComplete="name"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
@@ -340,6 +341,7 @@ export default function StaffPage() {
                   <label className="text-xs font-medium text-gray-500 mb-1.5 block">Email</label>
                   <input
                     type="email"
+                    autoComplete="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
@@ -349,6 +351,7 @@ export default function StaffPage() {
                   <label className="text-xs font-medium text-gray-500 mb-1.5 block">Téléphone</label>
                   <input
                     type="tel"
+                    autoComplete="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"

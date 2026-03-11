@@ -160,6 +160,7 @@ export default function CreateAppointmentModal({
               </label>
               <input
                 type="text"
+                autoComplete="name"
                 value={form.client_name}
                 onChange={(e) => update('client_name', e.target.value)}
                 required
@@ -176,6 +177,7 @@ export default function CreateAppointmentModal({
                 </label>
                 <input
                   type="email"
+                  autoComplete="email"
                   value={form.client_email}
                   onChange={(e) => update('client_email', e.target.value)}
                   placeholder="marie@email.com"
@@ -188,6 +190,7 @@ export default function CreateAppointmentModal({
                 </label>
                 <input
                   type="tel"
+                  autoComplete="tel"
                   value={form.client_phone}
                   onChange={(e) => update('client_phone', e.target.value)}
                   placeholder="0470 12 34 56"

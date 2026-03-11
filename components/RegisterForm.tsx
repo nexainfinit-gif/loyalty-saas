@@ -346,6 +346,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
                 </label>
                 <input
                   name="firstName"
+                  autoComplete="given-name"
                   placeholder="Jean"
                   required
                   style={inputStyle('firstName')}
@@ -359,6 +360,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
                 </label>
                 <input
                   name="lastName"
+                  autoComplete="family-name"
                   placeholder="Dupont"
                   required
                   style={inputStyle('lastName')}
@@ -376,6 +378,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
               <input
                 name="email"
                 type="email"
+                autoComplete="email"
                 placeholder="jean@exemple.com"
                 required
                 style={inputStyle('email')}
@@ -393,6 +396,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
                 <input
                   name="birthDate"
                   type="date"
+                  autoComplete="bday"
                   style={inputStyle('birthDate')}
                   onFocus={() => setFocusedField('birthDate')}
                   onBlur={() => setFocusedField(null)}
@@ -404,6 +408,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
                 </label>
                 <input
                   name="postalCode"
+                  autoComplete="postal-code"
                   placeholder="1000"
                   style={inputStyle('postalCode')}
                   onFocus={() => setFocusedField('postalCode')}
