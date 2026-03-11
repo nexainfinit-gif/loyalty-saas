@@ -179,6 +179,8 @@ export default function DashboardPage() {
   const [loading, setLoading]           = useState(true);
   const [search, setSearch]             = useState('');
   const [filter, setFilter]             = useState('all');
+  const [clientsPage, setClientsPage]   = useState(1);
+  const CLIENTS_PER_PAGE = 50;
   const [sidebarOpen, setSidebarOpen]   = useState(true);
   const [session, setSession]           = useState<Session | null>(null);
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings>({
@@ -440,6 +442,12 @@ export default function DashboardPage() {
       filter === 'new'      ? new Date(c.created_at) >= new Date(today.getFullYear(), today.getMonth(), 1) : true;
     return matchSearch && matchFilter;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / CLIENTS_PER_PAGE));
+  const paginatedCustomers = filteredCustomers.slice(
+    (clientsPage - 1) * CLIENTS_PER_PAGE,
+    clientsPage * CLIENTS_PER_PAGE,
+  );
 
   /* Handlers */
   async function addPoint(customerId: string, delta: number) {
@@ -918,7 +926,7 @@ export default function DashboardPage() {
                   </span>
                   <input
                     value={search}
-                    onChange={e => setSearch(e.target.value)}
+                    onChange={e => { setSearch(e.target.value); setClientsPage(1); }}
                     placeholder="Rechercher un client..."
                     className="w-full pl-10 pr-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors"
                   />
@@ -933,7 +941,7 @@ export default function DashboardPage() {
                   ].map(f => (
                     <button
                       key={f.id}
-                      onClick={() => setFilter(f.id)}
+                      onClick={() => { setFilter(f.id); setClientsPage(1); }}
                       className={[
                         'px-4 py-2.5 text-sm font-medium rounded-xl transition-all whitespace-nowrap flex-shrink-0',
                         filter === f.id
@@ -955,7 +963,7 @@ export default function DashboardPage() {
                     <p className="text-sm text-gray-400 font-medium">Aucun client trouvé</p>
                   </div>
                 )}
-                {filteredCustomers.map(c => (
+                {paginatedCustomers.map(c => (
                   <div key={c.id} className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="min-w-0">
@@ -1053,7 +1061,7 @@ export default function DashboardPage() {
                         </td>
                       </tr>
                     )}
-                    {filteredCustomers.map(c => (
+                    {paginatedCustomers.map(c => (
                       <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                         <td className="px-4 py-3.5 font-semibold text-gray-900 whitespace-nowrap">
                           {c.first_name} {c.last_name}
@@ -1117,6 +1125,34 @@ export default function DashboardPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-1 pt-4">
+                  <p className="text-xs text-gray-400">
+                    {(clientsPage - 1) * CLIENTS_PER_PAGE + 1}–{Math.min(clientsPage * CLIENTS_PER_PAGE, filteredCustomers.length)} sur {filteredCustomers.length}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setClientsPage(p => Math.max(1, p - 1))}
+                      disabled={clientsPage === 1}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      ←
+                    </button>
+                    <span className="text-sm text-gray-600 font-medium px-2">
+                      {clientsPage} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setClientsPage(p => Math.min(totalPages, p + 1))}
+                      disabled={clientsPage === totalPages}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

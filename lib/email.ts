@@ -211,7 +211,7 @@ export async function sendBookingConfirmationEmail({
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
 
         <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
-          ${safeBizName} — Réservation en ligne par <a href="https://rebites.app" style="color: #9ca3af; text-decoration: underline;">Rebites</a>
+          ${safeBizName} — Réservation en ligne par <a href="https://rebites.be" style="color: #9ca3af; text-decoration: underline;">Rebites</a>
         </p>
       </div>
     `,
@@ -393,7 +393,7 @@ export async function sendReminderEmail({
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
 
         <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
-          ${safeBizName} — Réservation en ligne par <a href="https://rebites.app" style="color: #9ca3af; text-decoration: underline;">Rebites</a>
+          ${safeBizName} — Réservation en ligne par <a href="https://rebites.be" style="color: #9ca3af; text-decoration: underline;">Rebites</a>
         </p>
       </div>
     `,
