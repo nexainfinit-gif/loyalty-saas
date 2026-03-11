@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 import { PLAN_FEATURE_KEYS } from '@/lib/plan-features';
 
 interface Plan {
@@ -67,7 +68,7 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
           window.location.href = data.url;
           return;
         }
-        alert(data.error || 'Erreur lors de la création du paiement.');
+        toast.error(data.error || 'Erreur lors de la création du paiement.');
         setSelecting(null);
         return;
       }

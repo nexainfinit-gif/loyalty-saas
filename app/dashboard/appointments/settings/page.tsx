@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Save, Clock, Calendar, Bell, Star, Shield, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { AppointmentSettings } from '@/types/appointments'
 import { api } from '@/lib/use-api'
 
@@ -51,6 +52,9 @@ export default function SettingsPage() {
     if (!res.error) {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+      toast.success('Paramètres enregistrés')
+    } else {
+      toast.error('Erreur lors de l\'enregistrement')
     }
   }
 

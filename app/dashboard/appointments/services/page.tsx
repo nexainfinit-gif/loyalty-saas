@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, Clock, Euro, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { Service } from '@/types/appointments'
 import { api } from '@/lib/use-api'
 
@@ -82,6 +83,7 @@ export default function ServicesPage() {
     }
     setSaving(false)
     setShowForm(false)
+    toast.success(editingId ? 'Service modifié' : 'Service créé')
   }
 
   const toggleActive = async (id: string) => {

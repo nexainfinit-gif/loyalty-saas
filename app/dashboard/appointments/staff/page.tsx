@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, ToggleLeft, ToggleRight, Clock, Scissors, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { StaffMember, StaffAvailability, Service } from '@/types/appointments'
 import { api } from '@/lib/use-api'
 
@@ -90,6 +91,7 @@ export default function StaffPage() {
     }
     setSaving(false)
     setModalView('list')
+    toast.success(editingId ? 'Employé modifié' : 'Employé ajouté')
   }
 
   const toggleActive = async (id: string) => {
@@ -172,6 +174,7 @@ export default function StaffPage() {
     })
     setSaving(false)
     setModalView('list')
+    toast.success('Horaires enregistrés')
   }
 
   const scheduleStaff = scheduleStaffId ? staff.find((s) => s.id === scheduleStaffId) : null

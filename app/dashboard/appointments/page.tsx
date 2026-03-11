@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { format, addDays, subDays } from 'date-fns'
+import { toast } from 'sonner'
 import CalendarView from '@/components/appointments/CalendarView'
 import CreateAppointmentModal from '@/components/appointments/CreateModal'
 import AppointmentDetailModal from '@/components/appointments/DetailModal'
@@ -84,6 +85,7 @@ export default function AgendaPage() {
     })
     if (res.data) {
       setAppointments((prev) => [...prev, res.data!.appointment])
+      toast.success('Rendez-vous créé')
     }
   }
 
@@ -96,6 +98,8 @@ export default function AgendaPage() {
       setAppointments((prev) =>
         prev.map((a) => (a.id === id ? res.data!.appointment : a))
       )
+      const labels: Record<string, string> = { completed: 'Terminé', no_show: 'Absent marqué', cancelled: 'Annulé' }
+      toast.success(labels[status] || 'Statut mis à jour')
     }
     setSelectedAppointment(null)
   }

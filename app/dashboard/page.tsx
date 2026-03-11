@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 // Recharts imported by sub-components (OverviewTab, AnalyticsTab)
 import { Badge } from '@/components/ui/Badge';
 import DashboardTutorial from '@/components/DashboardTutorial';
@@ -409,11 +410,13 @@ export default function DashboardPage() {
       metadata: { reason: 'Ajout manuel dashboard' },
     });
     setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, total_points: Math.max(0, c.total_points + delta) } : c));
+    toast.success(delta > 0 ? `+${delta} point(s) ajouté(s)` : `${delta} point(s) retiré(s)`);
   }
 
   function copyWalletUrl(customerId: string) {
     const url = `${window.location.origin}/api/wallet/${customerId}`;
     navigator.clipboard?.writeText?.(url);
+    toast.success('Lien copié !');
   }
 
   async function saveLoyaltySettings() {
@@ -430,6 +433,7 @@ export default function DashboardPage() {
       previous_program_type: loyaltySettings.previous_program_type,
     }, { onConflict: 'restaurant_id' });
     setSavingSettings(false);
+    toast.success('Paramètres de fidélité enregistrés');
   }
 
   async function uploadLogo() {
@@ -466,6 +470,7 @@ export default function DashboardPage() {
     setLogoUploading(false);
     setLogoSaved(true);
     setTimeout(() => setLogoSaved(false), 3000);
+    toast.success('Logo mis à jour');
   }
 
   function getSegmentCount(segment: string): number {
@@ -502,12 +507,12 @@ export default function DashboardPage() {
           scheduled_at: newCampaign.scheduled_at || null,
         };
         setSentCampaigns(prev => [newEntry, ...prev]);
-        alert(data.scheduled ? 'Campagne planifiée !' : `${data.sent} email(s) envoyé(s) avec succès !`);
+        toast.success(data.scheduled ? 'Campagne planifiée !' : `${data.sent} email(s) envoyé(s) avec succès !`);
       } else {
-        alert('Erreur : ' + (data.error ?? 'Inconnu'));
+        toast.error('Erreur : ' + (data.error ?? 'Inconnu'));
       }
     } catch {
-      alert('Erreur réseau');
+      toast.error('Erreur réseau');
     }
     setSendingCampaign(false);
   }
@@ -1559,8 +1564,8 @@ export default function DashboardPage() {
                               });
                               const data = await res.json();
                               if (data.url) window.location.href = data.url;
-                              else alert(data.error || 'Erreur lors de l\'ouverture du portail.');
-                            } catch { alert('Erreur réseau.'); }
+                              else toast.error(data.error || 'Erreur lors de l\'ouverture du portail.');
+                            } catch { toast.error('Erreur réseau.'); }
                           }}
                           className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
                         >

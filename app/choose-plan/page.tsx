@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { PLAN_FEATURE_KEYS } from '@/lib/plan-features';
 
 interface Plan {
@@ -84,7 +85,7 @@ export default function ChoosePlanPage() {
         window.location.href = data.url;
         return;
       }
-      alert(data.error || 'Erreur lors de la création du paiement.');
+      toast.error(data.error || 'Erreur lors de la création du paiement.');
       setSelecting(null);
     } catch {
       setSelecting(null);

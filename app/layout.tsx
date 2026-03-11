@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import SupabaseDevExpose from "@/components/SupabaseDevExpose";
 import SupabaseSessionSync from "@/components/SupabaseSessionSync";
 import "./globals.css";
@@ -36,6 +37,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
+        <Toaster position="top-center" richColors closeButton toastOptions={{ className: 'text-sm' }} />
         <SupabaseSessionSync />
         {process.env.NODE_ENV === 'development' ? <SupabaseDevExpose /> : null}
         {children}

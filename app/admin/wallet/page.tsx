@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 
@@ -281,10 +282,11 @@ export default function AdminWalletPage() {
     try {
       const res  = await fetch(`/api/admin/wallet/templates/${id}`, { method: 'DELETE' });
       const json = await res.json();
-      if (!res.ok) { alert(json.error ?? 'Erreur lors de la suppression.'); return; }
+      if (!res.ok) { toast.error(json.error ?? 'Erreur lors de la suppression.'); return; }
       setTemplates((prev) => prev.filter((t) => t.id !== id));
+      toast.success('Template supprimé');
     } catch {
-      alert('Erreur réseau.');
+      toast.error('Erreur réseau.');
     } finally {
       setDeletingId(null);
     }
