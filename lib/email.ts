@@ -41,7 +41,7 @@ export async function sendWelcomeEmail({
   const safeFname = esc(firstName);
 
   await resend.emails.send({
-    from: 'Carte Fidélité <noreply@rebites.be>',
+    from: `${restaurantName} <noreply@rebites.be>`,
     to,
     subject: `Bienvenue chez ${restaurantName} ! 🎉`,
     html: `
@@ -155,7 +155,7 @@ export async function sendBookingConfirmationEmail({
   const bookingPageUrl = `${process.env.NEXT_PUBLIC_APP_URL}/book/${businessSlug}`;
 
   await resend.emails.send({
-    from: 'Rebites <noreply@rebites.be>',
+    from: `${businessName} <noreply@rebites.be>`,
     to,
     subject: `Rendez-vous confirmé — ${businessName}`,
     html: `
@@ -252,7 +252,7 @@ export async function sendBirthdayEmail({
     : null;
 
   await resend.emails.send({
-    from: 'Carte Fidélité <noreply@rebites.be>',
+    from: `${restaurantName} <noreply@rebites.be>`,
     to,
     subject: `Joyeux anniversaire ${firstName} ! 🎂`,
     html: `
@@ -347,7 +347,7 @@ export async function sendReminderEmail({
     + `&location=${encodeURIComponent(businessName)}`;
 
   await resend.emails.send({
-    from: 'Rebites <noreply@rebites.be>',
+    from: `${businessName} <noreply@rebites.be>`,
     to,
     subject,
     html: `

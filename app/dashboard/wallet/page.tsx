@@ -59,6 +59,24 @@ interface Pass {
   } | null;
 }
 
+/* ── Tooltip helper ──────────────────────────────────────────────────────── */
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="relative group inline-flex items-center ml-1">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-400 hover:text-primary-600 transition-colors cursor-help shrink-0">
+        <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M8 7v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="8" cy="5" r="0.75" fill="currentColor" />
+      </svg>
+      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 rounded-xl bg-gray-900 text-white text-xs leading-relaxed px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 shadow-lg text-center">
+        {text}
+        <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-[5px] border-x-transparent border-t-[5px] border-t-gray-900" />
+      </span>
+    </span>
+  );
+}
+
 /* ── Module-scope sub-components ──────────────────────────────────────────── */
 
 const KIND_LABELS: Record<PassKind, string> = {
@@ -180,7 +198,7 @@ function CreateTemplateModal({ token, restaurantId, loyaltySettings, onCreated, 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center">Type<InfoTooltip text="Tampons = carte à tampons (ex. 10 visites = 1 récompense). Points = les clients cumulent des points à chaque visite." /></label>
             <select
               value={type} onChange={e => setType(e.target.value as PassKind)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -287,8 +305,8 @@ function CreateTemplateModal({ token, restaurantId, loyaltySettings, onCreated, 
               className="rounded mt-0.5"
             />
             <div>
-              <label htmlFor="isDefault" className="text-sm text-gray-700 font-medium cursor-pointer">
-                Utiliser comme template par défaut (auto-attribution au client)
+              <label htmlFor="isDefault" className="text-sm text-gray-700 font-medium cursor-pointer inline-flex items-center">
+                Utiliser comme template par défaut<InfoTooltip text="Le template par défaut est la carte attribuée automatiquement à chaque nouveau client qui s'inscrit." />
               </label>
               <p className="text-xs text-gray-500 mt-0.5">Un seul template peut être le template par défaut.</p>
             </div>
@@ -481,8 +499,8 @@ function EditTemplateModal({ template, token, loyaltySettings, onUpdated, onClos
               className="rounded mt-0.5"
             />
             <div>
-              <label htmlFor="edit-isDefault" className="text-sm text-gray-700 font-medium cursor-pointer">
-                Utiliser comme template par défaut (auto-attribution au client)
+              <label htmlFor="edit-isDefault" className="text-sm text-gray-700 font-medium cursor-pointer inline-flex items-center">
+                Utiliser comme template par défaut<InfoTooltip text="Le template par défaut est la carte attribuée automatiquement à chaque nouveau client qui s'inscrit." />
               </label>
               <p className="text-xs text-gray-500 mt-0.5">Un seul template peut être le template par défaut.</p>
             </div>
@@ -727,8 +745,8 @@ function TemplatesTable({ templates, token, onIssue, onSetDefault, onEdit, onArc
           <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
             <tr>
               <th className="px-4 py-3 text-left">Nom</th>
-              <th className="px-4 py-3 text-left">Type</th>
-              <th className="px-4 py-3 text-left">Statut</th>
+              <th className="px-4 py-3 text-left"><span className="inline-flex items-center">Type<InfoTooltip text="Tampons = carte à tampons (ex. 10 cafés = 1 offert). Points = récompense au cumul de points." /></span></th>
+              <th className="px-4 py-3 text-left"><span className="inline-flex items-center">Statut<InfoTooltip text="Publié = actif et distribuable aux clients. Brouillon = en cours de création. Archivé = désactivé et masqué." /></span></th>
               <th className="px-4 py-3 text-right">Passes actifs</th>
               <th className="px-4 py-3 text-left">Valide jusqu&apos;au</th>
               <th className="px-4 py-3" />
@@ -744,7 +762,7 @@ function TemplatesTable({ templates, token, onIssue, onSetDefault, onEdit, onArc
                     )}
                     {t.name}
                     {t.is_default && (
-                      <span className="text-xs bg-amber-100 text-amber-700 rounded px-1.5 py-0.5">Défaut</span>
+                      <span className="text-xs bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 inline-flex items-center">Défaut<InfoTooltip text="Template par défaut : chaque nouveau client reçoit automatiquement cette carte de fidélité." /></span>
                     )}
                   </div>
                 </td>
@@ -818,6 +836,7 @@ function CustomerPassesPanel({ token, customers }: CustomerPassesPanelProps) {
   const [loading,        setLoading]        = useState(false);
   const [revoking,       setRevoking]       = useState<string | null>(null);
   const [syncing,        setSyncing]        = useState<string | null>(null);
+  const [reissuing,      setReissuing]      = useState<string | null>(null);
   const [actionErr,      setActionErr]      = useState<string | null>(null);
 
   const filtered = customers.filter(c => {
@@ -869,6 +888,26 @@ function CustomerPassesPanel({ token, customers }: CustomerPassesPanelProps) {
         ? { ...p, last_synced_at: json.synced ? now : p.last_synced_at, sync_error: json.syncError }
         : p,
     ));
+  }
+
+  async function handleReissue(pass: Pass) {
+    if (!pass.template) return;
+    setReissuing(pass.id);
+    setActionErr(null);
+    const res = await fetch('/api/wallet/passes/issue', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({
+        customerId: selectedId,
+        templateId: pass.template.id,
+        platform:   pass.platform,
+      }),
+    });
+    const json = await res.json();
+    setReissuing(null);
+    if (!res.ok) { setActionErr(json.error ?? 'Erreur lors de la ré-émission.'); return; }
+    // Refresh the full passes list to show the new active pass
+    await loadPasses(selectedId);
   }
 
   return (
@@ -979,6 +1018,15 @@ function CustomerPassesPanel({ token, customers }: CustomerPassesPanelProps) {
                               {syncing === p.id ? '…' : 'Sync'}
                             </button>
                           )}
+                          {(p.status === 'revoked' || p.status === 'expired') && p.template && (
+                            <button
+                              onClick={() => handleReissue(p)}
+                              disabled={reissuing === p.id}
+                              className="text-xs text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 disabled:opacity-50 px-2 py-1 rounded-xl transition-colors"
+                            >
+                              {reissuing === p.id ? '…' : 'Ré-émettre'}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1037,7 +1085,20 @@ function TestAppleWalletButton({ token }: { token: string }) {
       >
         {loading ? 'Génération…' : '📱 Tester sur iPhone'}
       </button>
-      {err && <p className="text-xs text-red-600 max-w-xs">{err}</p>}
+      {err && (
+        <div className="text-xs max-w-xs">
+          <p className="text-red-600">{err}</p>
+          {err.includes('configuré') && (
+            <p className="text-gray-500 mt-1">
+              Pour activer Apple Wallet : créez un Pass Type ID dans la{' '}
+              <a href="https://developer.apple.com/account/resources/identifiers/list/passTypeId" target="_blank" rel="noopener noreferrer" className="text-primary-600 underline">
+                Apple Developer Console
+              </a>
+              , puis configurez les variables APPLE_PASS_* dans vos paramètres serveur.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1295,7 +1356,7 @@ export default function WalletStudioPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Templates de passes</h2>
+              <h2 className="text-base font-semibold text-gray-900 inline-flex items-center">Templates de passes<InfoTooltip text="Un template est le modèle de votre carte de fidélité numérique : il définit le design, les règles de points ou tampons, et la récompense." /></h2>
               <p className="text-sm text-gray-500 mt-0.5">
                 {visibleTemplates.length === 0
                   ? 'Créez votre premier template pour commencer à émettre des passes.'

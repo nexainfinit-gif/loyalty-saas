@@ -155,7 +155,16 @@ async function fetchOrSolid(
 
 /* ── CMS / PKCS#7 signing ───────────────────────────────────────────────────── */
 
-function signManifest(manifestBuf: Buffer): Buffer {
+// Cache parsed certificates at module level to avoid re-parsing on every request
+let _cachedCert: forge.pki.Certificate | null = null;
+let _cachedKey:  forge.pki.PrivateKey   | null = null;
+let _cachedWwdr: forge.pki.Certificate  | null = null;
+
+function getCachedCredentials() {
+  if (_cachedCert && _cachedKey && _cachedWwdr) {
+    return { cert: _cachedCert, pkey: _cachedKey, wwdrCert: _cachedWwdr };
+  }
+
   const certP12B64 = process.env.APPLE_PASS_CERT_P12_BASE64 ?? '';
   const passphrase = process.env.APPLE_PASS_CERT_PASSPHRASE ?? '';
   const wwdrPem    = process.env.APPLE_WWDR_PEM             ?? '';
@@ -167,7 +176,6 @@ function signManifest(manifestBuf: Buffer): Buffer {
     );
   }
 
-  // Decode P12/PFX
   const p12Der  = forge.util.decode64(certP12B64);
   const p12Asn1 = forge.asn1.fromDer(p12Der);
   const p12     = forge.pkcs12.pkcs12FromAsn1(p12Asn1, passphrase);
@@ -180,8 +188,25 @@ function signManifest(manifestBuf: Buffer): Buffer {
 
   if (!cert || !pkey) throw new Error('P12: certificat ou clé privée introuvable dans le fichier.');
 
-  // WWDR intermediate cert (Apple Worldwide Developer Relations)
   const wwdrCert = forge.pki.certificateFromPem(wwdrPem);
+
+  // Log cert expiry for monitoring
+  if (cert.validity?.notAfter) {
+    const daysUntilExpiry = Math.floor((cert.validity.notAfter.getTime() - Date.now()) / 86400000);
+    if (daysUntilExpiry < 60) {
+      console.warn(`[Apple Wallet] Certificate expires in ${daysUntilExpiry} days (${cert.validity.notAfter.toISOString()})`);
+    }
+  }
+
+  _cachedCert = cert;
+  _cachedKey  = pkey;
+  _cachedWwdr = wwdrCert;
+
+  return { cert, pkey, wwdrCert };
+}
+
+function signManifest(manifestBuf: Buffer): Buffer {
+  const { cert, pkey, wwdrCert } = getCachedCredentials();
 
   // Build CMS SignedData
   const p7 = forge.pkcs7.createSignedData();

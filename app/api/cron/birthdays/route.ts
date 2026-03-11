@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   // Filter: consent_marketing = true (matching the column name used at registration).
   const { data: customers, error } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, email, birth_date, qr_token, restaurants(name, primary_color)')
+    .select('id, first_name, email, birth_date, qr_token, restaurant_id, restaurants(name, primary_color)')
     .eq('consent_marketing', true)
     .not('birth_date', 'is', null)
     .not('email', 'is', null);
@@ -45,25 +45,43 @@ export async function GET(req: NextRequest) {
     return birth.getMonth() + 1 === month && birth.getDate() === day;
   });
 
-  const results = await Promise.allSettled(
-    birthdayCustomers.map((c) => {
-      const restaurant = c.restaurants as unknown as { name: string; primary_color: string } | null;
-      if (!restaurant) return Promise.resolve();
+  // Group by restaurant to enforce per-restaurant rate limits
+  const MAX_BIRTHDAY_EMAILS_PER_RESTAURANT = 50;
+  const byRestaurant = new Map<string, typeof birthdayCustomers>();
+  for (const c of birthdayCustomers) {
+    const rid = (c as { restaurant_id: string }).restaurant_id;
+    const list = byRestaurant.get(rid) ?? [];
+    list.push(c);
+    byRestaurant.set(rid, list);
+  }
 
-      return sendBirthdayEmail({
-        to:              c.email as string,
-        firstName:       c.first_name as string,
-        restaurantName:  restaurant.name,
-        restaurantColor: restaurant.primary_color,
-        qrToken:         c.qr_token as string | undefined,
-      });
-    })
-  );
+  const emailTasks: Promise<void>[] = [];
+  for (const [restaurantId, group] of byRestaurant) {
+    const capped = group.slice(0, MAX_BIRTHDAY_EMAILS_PER_RESTAURANT);
+    if (capped.length < group.length) {
+      console.warn(`[cron/birthdays] restaurant ${restaurantId}: capped ${group.length} → ${capped.length}`);
+    }
+    for (const c of capped) {
+      const restaurant = c.restaurants as unknown as { name: string; primary_color: string } | null;
+      if (!restaurant) continue;
+      emailTasks.push(
+        sendBirthdayEmail({
+          to:              c.email as string,
+          firstName:       c.first_name as string,
+          restaurantName:  restaurant.name,
+          restaurantColor: restaurant.primary_color,
+          qrToken:         c.qr_token as string | undefined,
+        }),
+      );
+    }
+  }
+
+  const results = await Promise.allSettled(emailTasks);
 
   const sent   = results.filter((r) => r.status === 'fulfilled').length;
   const failed = results.filter((r) => r.status === 'rejected').length;
 
-  console.log(`[cron/birthdays] sent=${sent} failed=${failed} total=${birthdayCustomers.length}`);
+  console.log(`[cron/birthdays] sent=${sent} failed=${failed} total=${birthdayCustomers.length} restaurants=${byRestaurant.size}`);
 
   return NextResponse.json({
     success: true,
