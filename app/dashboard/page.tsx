@@ -229,9 +229,30 @@ export default function DashboardPage() {
   /* Data load */
   useEffect(() => {
     async function load() {
-      // Use refreshSession to get a fresh access token (getSession returns cached/expired)
+      // Try refreshSession first, then fall back to getSession.
+      // Mobile browsers (especially Safari) can lose cookie state after
+      // external redirects (Stripe checkout), so we retry with a delay.
+      let session: Session | null = null;
       const { data: { session: refreshed } } = await supabase.auth.refreshSession();
-      const session = refreshed;
+      session = refreshed;
+      if (!session) {
+        // Fallback: cached session may still be valid
+        const { data: { session: cached } } = await supabase.auth.getSession();
+        session = cached;
+      }
+      if (!session) {
+        // After Stripe redirect on mobile, cookies may not be available immediately
+        const isBilling = new URLSearchParams(window.location.search).has('billing');
+        if (isBilling) {
+          await new Promise(r => setTimeout(r, 1500));
+          const { data: { session: retried } } = await supabase.auth.refreshSession();
+          session = retried;
+          if (!session) {
+            const { data: { session: retried2 } } = await supabase.auth.getSession();
+            session = retried2;
+          }
+        }
+      }
       if (!session) { router.replace('/dashboard/login'); return; }
       setSession(session);
 
@@ -393,7 +414,7 @@ export default function DashboardPage() {
   const inactiveCustomers= customers.filter(c => !c.last_visit_at || (now - new Date(c.last_visit_at).getTime()) > day45).length;
   const returnRate       = totalCustomers > 0 ? Math.round((customers.filter(c => c.total_visits > 1).length / totalCustomers) * 100) : 0;
 
-  const isPaidPlan = (restaurant?.plan ?? 'free') !== 'free';
+  const isPaidPlan = (restaurant?.plan ?? 'starter') !== 'starter';
 
   const inactives45  = customers.filter(c => !c.last_visit_at || (now - new Date(c.last_visit_at).getTime()) > day45);
   const in7days      = new Date(); in7days.setDate(today.getDate() + 7);
@@ -643,10 +664,10 @@ export default function DashboardPage() {
               <span className={[
                 'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md',
                 (restaurant?.plans?.key ?? restaurant?.plan) === 'pro'     ? 'bg-purple-100 text-purple-700' :
-                (restaurant?.plans?.key ?? restaurant?.plan) === 'starter' ? 'bg-primary-100 text-primary-700' :
+                (restaurant?.plans?.key ?? restaurant?.plan) === 'growth' ? 'bg-primary-100 text-primary-700' :
                                                                               'bg-gray-100 text-gray-500',
               ].join(' ')}>
-                {restaurant?.plans?.name ?? restaurant?.plan ?? 'free'}
+                {restaurant?.plans?.name ?? restaurant?.plan ?? 'starter'}
               </span>
             </div>
           )}
@@ -717,7 +738,7 @@ export default function DashboardPage() {
         {/* Bottom section */}
         <div className="p-2 border-t border-gray-100">
           {/* Upgrade card — free plan only */}
-          {sidebarOpen && (restaurant?.plans?.key ?? restaurant?.plan) === 'free' && (
+          {sidebarOpen && (restaurant?.plans?.key ?? restaurant?.plan) === 'starter' && (
             <div className="rounded-xl p-3 mb-2 bg-gradient-to-br from-purple-600 to-primary-600 text-white">
               <p className="text-xs font-bold mb-0.5">Passer à Pro</p>
               <p className="text-[11px] text-white/70 mb-2.5">Campagnes illimitées + Analytics</p>
@@ -756,14 +777,14 @@ export default function DashboardPage() {
           logoUrl={restaurant?.logo_url ?? null}
           primaryColor={restaurant?.primary_color ?? '#4f6bed'}
           businessType={restaurant?.business_type ?? null}
-          planName={restaurant?.plans?.name ?? restaurant?.plan ?? 'free'}
+          planName={restaurant?.plans?.name ?? restaurant?.plan ?? 'starter'}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           onSignOut={handleSignOut}
           drawerOpen={mobileDrawerOpen}
           onDrawerToggle={setMobileDrawerOpen}
           enabledKpiKeys={enabledKpiKeys}
-          showUpgrade={(restaurant?.plans?.key ?? restaurant?.plan) === 'free'}
+          showUpgrade={(restaurant?.plans?.key ?? restaurant?.plan) === 'starter'}
           onUpgrade={() => setShowPlanSelection(true)}
         />
 
@@ -800,7 +821,7 @@ export default function DashboardPage() {
               triggersLoading={triggersLoading}
               restaurantMetrics={restaurantMetrics ?? null}
               loyaltySettings={loyaltySettings}
-              plan={restaurant?.plan ?? 'free'}
+              plan={restaurant?.plan ?? 'starter'}
               isPaidPlan={isPaidPlan}
               totalCustomers={totalCustomers}
               onUpgrade={() => setShowPlanSelection(true)}
@@ -1552,7 +1573,7 @@ export default function DashboardPage() {
                         Plan {(restaurant?.plans?.name ?? restaurant?.plan)?.toUpperCase()}
                       </p>
                       <p className="text-sm text-gray-500 mt-0.5">
-                        {(restaurant?.plans?.key ?? restaurant?.plan) === 'free' ? 'Limité à 500 clients' : 'Clients illimités'}
+                        {(restaurant?.plans?.key ?? restaurant?.plan) === 'starter' ? 'Limité à 500 clients' : 'Clients illimités'}
                       </p>
                       {restaurant?.subscription_status && restaurant.subscription_status !== 'inactive' && (
                         <p className="text-xs text-gray-400 mt-1">
@@ -1593,7 +1614,7 @@ export default function DashboardPage() {
                           Gérer
                         </button>
                       )}
-                      {(restaurant?.plans?.key ?? restaurant?.plan) === 'free' && (
+                      {(restaurant?.plans?.key ?? restaurant?.plan) === 'starter' && (
                         <button onClick={() => setShowPlanSelection(true)} className="bg-gradient-to-r from-purple-600 to-primary-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
                           Upgrader
                         </button>

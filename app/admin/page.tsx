@@ -71,7 +71,7 @@ function ScoreBadge({ value, type }: { value: number; type: 'health' | 'upgrade'
 
 function PlanBadge({ plan }: { plan: string }) {
   const styles: Record<string, string> = {
-    free:  'bg-gray-100 text-gray-500',
+    starter: 'bg-gray-100 text-gray-500',
     basic: 'bg-blue-50 text-blue-600',
     pro:   'bg-violet-50 text-violet-600',
     enterprise: 'bg-amber-50 text-amber-700',
@@ -379,7 +379,7 @@ export default function AdminPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { label: 'Total restaurants', value: restaurants.length },
-              { label: 'Plans gratuits', value: restaurants.filter((r) => r.plan === 'free').length },
+              { label: 'Plans gratuits', value: restaurants.filter((r) => r.plan === 'starter').length },
               { label: 'Scans hier (total)', value: restaurants.reduce((s, r) => s + r.scans_yesterday, 0) },
               { label: 'Risque churn ≥ 60', value: restaurants.filter((r) => r.churn_risk_score >= 60).length },
             ].map((kpi) => (

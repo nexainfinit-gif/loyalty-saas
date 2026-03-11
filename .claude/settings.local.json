@@ -19,7 +19,26 @@
       "Bash(npx vercel:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh auth:*)",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas/types -type f -name \"*.ts\" 2>/dev/null | head -20)",
+      "Bash(ls -la /c/Users/Mehdi/Desktop/loyalty-saas/app/book/[slug]/)",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas -name \"*migration*\" -o -name \"*schema*\" -o -name \"*sql*\" 2>/dev/null | grep -v node_modules | head -20)",
+      "Bash(ls -la /c/Users/Mehdi/Desktop/loyalty-saas/app/api/book/[slug]/)",
+      "Bash(wc -l /c/Users/Mehdi/Desktop/loyalty-saas/app/api/book/\\\\[slug\\\\]/book/route.ts)",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas/app/api/book -type f -name \"*.ts\" 2>/dev/null | head -10)",
+      "Bash(netstat -ano | grep \":3000\" | head -5)",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas/components -maxdepth 1 -type f -name \"*.tsx\" | xargs wc -l | sort -n | tail -15)",
+      "Bash(find \"C:\\\\Users\\\\Mehdi\\\\Desktop\\\\loyalty-saas\" -maxdepth 1 -type f -name \"*.json\" -o -name \"*.mjs\" -o -name \"*.ts\" 2>/dev/null | grep -v node_modules)",
+      "Bash(find \"C:\\\\Users\\\\Mehdi\\\\Desktop\\\\loyalty-saas\\\\app\\\\api\" -name \"route.ts\" -exec grep -l \"GET\\\\|POST\\\\|PUT\\\\|DELETE\\\\|PATCH\" {} \\\\; | head -15)",
+      "Bash(python3 -c \"\nwith open\\('lib/kpi-catalog.ts','r',encoding='utf-8'\\) as f:\n    line = f.readlines\\(\\)[41]\n    for i,c in enumerate\\(line\\):\n        if ord\\(c\\) > 127:\n            print\\(f'  pos {i}: U+{ord\\(c\\):04X} = {repr\\(c\\)}'\\)\n\" 2>&1 || node -e \"\nconst fs = require\\('fs'\\);\nconst line = fs.readFileSync\\('lib/kpi-catalog.ts','utf8'\\).split\\('\\\\n'\\)[41];\nfor\\(let i=0;i<line.length;i++\\){\n  if\\(line.charCodeAt\\(i\\)>127\\) console.log\\('pos',i,'U+'+line.charCodeAt\\(i\\).toString\\(16\\).toUpperCase\\(\\),'=',JSON.stringify\\(line[i]\\)\\);\n}\n\")",
+      "Bash(cd \"C:/Users/Mehdi/Desktop/loyalty-saas\" && npx vitest run __tests__/lib/rate-limit.test.ts __tests__/lib/validation.test.ts 2>&1)",
+      "Bash(npx vitest:*)",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "Bash(find \"C:\\\\Users\\\\Mehdi\\\\Desktop\\\\loyalty-saas\\\\app\\\\api\\\\compaigns\" -name \"*.ts\" -type f 2>/dev/null | head -20)"
     ]
   },
   "enabledPlugins": {

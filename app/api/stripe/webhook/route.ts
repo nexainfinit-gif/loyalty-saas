@@ -144,11 +144,11 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     return;
   }
 
-  // Downgrade to free plan
-  const { data: freePlan } = await supabaseAdmin
+  // Downgrade to starter (free-tier) plan
+  const { data: starterPlan } = await supabaseAdmin
     .from('plans')
     .select('id, key')
-    .eq('key', 'free')
+    .eq('key', 'starter')
     .maybeSingle();
 
   await supabaseAdmin
@@ -157,8 +157,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       subscription_status: 'canceled',
       stripe_subscription_id: null,
       current_period_end: null,
-      plan: freePlan?.key ?? 'free',
-      plan_id: freePlan?.id ?? null,
+      plan: starterPlan?.key ?? 'starter',
+      plan_id: starterPlan?.id ?? null,
     })
     .eq('id', targetId);
 }

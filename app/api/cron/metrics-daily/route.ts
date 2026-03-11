@@ -65,7 +65,7 @@ function computeScores(input: SnapshotInput): {
 
   /* Upgrade score — only meaningful for free plan */
   let upgrade_score = 0;
-  if (plan === 'free') {
+  if (plan === 'starter') {
     // High health on free plan = good upgrade candidate
     upgrade_score = score(health_score * 1.0);
     if (totalScansLast7 >= 20) reasons.push('Volume élevé → candidat upgrade');
@@ -237,7 +237,7 @@ export async function GET(req: NextRequest) {
 
       const { health_score, upgrade_score, churn_risk_score, reasons } = computeScores({
         restaurantId: rid,
-        plan:         restaurant.plan ?? 'free',
+        plan:         restaurant.plan ?? 'starter',
         last7Days:    last7,
         prev7Days:    prev7,
       });

@@ -183,7 +183,7 @@ const ruleLowWalletAdoption: RuleFn = (kpis, ctx) => {
   const totalCust = val(kpis, 'total_customers');
   if (rate >= 30 || totalCust < 10) return null;
   // On free plan this becomes an upgrade trigger (handled separately)
-  if (ctx.planKey === 'free') return null;
+  if (ctx.planKey === 'starter') return null;
   return {
     type:     'opportunity',
     severity: 'medium',
@@ -242,7 +242,7 @@ const ruleGrowthMomentum: RuleFn = (kpis) => {
 /* ── Upgrade: wallet feature locked on free plan ────────────────────────────── */
 
 const ruleWalletUpgrade: RuleFn = (kpis, ctx) => {
-  if (ctx.planKey !== 'free') return null;
+  if (ctx.planKey !== 'starter') return null;
   const totalCust = val(kpis, 'total_customers');
   if (totalCust < 10) return null;
   // Wallet KPI not computed = feature not accessible on this plan
@@ -259,10 +259,10 @@ const ruleWalletUpgrade: RuleFn = (kpis, ctx) => {
   };
 };
 
-/* ── Upgrade: analytics locked on free plan ─────────────────────────────────── */
+/* ── Upgrade: analytics locked on starter plan ────────────────────────────────── */
 
 const ruleAnalyticsUpgrade: RuleFn = (kpis, ctx) => {
-  if (ctx.planKey !== 'free') return null;
+  if (ctx.planKey !== 'starter') return null;
   if (enabled(kpis, 'retention_rate_90d') && enabled(kpis, 'churn_rate_30d')) return null;
   const totalCust = val(kpis, 'total_customers');
   if (totalCust < 30) return null;
@@ -278,7 +278,7 @@ const ruleAnalyticsUpgrade: RuleFn = (kpis, ctx) => {
 /* ── Upgrade: revenue KPIs locked but ticket is configured ──────────────────── */
 
 const ruleRevenueKpisLocked: RuleFn = (kpis, ctx) => {
-  if (ctx.planKey !== 'free') return null;
+  if (ctx.planKey !== 'starter') return null;
   if (enabled(kpis, 'revenue_estimate')) return null;
   const ticket = parseFloat(ctx.settings['average_ticket'] ?? '0');
   if (ticket <= 0) return null;
@@ -294,7 +294,7 @@ const ruleRevenueKpisLocked: RuleFn = (kpis, ctx) => {
 /* ── Upgrade: high visit frequency on free — LTV potential visible ───────────── */
 
 const ruleLtvUpgrade: RuleFn = (kpis, ctx) => {
-  if (ctx.planKey !== 'free') return null;
+  if (ctx.planKey !== 'starter') return null;
   if (!enabled(kpis, 'avg_days_between_visits')) return null;
   const freq = val(kpis, 'avg_days_between_visits');
   // Frequent visits + no LTV = missed revenue insight

@@ -146,7 +146,7 @@ export default function MobileHeader({
             <span className={[
               'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md inline-block mt-0.5',
               planName === 'pro'     ? 'bg-purple-100 text-purple-700' :
-              planName === 'starter' ? 'bg-primary-100 text-primary-700' :
+              planName === 'growth'  ? 'bg-primary-100 text-primary-700' :
                                        'bg-gray-100 text-gray-500',
             ].join(' ')}>
               {planName}

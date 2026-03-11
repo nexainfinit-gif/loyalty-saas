@@ -76,8 +76,8 @@ export async function GET(request: Request) {
       id:                r.id,
       name:              r.name,
       slug:              r.slug,
-      plan:              r.plan ?? 'free',
-      plan_name:         (r.plans as unknown as { name: string } | null)?.name ?? r.plan ?? 'free',
+      plan:              r.plan ?? 'starter',
+      plan_name:         (r.plans as unknown as { name: string } | null)?.name ?? r.plan ?? 'starter',
       created_at:        r.created_at,
       health_score:      snap?.health_score      ?? 0,
       upgrade_score:     snap?.upgrade_score     ?? 0,
@@ -99,9 +99,9 @@ export async function GET(request: Request) {
   });
 
   // Apply filter
-  if (filter === 'upgrade') rows = rows.filter((r) => r.plan === 'free' && r.upgrade_score >= 50);
+  if (filter === 'upgrade') rows = rows.filter((r) => r.plan === 'starter' && r.upgrade_score >= 50);
   if (filter === 'churn')   rows = rows.filter((r) => r.churn_risk_score >= 60);
-  if (filter === 'free')    rows = rows.filter((r) => r.plan === 'free');
+  if (filter === 'free')    rows = rows.filter((r) => r.plan === 'starter');
 
   // Apply sort
   const sortFn = (a: typeof rows[0], b: typeof rows[0]) => {

@@ -118,7 +118,7 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
           <div className="px-4 sm:px-8 pb-6 sm:pb-8 pt-4">
             <div className={`grid gap-4 ${plans.length >= 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 max-w-sm mx-auto'}`}>
               {plans.map(plan => {
-                const isPro = plan.key !== 'free';
+                const isPro = plan.key !== 'starter';
                 const isSelecting = selecting === plan.id;
                 const price = plan.price_monthly ?? 0;
 
