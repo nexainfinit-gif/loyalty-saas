@@ -131,10 +131,10 @@ function LoginForm() {
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                placeholder="• • • • • • • •"
+                placeholder="• • • • • •"
                 value={otp}
                 onChange={e => setOtp(e.target.value)}
-                maxLength={8}
+                maxLength={6}
                 required
                 className="w-full px-4 py-3 text-xl text-center font-mono tracking-[0.4em] bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-300 transition-colors"
               />
