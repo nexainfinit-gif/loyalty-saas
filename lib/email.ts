@@ -228,6 +228,71 @@ export async function sendBookingConfirmationEmail({
   });
 }
 
+/* ── Email verification ────────────────────────────────────────────────── */
+
+interface VerificationEmailProps {
+  to: string;
+  firstName: string;
+  restaurantName: string;
+  restaurantColor: string;
+  verificationToken: string;
+}
+
+export async function sendVerificationEmail({
+  to,
+  firstName,
+  restaurantName,
+  restaurantColor,
+  verificationToken,
+}: VerificationEmailProps) {
+  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/verify-email?token=${encodeURIComponent(verificationToken)}`;
+  const safeColor = safeCssColor(restaurantColor);
+  const safeName  = esc(restaurantName);
+  const safeFname = esc(firstName);
+
+  await resend.emails.send({
+    from: `${restaurantName} <noreply@rebites.be>`,
+    to,
+    subject: `Confirmez votre adresse email — ${restaurantName}`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+
+        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
+          <h1 style="color: white; margin: 0; font-size: 1.5rem;">Confirmez votre email</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeName}</p>
+        </div>
+
+        <p style="color: #374151; font-size: 1rem;">
+          Bonjour <strong>${safeFname}</strong>,
+        </p>
+
+        <p style="color: #374151;">
+          Merci de votre inscription au programme de fidélité <strong>${safeName}</strong>.
+          Pour confirmer votre adresse email, cliquez sur le bouton ci-dessous :
+        </p>
+
+        <div style="text-align: center; margin: 2rem 0;">
+          <a href="${verifyUrl}" target="_blank" style="display: inline-block; background: ${safeColor}; color: white; text-decoration: none; padding: 0.875rem 2rem; border-radius: 12px; font-size: 0.95rem; font-weight: 600;">
+            Confirmer mon adresse email
+          </a>
+        </div>
+
+        <div style="background: #f9fafb; border-radius: 12px; padding: 1rem; margin-bottom: 2rem;">
+          <p style="margin: 0; color: #6b7280; font-size: 0.85rem; text-align: center;">
+            Si vous n'avez pas créé de compte, vous pouvez ignorer cet email.
+          </p>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
+          ${safeName} — Programme de fidélité
+        </p>
+      </div>
+    `,
+  });
+}
+
 interface BirthdayEmailProps {
   to: string;
   firstName: string;

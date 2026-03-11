@@ -205,6 +205,19 @@ function getCachedCredentials() {
   return { cert, pkey, wwdrCert };
 }
 
+/**
+ * Returns the Apple Wallet certificate expiry date, or null if the cert
+ * is not configured (missing env vars).
+ */
+export function getCertExpiryDate(): Date | null {
+  try {
+    const { cert } = getCachedCredentials();
+    return cert.validity?.notAfter ?? null;
+  } catch {
+    return null; // cert not configured
+  }
+}
+
 function signManifest(manifestBuf: Buffer): Buffer {
   const { cert, pkey, wwdrCert } = getCachedCredentials();
 

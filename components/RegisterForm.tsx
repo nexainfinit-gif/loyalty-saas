@@ -266,6 +266,18 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
           }}>
             Un email avec votre QR code vous a été envoyé
           </p>
+
+          <p className="fade-up-4" style={{
+            color: restaurant.color,
+            fontSize: '0.8rem',
+            fontWeight: 500,
+            margin: '0.75rem 0 0',
+            background: `${restaurant.color}10`,
+            padding: '0.625rem 1rem',
+            borderRadius: '10px',
+          }}>
+            Un email de vérification vous a été envoyé
+          </p>
         </div>
       </div>
     );

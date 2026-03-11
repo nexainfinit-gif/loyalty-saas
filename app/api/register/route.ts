@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase-admin';
-import { sendWelcomeEmail } from '@/lib/email';
+import { sendWelcomeEmail, sendVerificationEmail } from '@/lib/email';
 import { generateWalletUrl } from '@/lib/google-wallet';
 import { autoIssueApplePass } from '@/lib/wallet-auto-issue';
 import { registerSchema, parseBody } from '@/lib/validation';
@@ -110,6 +110,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const emailVerificationToken = crypto.randomUUID();
+
   const { data: customer, error } = await supabase
     .from('customers')
     .insert({
@@ -122,6 +124,8 @@ export async function POST(req: NextRequest) {
       marketing_consent: true,
       consent_date: new Date().toISOString(),
       consent_ip: ip,
+      email_verified: false,
+      email_verification_token: emailVerificationToken,
     })
     .select()
     .single();
@@ -172,6 +176,19 @@ export async function POST(req: NextRequest) {
     });
   } catch (emailError) {
     logger.error({ ctx: 'register', rid: restaurant.id, msg: 'Welcome email failed', err: emailError });
+  }
+
+  // Send verification email (non-blocking — never fails registration)
+  try {
+    await sendVerificationEmail({
+      to: email,
+      firstName,
+      restaurantName: restaurant.name,
+      restaurantColor: restaurant.color || '#FF6B35',
+      verificationToken: emailVerificationToken,
+    });
+  } catch (verifyEmailError) {
+    logger.error({ ctx: 'register', rid: restaurant.id, msg: 'Verification email failed', err: verifyEmailError });
   }
 
   return NextResponse.json({
