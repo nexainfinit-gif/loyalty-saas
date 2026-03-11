@@ -229,30 +229,28 @@ export default function DashboardPage() {
   /* Data load */
   useEffect(() => {
     async function load() {
-      // Try refreshSession first, then fall back to getSession.
-      // Mobile browsers (especially Safari) can lose cookie state after
-      // external redirects (Stripe checkout), so we retry with a delay.
+      // 1. getSession reads from localStorage — instant, never invalidates tokens.
+      //    refreshSession makes a network call and CAN clear localStorage on failure,
+      //    so we only use it as a fallback.
       let session: Session | null = null;
-      const { data: { session: refreshed } } = await supabase.auth.refreshSession();
-      session = refreshed;
-      if (!session) {
-        // Fallback: cached session may still be valid
-        const { data: { session: cached } } = await supabase.auth.getSession();
-        session = cached;
+      const { data: { session: cached } } = await supabase.auth.getSession();
+      session = cached;
+
+      // 2. If cached session exists, silently refresh token in background
+      //    (keeps the access_token fresh without risking session loss)
+      if (session) {
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+        if (refreshed) session = refreshed;
+        // If refresh fails, keep using the cached session — Supabase client
+        // will auto-retry on next API call
       }
+
+      // 3. No cached session — try refreshSession as last resort
       if (!session) {
-        // After Stripe redirect on mobile, cookies may not be available immediately
-        const isBilling = new URLSearchParams(window.location.search).has('billing');
-        if (isBilling) {
-          await new Promise(r => setTimeout(r, 1500));
-          const { data: { session: retried } } = await supabase.auth.refreshSession();
-          session = retried;
-          if (!session) {
-            const { data: { session: retried2 } } = await supabase.auth.getSession();
-            session = retried2;
-          }
-        }
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+        session = refreshed;
       }
+
       if (!session) { router.replace('/dashboard/login'); return; }
       setSession(session);
 
