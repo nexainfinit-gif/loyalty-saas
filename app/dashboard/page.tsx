@@ -239,10 +239,31 @@ export default function DashboardPage() {
         .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
         .eq('owner_id', session.user.id).maybeSingle();
       if (!resto) { router.replace('/onboarding'); return; }
+
       // Gate: require active subscription
+      // After Stripe checkout, the webhook may not have fired yet — poll for up to 10s
+      const isBillingReturn = new URLSearchParams(window.location.search).has('billing');
       if (resto.subscription_status !== 'active') {
-        router.replace('/choose-plan');
-        return;
+        if (isBillingReturn) {
+          let attempts = 0;
+          while (attempts < 10) {
+            await new Promise(r => setTimeout(r, 1000));
+            const { data: fresh } = await supabase
+              .from('restaurants')
+              .select('subscription_status')
+              .eq('id', resto.id)
+              .maybeSingle();
+            if (fresh?.subscription_status === 'active') {
+              resto.subscription_status = 'active';
+              break;
+            }
+            attempts++;
+          }
+        }
+        if (resto.subscription_status !== 'active') {
+          router.replace('/choose-plan');
+          return;
+        }
       }
       setRestaurant(resto as unknown as Restaurant);
       setEditName(resto.name ?? '');
