@@ -89,8 +89,9 @@ describe('parseBody', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(typeof result.error).toBe('string');
-      expect(result.error.length).toBeGreaterThan(0);
+      const failed = result as { success: false; error: string };
+      expect(typeof failed.error).toBe('string');
+      expect(failed.error.length).toBeGreaterThan(0);
     }
   });
 });
