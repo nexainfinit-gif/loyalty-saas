@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import QRCode from 'react-qr-code';
 import AddToAppleWalletButton from '@/components/AddToAppleWalletButton';
 
 interface Restaurant {
@@ -71,7 +72,6 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
 
   if (status === 'success' && successData) {
     const scanUrl = `${window.location.origin}/api/scan/${successData.qrToken}`;
-    const qrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(scanUrl)}&size=280&margin=2`;
 
     return (
       <div style={{
@@ -160,10 +160,11 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             marginBottom: '1.5rem',
             border: `2px solid ${restaurant.color}20`,
           }}>
-            <img
-              src={qrUrl}
-              alt="QR Code fidélité"
-              style={{ width: '200px', height: '200px', borderRadius: '8px' }}
+            <QRCode
+              value={scanUrl}
+              size={240}
+              level="M"
+              style={{ width: '240px', height: '240px' }}
             />
             <p style={{
               color: '#888',
