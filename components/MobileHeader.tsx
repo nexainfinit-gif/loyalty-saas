@@ -166,7 +166,7 @@ export default function MobileHeader({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 flex flex-col gap-0.5 overflow-y-auto">
+        <nav className="flex-1 p-3 pb-20 flex flex-col gap-0.5 overflow-y-auto">
           {NAV_ITEMS.map(item => {
             const isActive = activeTab === item.id;
             return (
