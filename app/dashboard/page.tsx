@@ -325,11 +325,13 @@ export default function DashboardPage() {
 
       setLoading(false);
 
-      // Auto-launch tutorial once after first payment (billing=success in URL)
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('billing') === 'success' && !resto.tutorial_completed_at) {
-        // Clean URL without reload
-        window.history.replaceState({}, '', '/dashboard');
+      // Auto-launch tutorial if never completed
+      if (!resto.tutorial_completed_at) {
+        // Clean billing param from URL if present
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('billing')) {
+          window.history.replaceState({}, '', '/dashboard');
+        }
         setShowTutorial(true);
       }
     }
