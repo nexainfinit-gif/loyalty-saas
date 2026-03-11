@@ -232,11 +232,11 @@ export default function MobileHeader({
               <span className="text-sm font-medium">Booking Rebites</span>
             </a>
           )}
-        </nav>
 
-        {/* Bottom section */}
-        <div className="p-3 border-t border-gray-100">
-          {/* Upgrade card */}
+          {/* Divider */}
+          <div className="h-px bg-gray-100 my-2" />
+
+          {/* Upgrade card — inside scroll area so sign-out is always reachable */}
           {showUpgrade && onUpgrade && (
             <div className="rounded-xl p-3 mb-2 bg-gradient-to-br from-purple-600 to-primary-600 text-white">
               <p className="text-xs font-bold mb-0.5">Passer à Pro</p>
@@ -249,6 +249,7 @@ export default function MobileHeader({
               </button>
             </div>
           )}
+
           {/* Sign out */}
           <button
             onClick={() => { onSignOut(); onDrawerToggle(false); }}
@@ -259,7 +260,7 @@ export default function MobileHeader({
             </svg>
             <span className="text-sm font-medium">Déconnexion</span>
           </button>
-        </div>
+        </nav>
       </aside>
     </>
   );
