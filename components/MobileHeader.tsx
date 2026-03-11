@@ -38,6 +38,7 @@ const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
 
 const EXTRA_LINKS: { label: string; href: string; icon: string }[] = [
   { label: 'Scanner QR', href: '/dashboard/scanner', icon: 'M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z M12 13a4 4 0 100-8 4 4 0 000 8z' },
+  { label: 'Facturation', href: '/dashboard/billing', icon: 'M1 4h22v16H1V4z M1 10h22' },
 ];
 
 export default function MobileHeader({
