@@ -129,14 +129,13 @@ function LoginForm() {
               </label>
               <input
                 type="text"
-                inputMode="numeric"
                 autoComplete="one-time-code"
-                placeholder="• • • • • •"
+                placeholder="• • • • • • • •"
                 value={otp}
                 onChange={e => setOtp(e.target.value)}
-                maxLength={6}
+                maxLength={8}
                 required
-                className="w-full px-4 py-3 text-xl text-center font-mono tracking-[0.4em] bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-300 transition-colors"
+                className="w-full px-4 py-3 text-xl text-center font-mono tracking-[0.3em] bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-300 transition-colors"
               />
               <p className="text-xs text-gray-400 text-center mt-2">
                 Vérifiez votre boîte mail
