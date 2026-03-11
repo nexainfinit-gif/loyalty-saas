@@ -227,6 +227,8 @@ export default function DashboardPage() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showPlanSelection, setShowPlanSelection] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [hasTemplates, setHasTemplates] = useState(true); // assume true until checked
+  const [templateBannerDismissed, setTemplateBannerDismissed] = useState(false);
 
   /* Data load */
   useEffect(() => {
@@ -324,6 +326,13 @@ export default function DashboardPage() {
           setRestaurantSettings(settings ?? {});
         }
       }
+
+      // Check if restaurant has any wallet templates
+      const { count: templateCount } = await supabase
+        .from('wallet_pass_templates')
+        .select('id', { count: 'exact', head: true })
+        .eq('restaurant_id', resto.id);
+      if (templateCount === 0) setHasTemplates(false);
 
       setLoading(false);
 
@@ -890,6 +899,29 @@ export default function DashboardPage() {
         <main className="flex-1 px-4 py-4 md:p-6 overflow-auto pb-24 md:pb-6">
 
           {/* ══ OVERVIEW ══════════════════════════════════ */}
+          {activeTab === 'overview' && !hasTemplates && !templateBannerDismissed && (
+            <div className="bg-primary-50 border border-primary-100 rounded-2xl p-5 flex items-start justify-between gap-4 animate-fade-up">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  Créez votre premier template de carte fidélité pour que vos clients reçoivent automatiquement leur pass digital à l&apos;inscription.
+                </p>
+                <button
+                  onClick={() => router.push('/dashboard/wallet')}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors"
+                >
+                  Créer un template
+                  <span aria-hidden="true">&rarr;</span>
+                </button>
+              </div>
+              <button
+                onClick={() => setTemplateBannerDismissed(true)}
+                className="shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Fermer"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          )}
           {activeTab === 'overview' && (
             <OverviewTab
               customers={customers}

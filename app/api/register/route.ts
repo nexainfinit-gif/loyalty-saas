@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
       postal_code: postalCode || null,
       marketing_consent: true,
       consent_date: new Date().toISOString(),
+      consent_ip: ip,
     })
     .select()
     .single();
@@ -90,18 +91,6 @@ export async function POST(req: NextRequest) {
       );
     }
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
-  }
-
-  try {
-    await sendWelcomeEmail({
-      to: email,
-      firstName,
-      restaurantName: restaurant.name,
-      restaurantColor: restaurant.color,
-      qrToken: customer.qr_token,
-    });
-  } catch (emailError) {
-    console.error('Erreur email:', emailError);
   }
 
   let walletLink = null;
@@ -128,6 +117,19 @@ export async function POST(req: NextRequest) {
   const appleWalletUrl = applePassId
     ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${applePassId}/pkpass`
     : null;
+
+  try {
+    await sendWelcomeEmail({
+      to: email,
+      firstName,
+      restaurantName: restaurant.name,
+      restaurantColor: restaurant.color,
+      qrToken: customer.qr_token,
+      appleWalletUrl,
+    });
+  } catch (emailError) {
+    console.error('Erreur email:', emailError);
+  }
 
   return NextResponse.json({
     success: true,

@@ -23,6 +23,7 @@ interface WelcomeEmailProps {
   restaurantName: string;
   restaurantColor: string;
   qrToken: string;
+  appleWalletUrl?: string | null;
 }
 
 export async function sendWelcomeEmail({
@@ -31,6 +32,7 @@ export async function sendWelcomeEmail({
   restaurantName,
   restaurantColor,
   qrToken,
+  appleWalletUrl,
 }: WelcomeEmailProps) {
   const scanUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/scan/${qrToken}`;
   const qrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(scanUrl)}&size=250`;
@@ -72,6 +74,14 @@ export async function sendWelcomeEmail({
             💡 Conseil : faites une capture d'écran de ce QR code pour l'avoir toujours avec vous !
           </p>
         </div>
+
+        ${appleWalletUrl ? `
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <a href="${appleWalletUrl}" target="_blank" style="display: inline-block; background: #000000; color: #ffffff; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
+             Ajouter à Apple Wallet
+          </a>
+        </div>
+        ` : ''}
 
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
 
