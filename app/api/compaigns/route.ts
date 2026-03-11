@@ -85,11 +85,13 @@ export async function POST(req: Request) {
     return Response.json({ success: true, campaign_id: campaign.id, recipients: recipients.length, scheduled: true })
   }
 
-  // Envoi immédiat
+  // Envoi par batch (Resend batch API — max 100 emails par appel)
+  const BATCH_SIZE = 100
   let sentCount = 0
   let failCount = 0
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
-  for (const customer of recipients) {
+  const allEmails = recipients.map(customer => {
     const personalizedBody = bodyText
       .replace(/\{\{prenom\}\}/gi, customer.first_name)
       .replace(/\{\{points\}\}/gi, String(customer.total_points))
@@ -99,29 +101,44 @@ export async function POST(req: Request) {
       .replace(/\{\{prenom\}\}/gi, customer.first_name)
       .replace(/\{\{restaurant\}\}/gi, restaurant.name)
 
-    try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-      const unsubscribeUrl = customer.qr_token
-        ? `${appUrl}/api/unsubscribe?token=${customer.qr_token}`
-        : null;
+    const unsubscribeUrl = customer.qr_token
+      ? `${appUrl}/api/unsubscribe?token=${customer.qr_token}`
+      : null
 
-      await resend.emails.send({
-        from: `${restaurant.name} <noreply@rebites.be>`,
-        to: customer.email,
-        subject: personalizedSubject,
-        html: buildEmailHtml({
-          firstName: customer.first_name,
-          body: personalizedBody,
-          restaurantName: restaurant.name,
-          primaryColor: restaurant.primary_color,
-          points: customer.total_points,
-          unsubscribeUrl,
-        }),
-      })
-      sentCount++
+    return {
+      from: `${restaurant.name} <noreply@rebites.be>`,
+      to: customer.email,
+      subject: personalizedSubject,
+      html: buildEmailHtml({
+        firstName: customer.first_name,
+        body: personalizedBody,
+        restaurantName: restaurant.name,
+        primaryColor: restaurant.primary_color,
+        points: customer.total_points,
+        unsubscribeUrl,
+      }),
+    }
+  })
+
+  // Send in batches of BATCH_SIZE
+  for (let i = 0; i < allEmails.length; i += BATCH_SIZE) {
+    const batch = allEmails.slice(i, i + BATCH_SIZE)
+    try {
+      if (batch.length === 1) {
+        await resend.emails.send(batch[0])
+        sentCount += 1
+      } else {
+        const { data, error: batchErr } = await resend.batch.send(batch)
+        if (batchErr) {
+          console.error(`Batch ${i / BATCH_SIZE} failed:`, batchErr)
+          failCount += batch.length
+        } else {
+          sentCount += data?.data?.length ?? batch.length
+        }
+      }
     } catch (err) {
-      console.error(`Email failed for ${customer.email}:`, err)
-      failCount++
+      console.error(`Batch ${i / BATCH_SIZE} error:`, err)
+      failCount += batch.length
     }
   }
 

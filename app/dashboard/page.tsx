@@ -473,6 +473,28 @@ export default function DashboardPage() {
     toast.success('Lien copié !');
   }
 
+  async function deleteCustomer(customerId: string) {
+    const customer = customers.find(c => c.id === customerId);
+    if (!customer) return;
+    const confirmed = window.confirm(
+      `Supprimer définitivement ${customer.first_name} ${customer.last_name} ?\n\nCette action supprimera toutes ses données (points, transactions, passes). Irréversible.`
+    );
+    if (!confirmed) return;
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s) return;
+    const res = await fetch(`/api/customers/${customerId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${s.access_token}` },
+    });
+    if (res.ok) {
+      setCustomers(prev => prev.filter(c => c.id !== customerId));
+      toast.success('Client supprimé (RGPD)');
+    } else {
+      const data = await res.json();
+      toast.error(data.error || 'Erreur lors de la suppression.');
+    }
+  }
+
   async function saveLoyaltySettings() {
     if (!restaurant) return;
     setSavingSettings(true);
@@ -1118,6 +1140,13 @@ export default function DashboardPage() {
                               onClick={() => addPoint(c.id, -1)}
                               className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-xl text-xs font-semibold hover:bg-gray-200 transition-colors"
                             >−1</button>
+                            <button
+                              onClick={() => deleteCustomer(c.id)}
+                              title="Supprimer (RGPD)"
+                              className="bg-white text-gray-400 px-2 py-1 rounded-xl text-xs hover:text-danger-600 hover:bg-danger-50 transition-colors border border-gray-100"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
                           </div>
                         </td>
                       </tr>
