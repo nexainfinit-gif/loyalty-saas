@@ -56,7 +56,7 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
   const step = STEPS[currentStep];
   const isLast = currentStep === STEPS.length - 1;
 
-  // Position tooltip next to the sidebar item
+  // Position tooltip next to the sidebar item (or below on mobile)
   const positionTooltip = useCallback(() => {
     const el = document.querySelector(`[data-tutorial-tab="${step.tab}"]`);
     if (!el) return;
@@ -64,17 +64,26 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
     const rect = el.getBoundingClientRect();
     setHighlightRect(rect);
 
-    // Place tooltip to the right of the sidebar item, vertically centered
     const tooltipHeight = tooltipRef.current?.offsetHeight ?? 200;
-    let top = rect.top + rect.height / 2 - tooltipHeight / 2;
+    const tooltipWidth = tooltipRef.current?.offsetWidth ?? 320;
+    const vw = window.innerWidth;
 
-    // Keep tooltip within viewport
-    top = Math.max(16, Math.min(top, window.innerHeight - tooltipHeight - 16));
-
-    setTooltipPos({
-      top,
-      left: rect.right + 16,
-    });
+    if (vw < 1024) {
+      // Mobile: center tooltip horizontally, position below the element
+      const left = Math.max(12, Math.min((vw - tooltipWidth) / 2, vw - tooltipWidth - 12));
+      setTooltipPos({
+        top: rect.bottom + 12,
+        left,
+      });
+    } else {
+      // Desktop: to the right of the sidebar item, vertically centered
+      let top = rect.top + rect.height / 2 - tooltipHeight / 2;
+      top = Math.max(16, Math.min(top, window.innerHeight - tooltipHeight - 16));
+      setTooltipPos({
+        top,
+        left: rect.right + 16,
+      });
+    }
   }, [step.tab]);
 
   // Navigate tab + position tooltip on step change
@@ -125,16 +134,24 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
       {tooltipPos && (
         <div
           ref={tooltipRef}
-          className="fixed z-[100] w-80 animate-fade-up"
+          className="fixed z-[100] w-[calc(100vw-24px)] sm:w-80 max-w-80 animate-fade-up"
           style={{ top: tooltipPos.top, left: tooltipPos.left }}
         >
-          {/* Arrow pointing left */}
+          {/* Arrow — points left on desktop, up on mobile */}
           <div
-            className="absolute -left-2 top-1/2 -translate-y-1/2 w-0 h-0"
+            className="absolute w-0 h-0 hidden lg:block -left-2 top-1/2 -translate-y-1/2"
             style={{
               borderTop: '8px solid transparent',
               borderBottom: '8px solid transparent',
               borderRight: '8px solid white',
+            }}
+          />
+          <div
+            className="absolute w-0 h-0 lg:hidden left-1/2 -translate-x-1/2 -top-2"
+            style={{
+              borderLeft: '8px solid transparent',
+              borderRight: '8px solid transparent',
+              borderBottom: '8px solid white',
             }}
           />
 

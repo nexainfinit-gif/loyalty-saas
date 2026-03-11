@@ -125,27 +125,27 @@ export default function CalendarViewComponent({
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 180px)', minHeight: '480px' }}>
       {/* ── Toolbar ── */}
-      <div className="flex items-center justify-between px-3 h-11 border-b border-gray-100 shrink-0 bg-white">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 py-2 sm:py-0 sm:h-11 gap-2 sm:gap-0 border-b border-gray-100 shrink-0 bg-white">
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => navigateDate(-1)}
-            className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-500"
+            className="w-9 h-9 sm:w-7 sm:h-7 rounded-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-500"
           >
             <ChevronLeft size={14} />
           </button>
           <button
             onClick={() => onDateChange(new Date())}
-            className="px-2.5 py-1 text-[11px] font-medium rounded-md border border-gray-200 hover:bg-gray-50 transition-colors text-gray-600"
+            className="px-2.5 py-1.5 sm:py-1 text-[11px] font-medium rounded-md border border-gray-200 hover:bg-gray-50 transition-colors text-gray-600"
           >
             Aujourd&apos;hui
           </button>
           <button
             onClick={() => navigateDate(1)}
-            className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-500"
+            className="w-9 h-9 sm:w-7 sm:h-7 rounded-md border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-500"
           >
             <ChevronRight size={14} />
           </button>
-          <h2 className="text-[13px] font-semibold ml-2 text-gray-800 capitalize">
+          <h2 className="text-[13px] font-semibold ml-2 text-gray-800 capitalize truncate">
             {view === 'day'
               ? format(selectedDate, 'EEEE d MMMM yyyy', { locale: fr })
               : `${format(weekDays[0], 'd MMM', { locale: fr })} — ${format(weekDays[6], 'd MMM yyyy', { locale: fr })}`}
@@ -158,7 +158,7 @@ export default function CalendarViewComponent({
               <button
                 key={v}
                 onClick={() => onViewChange(v)}
-                className={`px-2.5 py-1 text-[11px] font-medium rounded transition-all duration-150 ${
+                className={`px-2.5 py-1.5 sm:py-1 text-[11px] font-medium rounded transition-all duration-150 ${
                   view === v
                     ? 'bg-white shadow-sm text-gray-900'
                     : 'text-gray-400 hover:text-gray-600'
@@ -173,7 +173,8 @@ export default function CalendarViewComponent({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-500 text-white text-[11px] font-semibold hover:bg-indigo-600 transition-colors shadow-sm"
           >
             <Plus size={13} strokeWidth={2.5} />
-            Nouveau RDV
+            <span className="hidden sm:inline">Nouveau RDV</span>
+            <span className="sm:hidden">RDV</span>
           </button>
         </div>
       </div>
@@ -181,16 +182,16 @@ export default function CalendarViewComponent({
       {/* ── Calendar body ── */}
       <div className="flex-1 overflow-auto">
         {view === 'day' ? (
-          <div className="min-w-[640px]">
+          <div className="min-w-[400px] sm:min-w-[640px]">
             {/* Sticky staff header */}
             <div className="flex sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
-              <div className="w-[52px] shrink-0" />
+              <div className="w-[40px] sm:w-[52px] shrink-0" />
               {staff.map((s, i) => {
                 const color = AVATAR_COLORS[i % AVATAR_COLORS.length]
                 return (
                   <div
                     key={s.id}
-                    className="flex-1 min-w-[200px] px-3 py-2 border-l border-gray-100 flex items-center gap-2.5"
+                    className="flex-1 min-w-[120px] sm:min-w-[200px] px-2 sm:px-3 py-2 border-l border-gray-100 flex items-center gap-1.5 sm:gap-2.5"
                   >
                     <div className={`w-7 h-7 rounded-full ${color.bg} flex items-center justify-center shrink-0`}>
                       <span className={`text-[10px] font-bold ${color.text}`}>
@@ -198,7 +199,7 @@ export default function CalendarViewComponent({
                       </span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[12px] font-semibold text-gray-800 truncate leading-tight">{s.name}</p>
+                      <p className="text-[11px] sm:text-[12px] font-semibold text-gray-800 truncate leading-tight">{s.name}</p>
                       <p className="text-[10px] text-gray-400 leading-tight">{staffApptCounts[s.id] || 0} rdv</p>
                     </div>
                   </div>
@@ -209,7 +210,7 @@ export default function CalendarViewComponent({
             {/* Time grid */}
             <div className="flex relative">
               {/* Time labels */}
-              <div className="w-[52px] shrink-0 sticky left-0 z-10 bg-white">
+              <div className="w-[40px] sm:w-[52px] shrink-0 sticky left-0 z-10 bg-white">
                 {HOURS.map((hour) => (
                   <div
                     key={hour}
@@ -230,7 +231,7 @@ export default function CalendarViewComponent({
                 return (
                   <div
                     key={s.id}
-                    className={`flex-1 min-w-[200px] border-l border-gray-100 relative ${isAlt ? 'bg-gray-50/30' : ''}`}
+                    className={`flex-1 min-w-[120px] sm:min-w-[200px] border-l border-gray-100 relative ${isAlt ? 'bg-gray-50/30' : ''}`}
                   >
                     {HOURS.map((hour) => {
                       const slotKey = `${s.id}-${hour}`
@@ -293,7 +294,7 @@ export default function CalendarViewComponent({
                     </span>
                   </div>
                   {/* Line with dot */}
-                  <div className="relative flex items-center ml-[52px]">
+                  <div className="relative flex items-center ml-[40px] sm:ml-[52px]">
                     <div className="w-[7px] h-[7px] rounded-full bg-rose-500 -ml-[3px] shrink-0 shadow-[0_0_4px_rgba(244,63,94,0.4)]" />
                     <div className="flex-1 h-px bg-rose-400/60" />
                   </div>
@@ -303,9 +304,9 @@ export default function CalendarViewComponent({
           </div>
         ) : (
           /* ═══ WEEK VIEW ═══ */
-          <div className="min-w-[800px]">
+          <div className="min-w-[560px] sm:min-w-[800px]">
             <div className="flex sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
-              <div className="w-[52px] shrink-0" />
+              <div className="w-[40px] sm:w-[52px] shrink-0" />
               {visibleDays.map((day, i) => {
                 const isDayToday = isSameDay(day, new Date())
                 return (
@@ -328,7 +329,7 @@ export default function CalendarViewComponent({
             </div>
 
             <div className="flex relative">
-              <div className="w-[52px] shrink-0 sticky left-0 z-10 bg-white">
+              <div className="w-[40px] sm:w-[52px] shrink-0 sticky left-0 z-10 bg-white">
                 {HOURS.map((hour) => (
                   <div
                     key={hour}

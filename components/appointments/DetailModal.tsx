@@ -45,7 +45,7 @@ export default function AppointmentDetailModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl border border-gray-200 shadow-xl w-full max-w-md mx-4">
+      <div className="relative bg-white rounded-2xl border border-gray-200 shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
@@ -56,9 +56,9 @@ export default function AppointmentDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
+            className="w-9 h-9 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
@@ -136,24 +136,24 @@ export default function AppointmentDetailModal({
 
           {/* Actions */}
           {appointment.status === 'confirmed' && (
-            <div className="flex gap-2 pt-2 border-t border-gray-200">
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-200">
               <button
                 onClick={() => onStatusChange(appointment.id, 'completed')}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
               >
                 <Check size={14} />
                 Terminé
               </button>
               <button
                 onClick={() => onStatusChange(appointment.id, 'no_show')}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-orange-50 text-orange-700 border border-orange-200 text-sm font-medium hover:bg-orange-100 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-50 text-orange-700 border border-orange-200 text-sm font-medium hover:bg-orange-100 transition-colors"
               >
                 <AlertTriangle size={14} />
                 Absent
               </button>
               <button
                 onClick={() => onStatusChange(appointment.id, 'cancelled')}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm font-medium hover:bg-red-100 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-50 text-red-700 border border-red-200 text-sm font-medium hover:bg-red-100 transition-colors"
               >
                 <XCircle size={14} />
                 Annuler

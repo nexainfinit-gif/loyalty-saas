@@ -68,13 +68,13 @@ export default function CreateAppointmentModal({
           <h2 className="text-base font-semibold">Nouveau rendez-vous</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
+            className="w-9 h-9 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
           >
             <X size={16} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-5 space-y-4">
           {/* Service */}
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">
@@ -84,7 +84,7 @@ export default function CreateAppointmentModal({
               value={form.service_id}
               onChange={(e) => update('service_id', e.target.value)}
               required
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors bg-white"
+              className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors bg-white"
             >
               <option value="">Sélectionner un service</option>
               {services.filter((s) => s.active).map((s) => (
@@ -109,7 +109,7 @@ export default function CreateAppointmentModal({
               value={form.staff_id}
               onChange={(e) => update('staff_id', e.target.value)}
               required
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors bg-white"
+              className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors bg-white"
             >
               <option value="">Sélectionner un employé</option>
               {staff.filter((s) => s.active).map((s) => (
@@ -121,7 +121,7 @@ export default function CreateAppointmentModal({
           </div>
 
           {/* Date + Time */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1.5 block">
                 Date
@@ -131,7 +131,7 @@ export default function CreateAppointmentModal({
                 value={form.date}
                 onChange={(e) => update('date', e.target.value)}
                 required
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
               />
             </div>
             <div>
@@ -143,7 +143,7 @@ export default function CreateAppointmentModal({
                 value={form.start_time}
                 onChange={(e) => update('start_time', e.target.value)}
                 required
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
               />
             </div>
           </div>
@@ -164,12 +164,12 @@ export default function CreateAppointmentModal({
                 onChange={(e) => update('client_name', e.target.value)}
                 required
                 placeholder="Marie Dupont"
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors placeholder:text-gray-400"
+                className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors placeholder:text-gray-400"
               />
             </div>
 
             {/* Email + Phone */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1.5 block">
                   Email
@@ -179,7 +179,7 @@ export default function CreateAppointmentModal({
                   value={form.client_email}
                   onChange={(e) => update('client_email', e.target.value)}
                   placeholder="marie@email.com"
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors placeholder:text-gray-400"
+                  className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors placeholder:text-gray-400"
                 />
               </div>
               <div>
@@ -191,7 +191,7 @@ export default function CreateAppointmentModal({
                   value={form.client_phone}
                   onChange={(e) => update('client_phone', e.target.value)}
                   placeholder="0470 12 34 56"
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors placeholder:text-gray-400"
+                  className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors placeholder:text-gray-400"
                 />
               </div>
             </div>
@@ -207,22 +207,22 @@ export default function CreateAppointmentModal({
               onChange={(e) => update('notes', e.target.value)}
               rows={2}
               placeholder="Remarques ou demandes spéciales..."
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors resize-none placeholder:text-gray-400"
+              className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors resize-none placeholder:text-gray-400"
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          {/* Actions — sticky footer */}
+          <div className="sticky bottom-0 bg-white border-t border-gray-100 flex gap-3 pt-4 -mx-4 sm:-mx-6 px-4 sm:px-6 pb-1 -mb-1">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors"
             >
               Annuler
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+              className="flex-1 px-4 py-3 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
             >
               Créer le rendez-vous
             </button>

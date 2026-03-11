@@ -1158,8 +1158,8 @@ export default function DashboardPage() {
 
               {/* Campaign Modal */}
               {campaignModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
-                  <div className="bg-white rounded-2xl p-6 w-full max-w-[560px] max-h-[90vh] overflow-y-auto shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setCampaignModal(false)}>
+                  <div className="bg-white rounded-2xl px-4 sm:px-6 py-5 sm:py-6 w-full max-w-[560px] max-h-[90vh] overflow-y-auto shadow-[0_20px_60px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
                     {campaignPreview ? (
                       /* Preview screen */
                       <>
@@ -1167,7 +1167,7 @@ export default function DashboardPage() {
                           <h2 className="text-lg font-bold text-gray-900">Aperçu de la campagne</h2>
                           <button
                             onClick={() => setCampaignModal(false)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+                            className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
                           >✕</button>
                         </div>
 
@@ -1231,7 +1231,7 @@ export default function DashboardPage() {
                           <h2 className="text-lg font-bold text-gray-900">✉️ Créer une campagne</h2>
                           <button
                             onClick={() => setCampaignModal(false)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+                            className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
                           >✕</button>
                         </div>
 

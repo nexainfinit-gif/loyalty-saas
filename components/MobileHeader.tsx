@@ -125,7 +125,7 @@ export default function MobileHeader({
       {/* ── Drawer sidebar ── */}
       <aside
         className={[
-          'fixed top-0 left-0 bottom-0 z-50 w-72 bg-white flex flex-col',
+          'fixed top-0 left-0 bottom-0 z-50 w-[85vw] max-w-72 bg-white flex flex-col',
           'shadow-[4px_0_24px_rgba(0,0,0,0.12)]',
           'transition-transform duration-300 ease-out lg:hidden',
           drawerOpen ? 'translate-x-0' : '-translate-x-full',

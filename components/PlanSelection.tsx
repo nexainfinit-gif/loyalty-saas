@@ -98,10 +98,10 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm">
       <div className="w-full max-w-3xl mx-4 animate-fade-up">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_16px_64px_rgba(0,0,0,0.12)] overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_16px_64px_rgba(0,0,0,0.12)] overflow-hidden max-h-[95vh] overflow-y-auto">
 
           {/* Header */}
-          <div className="text-center px-8 pt-8 pb-4">
+          <div className="text-center px-4 sm:px-8 pt-6 sm:pt-8 pb-4">
             <div className="w-12 h-12 bg-primary-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary-600">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -114,7 +114,7 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
           </div>
 
           {/* Plans grid */}
-          <div className="px-8 pb-8 pt-4">
+          <div className="px-4 sm:px-8 pb-6 sm:pb-8 pt-4">
             <div className={`grid gap-4 ${plans.length >= 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 max-w-sm mx-auto'}`}>
               {plans.map(plan => {
                 const isPro = plan.key !== 'free';
@@ -125,7 +125,7 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
                   <div
                     key={plan.id}
                     className={[
-                      'relative rounded-2xl border-2 p-6 transition-all',
+                      'relative rounded-2xl border-2 p-4 sm:p-6 transition-all',
                       isPro
                         ? 'border-primary-600 bg-primary-50/30'
                         : 'border-gray-200 bg-white',
@@ -170,7 +170,7 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
                     {/* CTA */}
                     <button
                       onClick={() => selectPlan(plan)}
-                      disabled={selecting !== null}
+                      disabled={selecting === plan.id}
                       className={[
                         'w-full py-3 rounded-xl text-sm font-semibold transition-all',
                         isPro

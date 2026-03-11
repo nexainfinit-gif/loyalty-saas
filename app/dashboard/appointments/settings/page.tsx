@@ -75,7 +75,7 @@ export default function SettingsPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
             saved
               ? 'bg-green-600 text-white'
               : 'bg-gray-900 text-white hover:bg-gray-800'
@@ -94,7 +94,7 @@ export default function SettingsPage() {
             <h2 className="text-sm font-semibold">Horaires d&apos;ouverture</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1.5 block">
                 Ouverture
@@ -103,7 +103,7 @@ export default function SettingsPage() {
                 type="time"
                 value={settings.opening_time}
                 onChange={(e) => update('opening_time', e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
               />
             </div>
             <div>
@@ -114,7 +114,7 @@ export default function SettingsPage() {
                 type="time"
                 value={settings.closing_time}
                 onChange={(e) => update('closing_time', e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
               />
             </div>
           </div>
@@ -148,7 +148,7 @@ export default function SettingsPage() {
             <h2 className="text-sm font-semibold">Créneaux & disponibilité</h2>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1.5 block">
                 Durée créneau (min)
@@ -156,7 +156,7 @@ export default function SettingsPage() {
               <select
                 value={settings.slot_duration_minutes}
                 onChange={(e) => update('slot_duration_minutes', parseInt(e.target.value))}
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors bg-white"
+                className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors bg-white"
               >
                 {[5, 10, 15, 20, 30, 60].map((v) => (
                   <option key={v} value={v}>{v} min</option>
@@ -172,7 +172,7 @@ export default function SettingsPage() {
                 value={settings.buffer_minutes}
                 onChange={(e) => update('buffer_minutes', parseInt(e.target.value) || 0)}
                 min={0}
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
               />
             </div>
             <div>
@@ -184,7 +184,7 @@ export default function SettingsPage() {
                 value={settings.max_advance_days}
                 onChange={(e) => update('max_advance_days', parseInt(e.target.value) || 1)}
                 min={1}
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
               />
             </div>
             <div>
@@ -196,7 +196,7 @@ export default function SettingsPage() {
                 value={settings.min_advance_hours}
                 onChange={(e) => update('min_advance_hours', parseInt(e.target.value) || 0)}
                 min={0}
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
               />
             </div>
           </div>
@@ -242,7 +242,7 @@ export default function SettingsPage() {
                 value={settings.cancellation_deadline_hours}
                 onChange={(e) => update('cancellation_deadline_hours', parseInt(e.target.value) || 0)}
                 min={0}
-                className="w-full max-w-[200px] px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                className="w-full max-w-[200px] px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
               />
             </div>
           )}
@@ -262,7 +262,7 @@ export default function SettingsPage() {
             <select
               value={settings.reminder_hours_before}
               onChange={(e) => update('reminder_hours_before', parseInt(e.target.value))}
-              className="w-full max-w-[200px] px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors bg-white"
+              className="w-full max-w-[200px] px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors bg-white"
             >
               {[1, 2, 4, 12, 24, 48].map((v) => (
                 <option key={v} value={v}>{v}h avant</option>
@@ -278,7 +278,7 @@ export default function SettingsPage() {
               value={settings.confirmation_message || ''}
               onChange={(e) => update('confirmation_message', e.target.value)}
               rows={3}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors resize-none placeholder:text-gray-400"
+              className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors resize-none placeholder:text-gray-400"
             />
           </div>
         </section>
@@ -323,7 +323,7 @@ export default function SettingsPage() {
                 value={settings.loyalty_points_per_visit}
                 onChange={(e) => update('loyalty_points_per_visit', parseInt(e.target.value) || 0)}
                 min={0}
-                className="w-full max-w-[200px] px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                className="w-full max-w-[200px] px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
               />
             </div>
           )}
