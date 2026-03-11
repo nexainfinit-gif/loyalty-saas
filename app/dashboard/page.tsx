@@ -445,6 +445,10 @@ export default function DashboardPage() {
   async function addPoint(customerId: string, delta: number) {
     const customer = customers.find(c => c.id === customerId);
     if (!customer || !restaurant) return;
+    if (delta < 0) {
+      const confirmed = window.confirm(`Retirer ${Math.abs(delta)} point(s) à ${customer.first_name} ${customer.last_name} ?`);
+      if (!confirmed) return;
+    }
     await supabase.from('transactions').insert({
       customer_id: customerId, restaurant_id: restaurant.id,
       type: 'points_add', points_delta: delta,
@@ -572,10 +576,41 @@ export default function DashboardPage() {
 
   /* ─── Loading screen ──────────────────────────────────── */
   if (loading) return (
-    <div className="min-h-screen bg-surface flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-ds-spin mx-auto mb-4" />
-        <p className="text-sm text-gray-400 font-medium">Chargement...</p>
+    <div className="min-h-screen bg-surface flex">
+      {/* Sidebar skeleton (desktop) */}
+      <aside className="hidden lg:flex flex-col w-[240px] border-r border-gray-100 bg-white p-4 gap-3">
+        <div className="h-8 w-28 bg-gray-100 rounded-lg animate-pulse mb-4" />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-9 bg-gray-50 rounded-xl animate-pulse" style={{ animationDelay: `${i * 80}ms` }} />
+        ))}
+      </aside>
+      {/* Main content skeleton */}
+      <div className="flex-1 p-4 sm:p-6 space-y-5">
+        {/* Top bar */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="h-7 w-48 bg-gray-100 rounded-lg animate-pulse" />
+          <div className="h-9 w-9 bg-gray-100 rounded-full animate-pulse" />
+        </div>
+        {/* KPI row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3" style={{ animationDelay: `${i * 100}ms` }}>
+              <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
+              <div className="h-7 w-16 bg-gray-100 rounded-lg animate-pulse" />
+            </div>
+          ))}
+        </div>
+        {/* Table skeleton */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+          <div className="h-5 w-32 bg-gray-100 rounded animate-pulse mb-2" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-4 items-center" style={{ animationDelay: `${i * 60}ms` }}>
+              <div className="h-9 w-9 bg-gray-50 rounded-full animate-pulse" />
+              <div className="flex-1 h-4 bg-gray-50 rounded animate-pulse" />
+              <div className="h-4 w-16 bg-gray-50 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -848,9 +883,31 @@ export default function DashboardPage() {
           {activeTab === 'clients' && (
             <div className="space-y-5 animate-fade-up">
               {/* Header */}
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Clients</h2>
-                <p className="text-sm text-gray-500 mt-0.5">{filteredCustomers.length} résultat(s)</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Clients</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">{filteredCustomers.length} résultat(s)</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!restaurant) return;
+                    const { data: { session: s } } = await supabase.auth.getSession();
+                    if (!s) return;
+                    const res = await fetch('/api/export-csv', {
+                      headers: { Authorization: `Bearer ${s.access_token}` },
+                    });
+                    if (!res.ok) { toast.error('Erreur lors de l\'export.'); return; }
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = 'clients.csv'; a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span className="hidden sm:inline">Exporter CSV</span>
+                </button>
               </div>
 
               {/* Search + filters */}

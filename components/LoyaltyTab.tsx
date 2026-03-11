@@ -183,6 +183,10 @@ export default function LoyaltyTab({
                     key={mode.id}
                     onClick={() => {
                       if (mode.id !== settings.program_type) {
+                        const confirmed = window.confirm(
+                          `Changer de mode vers "${mode.title}" ?\n\nLes compteurs actuels (${settings.program_type === 'points' ? 'points' : 'tampons'}) seront conservés mais ne seront plus utilisés. Cette action est difficilement réversible.`
+                        );
+                        if (!confirmed) return;
                         update({
                           previous_program_type: settings.program_type,
                           program_type: mode.id,

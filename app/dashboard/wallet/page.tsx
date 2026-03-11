@@ -335,6 +335,7 @@ function EditTemplateModal({ template, token, loyaltySettings, onUpdated, onClos
   const [pointsPerScan,   setPointsPerScan]   = useState(Number(cfg.points_per_scan  ?? loyaltySettings?.points_per_scan  ?? 10));
   const [eventName,       setEventName]       = useState(String(cfg.event_name ?? ''));
   const [eventDate,       setEventDate]       = useState(String(cfg.event_date ?? ''));
+  const [isDefault,       setIsDefault]       = useState(template.is_default ?? false);
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState('');
 
@@ -355,6 +356,7 @@ function EditTemplateModal({ template, token, loyaltySettings, onUpdated, onClos
         name,
         primary_color: color,
         is_repeatable: repeatable,
+        is_default: isDefault,
         valid_from: validFrom || null,
         valid_to:   validTo   || null,
         config_json,
@@ -467,6 +469,22 @@ function EditTemplateModal({ template, token, loyaltySettings, onUpdated, onClos
               <label className="block text-sm font-medium text-gray-700 mb-1">Expire le <span className="text-gray-400 font-normal">(optionnel)</span></label>
               <input type="date" value={validTo} onChange={e => setValidTo(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
+            <input
+              type="checkbox"
+              id="edit-isDefault"
+              checked={isDefault}
+              onChange={e => setIsDefault(e.target.checked)}
+              className="rounded mt-0.5"
+            />
+            <div>
+              <label htmlFor="edit-isDefault" className="text-sm text-gray-700 font-medium cursor-pointer">
+                Utiliser comme template par défaut (auto-attribution au client)
+              </label>
+              <p className="text-xs text-gray-500 mt-0.5">Un seul template peut être le template par défaut.</p>
             </div>
           </div>
 

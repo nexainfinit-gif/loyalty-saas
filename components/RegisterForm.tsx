@@ -21,6 +21,21 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
     appleWalletUrl?: string | null;
   } | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validateField = (name: string, value: string) => {
+    let error = '';
+    if (name === 'firstName' && !value.trim()) error = 'Le prénom est requis';
+    if (name === 'lastName' && !value.trim()) error = 'Le nom est requis';
+    if (name === 'email') {
+      if (!value.trim()) error = "L'email est requis";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Email invalide';
+    }
+    setFieldErrors((prev) => {
+      if (!error) { const { [name]: _, ...rest } = prev; return rest; }
+      return { ...prev, [name]: error };
+    });
+  };
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -349,10 +364,16 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
                   autoComplete="given-name"
                   placeholder="Jean"
                   required
-                  style={inputStyle('firstName')}
+                  style={{
+                    ...inputStyle('firstName'),
+                    ...(fieldErrors.firstName ? { borderColor: '#ef4444' } : {}),
+                  }}
                   onFocus={() => setFocusedField('firstName')}
-                  onBlur={() => setFocusedField(null)}
+                  onBlur={(e) => { setFocusedField(null); validateField('firstName', e.target.value); }}
                 />
+                {fieldErrors.firstName && (
+                  <p style={{ color: '#ef4444', fontSize: '0.7rem', margin: '0.25rem 0 0' }}>{fieldErrors.firstName}</p>
+                )}
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
@@ -363,10 +384,16 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
                   autoComplete="family-name"
                   placeholder="Dupont"
                   required
-                  style={inputStyle('lastName')}
+                  style={{
+                    ...inputStyle('lastName'),
+                    ...(fieldErrors.lastName ? { borderColor: '#ef4444' } : {}),
+                  }}
                   onFocus={() => setFocusedField('lastName')}
-                  onBlur={() => setFocusedField(null)}
+                  onBlur={(e) => { setFocusedField(null); validateField('lastName', e.target.value); }}
                 />
+                {fieldErrors.lastName && (
+                  <p style={{ color: '#ef4444', fontSize: '0.7rem', margin: '0.25rem 0 0' }}>{fieldErrors.lastName}</p>
+                )}
               </div>
             </div>
 
@@ -381,10 +408,16 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
                 autoComplete="email"
                 placeholder="jean@exemple.com"
                 required
-                style={inputStyle('email')}
+                style={{
+                  ...inputStyle('email'),
+                  ...(fieldErrors.email ? { borderColor: '#ef4444' } : {}),
+                }}
                 onFocus={() => setFocusedField('email')}
-                onBlur={() => setFocusedField(null)}
+                onBlur={(e) => { setFocusedField(null); validateField('email', e.target.value); }}
               />
+              {fieldErrors.email && (
+                <p style={{ color: '#ef4444', fontSize: '0.7rem', margin: '0.25rem 0 0' }}>{fieldErrors.email}</p>
+              )}
             </div>
 
             {/* Date de naissance + Code postal */}
@@ -436,7 +469,10 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
               />
               <span style={{ fontSize: '0.75rem', color: '#777', lineHeight: 1.5 }}>
                 J&apos;accepte de recevoir des offres et actualités.
-                Données traitées conformément au <span style={{ color: restaurant.color, fontWeight: 500 }}>RGPD</span>. *
+                Données traitées conformément au RGPD. Voir notre{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: restaurant.color, fontWeight: 500, textDecoration: 'underline' }}>
+                  politique de confidentialité
+                </a>. *
               </span>
             </label>
 

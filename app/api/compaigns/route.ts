@@ -106,7 +106,7 @@ export async function POST(req: Request) {
         : null;
 
       await resend.emails.send({
-        from: `${restaurant.name} <noreply@rebites.app>`,
+        from: `${restaurant.name} <noreply@rebites.be>`,
         to: customer.email,
         subject: personalizedSubject,
         html: buildEmailHtml({

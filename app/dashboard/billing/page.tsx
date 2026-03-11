@@ -148,14 +148,48 @@ export default function BillingPage() {
     }
   }
 
-  /* Loading */
+  /* Loading skeleton */
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-ds-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-400 font-medium">Chargement...</p>
-        </div>
+      <div className="min-h-screen bg-surface">
+        <header className="bg-white border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
+            <div className="w-9 h-9 bg-gray-100 rounded-xl animate-pulse" />
+            <div className="space-y-1.5">
+              <div className="h-5 w-28 bg-gray-100 rounded-lg animate-pulse" />
+              <div className="h-3 w-20 bg-gray-50 rounded animate-pulse" />
+            </div>
+          </div>
+        </header>
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+          {/* Plan card skeleton */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
+                <div className="h-6 w-24 bg-gray-100 rounded-lg animate-pulse" />
+              </div>
+              <div className="h-6 w-14 bg-gray-100 rounded-xl animate-pulse" />
+            </div>
+            <div className="h-8 w-20 bg-gray-100 rounded-lg animate-pulse" />
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                <div className="w-4 h-4 bg-gray-50 rounded animate-pulse" />
+                <div className="h-4 flex-1 max-w-[200px] bg-gray-50 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+          {/* Billing info skeleton */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
+            <div className="h-5 w-40 bg-gray-100 rounded animate-pulse mb-2" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex justify-between">
+                <div className="h-4 w-28 bg-gray-50 rounded animate-pulse" />
+                <div className="h-4 w-20 bg-gray-50 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     )
   }

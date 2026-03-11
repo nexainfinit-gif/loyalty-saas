@@ -20,6 +20,21 @@ export default function OnboardingPage() {
   const [businessType, setBusinessType] = useState('restaurant');
   const [customType, setCustomType] = useState('');
   const [authEmail, setAuthEmail] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validateField = (name: string, value: string) => {
+    let error = '';
+    if (name === 'name' && !value.trim()) error = 'Le nom est requis';
+    if (name === 'email') {
+      if (!value.trim()) error = "L'email est requis";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Email invalide';
+    }
+    if (name === 'city' && !value.trim()) error = 'La ville est requise';
+    setFieldErrors((prev) => {
+      if (!error) { const { [name]: _, ...rest } = prev; return rest; }
+      return { ...prev, [name]: error };
+    });
+  };
 
   function generateSlug(name: string) {
     return name
@@ -112,10 +127,24 @@ export default function OnboardingPage() {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="text-center animate-fade-up">
-          <div className="w-10 h-10 border-3 border-gray-200 border-t-primary-600 rounded-full animate-ds-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-500">Chargement...</p>
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {/* Header skeleton */}
+          <div className="bg-gray-900 rounded-t-2xl px-8 py-8 flex flex-col items-center gap-3">
+            <div className="w-12 h-12 bg-white/10 rounded-xl animate-pulse" />
+            <div className="h-5 w-40 bg-white/10 rounded-lg animate-pulse" />
+            <div className="h-3 w-48 bg-white/10 rounded animate-pulse" />
+          </div>
+          {/* Form skeleton */}
+          <div className="bg-white rounded-b-2xl border border-t-0 border-gray-100 p-6 space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="space-y-1.5" style={{ animationDelay: `${i * 80}ms` }}>
+                <div className="h-3 w-24 bg-gray-100 rounded animate-pulse" />
+                <div className="h-11 bg-gray-50 rounded-xl animate-pulse" />
+              </div>
+            ))}
+            <div className="h-12 bg-gray-100 rounded-xl animate-pulse mt-2" />
+          </div>
         </div>
       </div>
     );
@@ -159,8 +188,12 @@ export default function OnboardingPage() {
                 defaultValue={authEmail}
                 placeholder="contact@moncommerce.be"
                 required
-                className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
+                onBlur={(e) => validateField('email', e.target.value)}
+                className={`w-full px-4 py-3 text-sm bg-gray-50 border rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none ${fieldErrors.email ? 'border-red-400' : 'border-gray-200'}`}
               />
+              {fieldErrors.email && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
+              )}
             </div>
 
             {/* Nom */}
@@ -173,8 +206,12 @@ export default function OnboardingPage() {
                 autoComplete="organization"
                 placeholder="Ex: Le Petit Bistro"
                 required
-                className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
+                onBlur={(e) => validateField('name', e.target.value)}
+                className={`w-full px-4 py-3 text-sm bg-gray-50 border rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none ${fieldErrors.name ? 'border-red-400' : 'border-gray-200'}`}
               />
+              {fieldErrors.name && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.name}</p>
+              )}
             </div>
 
             {/* Type activité */}
@@ -219,8 +256,12 @@ export default function OnboardingPage() {
                 autoComplete="address-level2"
                 placeholder="Ex: Bruxelles"
                 required
-                className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none"
+                onBlur={(e) => validateField('city', e.target.value)}
+                className={`w-full px-4 py-3 text-sm bg-gray-50 border rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none ${fieldErrors.city ? 'border-red-400' : 'border-gray-200'}`}
               />
+              {fieldErrors.city && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.city}</p>
+              )}
             </div>
 
             {/* Téléphone */}

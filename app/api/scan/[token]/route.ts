@@ -3,6 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAuth, requireScannerAuth } from '@/lib/server-auth';
 import { NextResponse } from 'next/server';
 import { updateLoyaltyObject } from '@/lib/google-wallet';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
+
+// Rate limiting: max 30 scans per IP per minute (covers busy service periods)
+const scanLimiter = rateLimit({ prefix: 'scan-ip', limit: 30, windowMs: 60_000 });
 
 type ScanCustomer = {
   id: string;
@@ -73,6 +77,15 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  // IP-based rate limit
+  const ip = getClientIp(req);
+  if (!scanLimiter.check(ip).success) {
+    return Response.json(
+      { error: 'Trop de scans. Réessayez dans une minute.' },
+      { status: 429 },
+    );
+  }
+
   // Accepts both the owner Supabase session (dashboard) and X-Scanner-Token (cashier).
   const guard = await requireScannerAuth(req);
   if (guard instanceof NextResponse) return guard;
