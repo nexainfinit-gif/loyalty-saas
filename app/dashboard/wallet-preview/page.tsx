@@ -731,6 +731,244 @@ function ControlPanel({
   );
 }
 
+/* ── TemplateSaver ────────────────────────────────────────────────────────── */
+
+interface TemplateOption {
+  id:   string;
+  name: string;
+  pass_kind: string;
+}
+
+function controlsToConfigJson(c: Controls): Record<string, unknown> {
+  return {
+    merchantName:   c.merchantName,
+    bgColor:        c.bgColor,
+    stampsTotal:    c.stampsTotal,
+    rewardText:     c.rewardText,
+    isVip:          c.isVip,
+    stampMode:      c.stampMode,
+    stampColumns:   c.stampColumns,
+    stampSize:      c.stampSize,
+    stampGap:       c.stampGap,
+    stampBg:        c.stampBg,
+    stampRound:     c.stampRound,
+    stampEmptyUrl:  c.stampEmptyUrl,
+    stampFilledUrl: c.stampFilledUrl,
+  };
+}
+
+function TemplateSaver({
+  controls,
+  accessToken,
+  restaurantId,
+}: {
+  controls:     Controls;
+  accessToken:  string;
+  restaurantId: string;
+}) {
+  const [templates, setTemplates]   = useState<TemplateOption[]>([]);
+  const [selectedId, setSelectedId] = useState<string>('');
+  const [loadingList, setLoadingList] = useState(false);
+  const [saving, setSaving]         = useState(false);
+  const [feedback, setFeedback]     = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [newName, setNewName]       = useState('');
+  const [mode, setMode]             = useState<'apply' | 'create'>('apply');
+
+  // Fetch templates on mount (only if authenticated)
+  useEffect(() => {
+    if (!accessToken || !restaurantId) return;
+    setLoadingList(true);
+    fetch(`/api/wallet/templates?restaurantId=${restaurantId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then(r => r.json())
+      .then(json => {
+        if (json.templates) {
+          setTemplates(json.templates.map((t: any) => ({ id: t.id, name: t.name, pass_kind: t.pass_kind })));
+          if (json.templates.length > 0) setSelectedId(json.templates[0].id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingList(false));
+  }, [accessToken, restaurantId]);
+
+  function clearFeedback() {
+    setTimeout(() => setFeedback(null), 4000);
+  }
+
+  async function handleApply() {
+    if (!selectedId) return;
+    setSaving(true);
+    setFeedback(null);
+    try {
+      const res = await fetch(`/api/wallet/templates/${selectedId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          primary_color: controls.bgColor,
+          config_json:   controlsToConfigJson(controls),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setFeedback({ type: 'error', msg: json.error ?? 'Erreur lors de la mise a jour.' });
+      } else {
+        setFeedback({ type: 'success', msg: 'Template mis a jour avec succes.' });
+      }
+    } catch {
+      setFeedback({ type: 'error', msg: 'Erreur reseau.' });
+    } finally {
+      setSaving(false);
+      clearFeedback();
+    }
+  }
+
+  async function handleCreate() {
+    if (!newName.trim()) {
+      setFeedback({ type: 'error', msg: 'Le nom du template est requis.' });
+      clearFeedback();
+      return;
+    }
+    setSaving(true);
+    setFeedback(null);
+    try {
+      const res = await fetch('/api/wallet/templates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          name:          newName.trim(),
+          type:          'stamps',
+          primary_color: controls.bgColor,
+          config_json:   controlsToConfigJson(controls),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setFeedback({ type: 'error', msg: json.error ?? 'Erreur lors de la creation.' });
+      } else {
+        setFeedback({ type: 'success', msg: 'Nouveau template cree avec succes.' });
+        // Add to list and select it
+        if (json.template) {
+          setTemplates(prev => [{ id: json.template.id, name: json.template.name, pass_kind: json.template.pass_kind }, ...prev]);
+          setSelectedId(json.template.id);
+          setNewName('');
+          setMode('apply');
+        }
+      }
+    } catch {
+      setFeedback({ type: 'error', msg: 'Erreur reseau.' });
+    } finally {
+      setSaving(false);
+      clearFeedback();
+    }
+  }
+
+  if (!accessToken || !restaurantId) return null;
+
+  const inputCls = 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors';
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Sauvegarder</span>
+      </div>
+
+      {/* Mode tabs */}
+      <div className="flex border-b border-gray-100">
+        {([['apply', 'Appliquer'], ['create', 'Nouveau']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setMode(key as 'apply' | 'create')}
+            className={[
+              'flex-1 py-2.5 text-xs font-semibold transition-colors',
+              mode === key
+                ? 'text-primary-700 border-b-2 border-primary-600 -mb-px bg-white'
+                : 'text-gray-400 hover:text-gray-600',
+            ].join(' ')}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-5 space-y-4">
+
+        {mode === 'apply' && (
+          <>
+            <Field label="Template existant">
+              {loadingList ? (
+                <p className="text-xs text-gray-400">Chargement...</p>
+              ) : templates.length === 0 ? (
+                <p className="text-xs text-gray-400">Aucun template disponible.</p>
+              ) : (
+                <select
+                  value={selectedId}
+                  onChange={e => setSelectedId(e.target.value)}
+                  className={inputCls}
+                >
+                  {templates.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              )}
+            </Field>
+
+            <button
+              onClick={handleApply}
+              disabled={saving || !selectedId || templates.length === 0}
+              className="w-full bg-primary-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {saving ? 'Mise a jour...' : 'Appliquer au template'}
+            </button>
+          </>
+        )}
+
+        {mode === 'create' && (
+          <>
+            <Field label="Nom du template">
+              <input
+                type="text"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                placeholder="Ex : Carte fidelite principale"
+                className={inputCls}
+              />
+            </Field>
+
+            <button
+              onClick={handleCreate}
+              disabled={saving || !newName.trim()}
+              className="w-full bg-primary-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {saving ? 'Creation...' : 'Creer un nouveau template'}
+            </button>
+          </>
+        )}
+
+        {/* Feedback */}
+        {feedback && (
+          <div className={[
+            'text-xs font-medium px-3 py-2 rounded-xl border',
+            feedback.type === 'success'
+              ? 'bg-success-50 border-success-200 text-success-700'
+              : 'bg-danger-50 border-danger-200 text-danger-700',
+          ].join(' ')}>
+            {feedback.msg}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── SigningGuide ──────────────────────────────────────────────────────────── */
 
 const SIGNING_STEPS = [
@@ -1050,13 +1288,18 @@ export default function WalletPreviewPage() {
             <SigningGuide imagesRequired={data.meta.imagesRequired} />
           </div>
 
-          {/* ── Col 3 — Control panel (sticky) ─────────────────────────── */}
-          <div className="lg:sticky lg:top-20">
+          {/* ── Col 3 — Control panel + template saver (sticky) ──────── */}
+          <div className="lg:sticky lg:top-20 space-y-6">
             <ControlPanel
               controls={controls}
               defaults={defaults}
               onChange={handleChange}
               onReset={handleReset}
+              accessToken={accessToken}
+              restaurantId={data.meta.restaurantId ?? ''}
+            />
+            <TemplateSaver
+              controls={controls}
               accessToken={accessToken}
               restaurantId={data.meta.restaurantId ?? ''}
             />
