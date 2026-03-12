@@ -5,6 +5,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts';
 import { Badge } from '@/components/ui/Badge';
+import { useTranslation } from '@/lib/i18n';
 
 /* ─── Design tokens ─ */
 const DS = {
@@ -104,11 +105,12 @@ export default function AnalyticsTab({
   restaurantSettings,
   onUpgrade,
 }: Props) {
+  const { t, locale } = useTranslation();
   const [period, setPeriod] = useState<Period>('30d');
   const totalCustomers = customers.length;
   const periodMs = period === '7d' ? 7 * MS_DAY : period === '30d' ? 30 * MS_DAY : 90 * MS_DAY;
   const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
-  const periodLabel = period === '7d' ? '7 derniers jours' : period === '30d' ? '30 derniers jours' : '90 derniers jours';
+  const periodLabel = period === '7d' ? t('analytics.period7dFull') : period === '30d' ? t('analytics.period30dFull') : t('analytics.period90dFull');
 
   /* ── Computed KPIs ── */
   const kpis = useMemo(() => {
@@ -137,7 +139,6 @@ export default function AnalyticsTab({
     const completedCustomers = customers.filter(c => (c.completed_cards ?? 0) > 0);
     let avgCardDays: number | null = null;
     if (completedCustomers.length > 0 && loyaltySettings.program_type === 'stamps') {
-      // Rough estimate: total days active / completed cards
       const totalDaysActive = completedCustomers.reduce((sum, c) => {
         const firstVisit = new Date(c.created_at).getTime();
         const lastVisit = c.last_visit_at ? new Date(c.last_visit_at).getTime() : NOW;
@@ -146,7 +147,7 @@ export default function AnalyticsTab({
       avgCardDays = Math.round(totalDaysActive / completedCustomers.reduce((s, c) => s + (c.completed_cards ?? 0), 0));
     }
 
-    // Reward utilization rate (simple: earned vs total completions)
+    // Reward utilization rate
     const totalRewardsEver = transactions.filter(t => t.type === 'reward_redeem').length;
     const rewardUtilRate = completedCards > 0 ? Math.round((totalRewardsEver / completedCards) * 100) : null;
 
@@ -177,22 +178,22 @@ export default function AnalyticsTab({
     });
     statusCounts.nearReward = kpis.nearReward;
     return [
-      { name: 'Actifs', value: statusCounts.active, color: PIE_COLORS[1] },
-      { name: 'Inactifs', value: statusCounts.inactive, color: PIE_COLORS[4] },
+      { name: t('analytics.activeClients'), value: statusCounts.active, color: PIE_COLORS[1] },
+      { name: t('common.inactive'), value: statusCounts.inactive, color: PIE_COLORS[4] },
       { name: 'VIP', value: statusCounts.vip, color: PIE_COLORS[2] },
-      { name: 'Nouveaux', value: statusCounts.new, color: PIE_COLORS[0] },
+      { name: t('analytics.newClients'), value: statusCounts.new, color: PIE_COLORS[0] },
     ].filter(d => d.value > 0);
-  }, [customers, kpis.nearReward]);
+  }, [customers, kpis.nearReward, t]);
 
   /* ── Monthly growth chart ── */
   const monthlyGrowth = useMemo(() => {
-    const months: { month: string; Nouveaux: number; Recurrents: number }[] = [];
+    const months: { month: string; [key: string]: number | string }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
       const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
       const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-      const label = monthStart.toLocaleDateString('fr-BE', { month: 'short' });
+      const label = monthStart.toLocaleDateString(locale, { month: 'short' });
 
       const newCount = customers.filter(c => {
         const cd = new Date(c.created_at);
@@ -206,10 +207,10 @@ export default function AnalyticsTab({
         }).map(t => t.customer_id)
       ).size;
 
-      months.push({ month: label, Nouveaux: newCount, Recurrents: recurring });
+      months.push({ month: label, [t('analytics.newLabel')]: newCount, [t('analytics.recurringLabel')]: recurring });
     }
     return months;
-  }, [customers, transactions]);
+  }, [customers, transactions, t]);
 
   /* ── Daily activity ── */
   const dailyActivity = useMemo(() => {
@@ -218,44 +219,44 @@ export default function AnalyticsTab({
       d.setDate(d.getDate() - (periodDays - 1 - i));
       const dayStr = d.toISOString().split('T')[0];
       return {
-        date: d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit' }),
-        Visites: transactions.filter(t => t.created_at.startsWith(dayStr) && t.type === 'visit').length,
-        Inscriptions: customers.filter(c => c.created_at.startsWith(dayStr)).length,
+        date: d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }),
+        [t('analytics.visitsLabel')]: transactions.filter(t => t.created_at.startsWith(dayStr) && t.type === 'visit').length,
+        [t('analytics.registrationsLabel')]: customers.filter(c => c.created_at.startsWith(dayStr)).length,
       };
     });
-  }, [customers, transactions, periodDays]);
+  }, [customers, transactions, periodDays, t]);
 
   /* ── Auto insights ── */
   const insights = useMemo(() => {
     const list: { text: string; type: 'success' | 'warning' | 'info' | 'danger'; icon: string }[] = [];
 
-    if (kpis.returnRate > 60) list.push({ text: `Vos clients reviennent regulierement (${kpis.returnRate}% de taux de retour).`, type: 'success', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
-    else if (kpis.returnRate < 30 && totalCustomers > 5) list.push({ text: `Seulement ${kpis.returnRate}% de retour. Le seuil de recompense est peut-etre trop eleve.`, type: 'danger', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' });
+    if (kpis.returnRate > 60) list.push({ text: t('analytics.insightGoodReturn', { rate: kpis.returnRate }), type: 'success', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
+    else if (kpis.returnRate < 30 && totalCustomers > 5) list.push({ text: t('analytics.insightLowReturn', { rate: kpis.returnRate }), type: 'danger', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' });
 
-    if (kpis.rewardUtilRate !== null && kpis.rewardUtilRate < 50) list.push({ text: `Peu de recompenses sont utilisees (${kpis.rewardUtilRate}%). Simplifiez le processus.`, type: 'warning', icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' });
-    else if (kpis.rewardUtilRate !== null && kpis.rewardUtilRate > 80) list.push({ text: `Excellent taux d'utilisation des recompenses (${kpis.rewardUtilRate}%).`, type: 'success', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
+    if (kpis.rewardUtilRate !== null && kpis.rewardUtilRate < 50) list.push({ text: t('analytics.insightLowRewardUtil', { rate: kpis.rewardUtilRate }), type: 'warning', icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' });
+    else if (kpis.rewardUtilRate !== null && kpis.rewardUtilRate > 80) list.push({ text: t('analytics.insightGoodRewardUtil', { rate: kpis.rewardUtilRate }), type: 'success', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' });
 
-    if (kpis.inactiveCustomers > totalCustomers * 0.4) list.push({ text: `${kpis.inactiveCustomers} clients inactifs. Une campagne de relance pourrait les reactiver.`, type: 'warning', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' });
+    if (kpis.inactiveCustomers > totalCustomers * 0.4) list.push({ text: t('analytics.insightInactiveClients', { count: kpis.inactiveCustomers }), type: 'warning', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' });
 
-    if (kpis.nearReward > 0) list.push({ text: `${kpis.nearReward} clients proches de la recompense — un rappel les ferait revenir.`, type: 'info', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' });
+    if (kpis.nearReward > 0) list.push({ text: t('analytics.insightNearReward', { count: kpis.nearReward }), type: 'info', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' });
 
-    if (kpis.avgCardDays !== null && kpis.avgCardDays > 60) list.push({ text: `Le temps moyen pour completer une carte est de ${kpis.avgCardDays} jours. Reduire le seuil pourrait accelerer l'engagement.`, type: 'info', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
+    if (kpis.avgCardDays !== null && kpis.avgCardDays > 60) list.push({ text: t('analytics.insightSlowCards', { days: kpis.avgCardDays }), type: 'info', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
 
-    if (kpis.newCustomers > 0) list.push({ text: `${kpis.newCustomers} nouveaux clients sur la periode. Les inscriptions progressent.`, type: 'success', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' });
+    if (kpis.newCustomers > 0) list.push({ text: t('analytics.insightNewClients', { count: kpis.newCustomers }), type: 'success', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' });
 
     return list;
-  }, [kpis, totalCustomers]);
+  }, [kpis, totalCustomers, t]);
 
   return (
     <div className="space-y-5 animate-fade-up">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Analytics</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('analytics.title')}</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            Analyse detaillee de votre programme de fidelite
+            {t('analytics.subtitle')}
             {restaurantMetrics?.last_computed_at && (
-              <span className="text-gray-400"> · Maj {new Date(restaurantMetrics.last_computed_at).toLocaleDateString('fr-FR')}</span>
+              <span className="text-gray-400"> · {t('analytics.lastUpdate')} {new Date(restaurantMetrics.last_computed_at).toLocaleDateString(locale)}</span>
             )}
           </p>
         </div>
@@ -269,7 +270,7 @@ export default function AnalyticsTab({
                 period === p ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
               ].join(' ')}
             >
-              {p === '7d' ? '7j' : p === '30d' ? '30j' : '90j'}
+              {p === '7d' ? t('analytics.period7d') : p === '30d' ? t('analytics.period30d') : t('analytics.period90d')}
             </button>
           ))}
         </div>
@@ -278,11 +279,11 @@ export default function AnalyticsTab({
       {/* ═══ A. KPI Grid ═══ */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
-          { label: 'Clients totaux', value: totalCustomers.toLocaleString('fr-FR'), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', bg: 'bg-primary-50', iconColor: 'text-primary-600' },
-          { label: 'Actifs', value: (restaurantMetrics?.active_customers_30d ?? kpis.activeCustomers).toString(), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', bg: 'bg-success-50', iconColor: 'text-success-600' },
-          { label: 'Nouveaux', value: (restaurantMetrics?.new_customers_30d ?? kpis.newCustomers).toString(), icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z', bg: 'bg-purple-50', iconColor: 'text-purple-600' },
-          { label: 'Taux de retour', value: restaurantMetrics?.repeat_rate != null ? `${Number(restaurantMetrics.repeat_rate).toFixed(0)}%` : `${kpis.returnRate}%`, icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15', bg: 'bg-warning-50', iconColor: 'text-warning-600' },
-          { label: 'Visites / scans', value: kpis.visitsThisPeriod.toLocaleString('fr-FR'), icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z', bg: 'bg-gray-50', iconColor: 'text-gray-600' },
+          { label: t('analytics.totalClients'), value: totalCustomers.toLocaleString(locale), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', bg: 'bg-primary-50', iconColor: 'text-primary-600' },
+          { label: t('analytics.activeClients'), value: (restaurantMetrics?.active_customers_30d ?? kpis.activeCustomers).toString(), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', bg: 'bg-success-50', iconColor: 'text-success-600' },
+          { label: t('analytics.newClients'), value: (restaurantMetrics?.new_customers_30d ?? kpis.newCustomers).toString(), icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z', bg: 'bg-purple-50', iconColor: 'text-purple-600' },
+          { label: t('analytics.returnRate'), value: restaurantMetrics?.repeat_rate != null ? `${Number(restaurantMetrics.repeat_rate).toFixed(0)}%` : `${kpis.returnRate}%`, icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15', bg: 'bg-warning-50', iconColor: 'text-warning-600' },
+          { label: t('analytics.visitsScans'), value: kpis.visitsThisPeriod.toLocaleString(locale), icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z', bg: 'bg-gray-50', iconColor: 'text-gray-600' },
         ].map((kpi, i) => (
           <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <div className="flex items-center justify-between mb-2">
@@ -299,11 +300,11 @@ export default function AnalyticsTab({
       {/* Row 2: secondary KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-3">
         {[
-          { label: 'Cartes completees', value: kpis.completedCards.toString() },
-          { label: 'Recompenses', value: kpis.rewardsEarned.toString() },
-          { label: 'Moy. visites/client', value: kpis.avgVisits },
-          { label: 'Revenu estime', value: kpis.estimatedRevenue !== null ? `${kpis.estimatedRevenue.toLocaleString('fr-FR')} €` : '--' },
-          { label: 'Panier moyen', value: kpis.avgTicket > 0 ? `${kpis.avgTicket.toFixed(2)} €` : '--' },
+          { label: t('analytics.completedCards'), value: kpis.completedCards.toString() },
+          { label: t('analytics.rewards'), value: kpis.rewardsEarned.toString() },
+          { label: t('analytics.avgVisitsPerClient'), value: kpis.avgVisits },
+          { label: t('analytics.estimatedRevenue'), value: kpis.estimatedRevenue !== null ? `${kpis.estimatedRevenue.toLocaleString(locale)} \u20AC` : '--' },
+          { label: t('analytics.averageBasket'), value: kpis.avgTicket > 0 ? `${kpis.avgTicket.toFixed(2)} \u20AC` : '--' },
         ].map((kpi, i) => (
           <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <p className="text-xs text-gray-500 font-medium mb-1">{kpi.label}</p>
@@ -316,9 +317,9 @@ export default function AnalyticsTab({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Pie chart: client distribution */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Repartition clients</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('analytics.clientDistribution')}</h3>
           {distribution.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">Pas assez de donnees</p>
+            <p className="text-sm text-gray-400 text-center py-8">{t('analytics.notEnoughData')}</p>
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
               <ResponsiveContainer width="100%" height={160} className="sm:!w-1/2">
@@ -349,14 +350,14 @@ export default function AnalyticsTab({
 
         {/* Loyalty performance */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Performance fidelite</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('analytics.performanceTitle')}</h3>
           <div className="space-y-4">
             {[
-              { label: 'Cartes completees (total)', value: kpis.completedCards, suffix: '' },
-              { label: 'Recompenses gagnees (periode)', value: kpis.rewardsEarned, suffix: '' },
-              { label: 'Clients proches recompense', value: kpis.nearReward, suffix: '' },
-              { label: 'Temps moyen carte complete', value: kpis.avgCardDays ?? '--', suffix: kpis.avgCardDays ? ' jours' : '' },
-              { label: 'Taux utilisation recompenses', value: kpis.rewardUtilRate ?? '--', suffix: kpis.rewardUtilRate !== null ? '%' : '' },
+              { label: t('analytics.completedCardsTotal'), value: kpis.completedCards, suffix: '' },
+              { label: t('analytics.rewardsPeriod'), value: kpis.rewardsEarned, suffix: '' },
+              { label: t('analytics.nearReward'), value: kpis.nearReward, suffix: '' },
+              { label: t('analytics.avgCardCompletion'), value: kpis.avgCardDays ?? '--', suffix: kpis.avgCardDays ? ` ${t('common.days')}` : '' },
+              { label: t('analytics.rewardUtilRate'), value: kpis.rewardUtilRate ?? '--', suffix: kpis.rewardUtilRate !== null ? '%' : '' },
             ].map((item, i) => (
               <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                 <span className="text-sm text-gray-600">{item.label}</span>
@@ -371,27 +372,27 @@ export default function AnalyticsTab({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Monthly growth */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          <h3 className="text-sm font-semibold text-gray-900 mb-1">Croissance mensuelle</h3>
-          <p className="text-xs text-gray-400 mb-4">Nouveaux clients vs clients recurrents</p>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('analytics.monthlyGrowth')}</h3>
+          <p className="text-xs text-gray-400 mb-4">{t('analytics.monthlyGrowthSubtitle')}</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={monthlyGrowth} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={DS.gray100} vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 10, fill: DS.gray400 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 10, fill: DS.gray400 }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', fontSize: '0.8rem', background: 'white' }} />
-              <Bar dataKey="Nouveaux" fill={DS.primary} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Recurrents" fill={DS.purple} radius={[4, 4, 0, 0]} />
+              <Bar dataKey={t('analytics.newLabel')} fill={DS.primary} radius={[4, 4, 0, 0]} />
+              <Bar dataKey={t('analytics.recurringLabel')} fill={DS.purple} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           <div className="flex items-center gap-6 mt-3 text-xs text-gray-400">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: DS.primary }} />Nouveaux</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: DS.purple }} />Recurrents</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: DS.primary }} />{t('analytics.newLabel')}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: DS.purple }} />{t('analytics.recurringLabel')}</span>
           </div>
         </div>
 
         {/* Daily activity */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-          <h3 className="text-sm font-semibold text-gray-900 mb-1">Activite quotidienne</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('analytics.dailyActivity')}</h3>
           <p className="text-xs text-gray-400 mb-4">{periodLabel}</p>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={dailyActivity} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -405,23 +406,23 @@ export default function AnalyticsTab({
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: DS.gray400 }} tickLine={false} axisLine={false} interval={Math.max(1, Math.floor(periodDays / 7))} />
               <YAxis tick={{ fontSize: 10, fill: DS.gray400 }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', fontSize: '0.8rem', background: 'white' }} />
-              <Area type="monotone" dataKey="Visites" stroke={DS.success} strokeWidth={2} fill="url(#an-gradVisits)" dot={false} />
-              <Area type="monotone" dataKey="Inscriptions" stroke={DS.primary} strokeWidth={2} fill="none" dot={false} strokeDasharray="5 5" />
+              <Area type="monotone" dataKey={t('analytics.visitsLabel')} stroke={DS.success} strokeWidth={2} fill="url(#an-gradVisits)" dot={false} />
+              <Area type="monotone" dataKey={t('analytics.registrationsLabel')} stroke={DS.primary} strokeWidth={2} fill="none" dot={false} strokeDasharray="5 5" />
             </AreaChart>
           </ResponsiveContainer>
           <div className="flex items-center gap-6 mt-3 text-xs text-gray-400">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: DS.success }} />Visites</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-0.5 border-b-2 border-dashed" style={{ borderColor: DS.primary }} />Inscriptions</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: DS.success }} />{t('analytics.visitsLabel')}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-0.5 border-b-2 border-dashed" style={{ borderColor: DS.primary }} />{t('analytics.registrationsLabel')}</span>
           </div>
         </div>
       </div>
 
       {/* ═══ E. Auto Insights ═══ */}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">Insights automatiques</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('analytics.insightsTitle')}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {insights.length === 0 && (
-            <p className="text-sm text-gray-400 py-4 col-span-2 text-center">Pas assez de donnees pour generer des insights.</p>
+            <p className="text-sm text-gray-400 py-4 col-span-2 text-center">{t('analytics.insightsNoData')}</p>
           )}
           {insights.map((insight, i) => {
             const colorMap = {
@@ -444,17 +445,17 @@ export default function AnalyticsTab({
       {!isPaidPlan && (
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <div className="flex items-center gap-2 mb-4">
-            <h3 className="text-sm font-semibold text-gray-900">Analytics avances</h3>
-            <Badge variant="info" className="text-[10px]">PRO</Badge>
+            <h3 className="text-sm font-semibold text-gray-900">{t('analytics.proTitle')}</h3>
+            <Badge variant="info" className="text-[10px]">{t('analytics.proTag')}</Badge>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
             {[
-              { label: 'LTV client' },
-              { label: 'Taux de churn' },
-              { label: 'Cohortes' },
-              { label: 'Perf. campagnes' },
-              { label: 'Wallet adoption' },
-              { label: 'Multi-sites' },
+              { label: t('analytics.proLtv') },
+              { label: t('analytics.proChurn') },
+              { label: t('analytics.proCohorts') },
+              { label: t('analytics.proCampaignPerf') },
+              { label: t('analytics.proWalletAdoption') },
+              { label: t('analytics.proMultiSite') },
             ].map((item, i) => (
               <div key={i} className="rounded-xl border border-dashed border-gray-200 p-3.5 opacity-50 text-center">
                 <p className="text-xs font-medium text-gray-500 mb-1">{item.label}</p>
@@ -463,7 +464,7 @@ export default function AnalyticsTab({
             ))}
           </div>
           <button onClick={onUpgrade} className="mt-5 w-full py-3 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors">
-            Debloquer les analytics Pro
+            {t('analytics.proUnlock')}
           </button>
         </div>
       )}

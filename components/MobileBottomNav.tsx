@@ -1,4 +1,5 @@
 'use client';
+import { useTranslation } from '@/lib/i18n';
 
 type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings';
 
@@ -8,7 +9,7 @@ interface Props {
   scannerHref: string;
 }
 
-/* ─── Inline SVG icons (18×18, matching sidebar) ─── */
+/* ─── Inline SVG icons (18x18, matching sidebar) ─── */
 const icons: Record<string, string> = {
   overview: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z',
   clients:  'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 7a4 4 0 100-8 4 4 0 000 8z M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75',
@@ -18,12 +19,14 @@ const icons: Record<string, string> = {
 };
 
 export default function MobileBottomNav({ activeTab, onTabChange, scannerHref }: Props) {
+  const { t } = useTranslation();
+
   const tabs: { id: Tab | 'scanner'; label: string; icon: string }[] = [
-    { id: 'overview',  label: 'Accueil',    icon: icons.overview },
-    { id: 'clients',   label: 'Clients',    icon: icons.clients },
-    { id: 'scanner',   label: 'Scanner',    icon: icons.scanner },
-    { id: 'campaigns', label: 'Campagnes',  icon: icons.campaigns },
-    { id: 'settings',  label: 'Plus',       icon: icons.settings },
+    { id: 'overview',  label: t('mobile.home'),      icon: icons.overview },
+    { id: 'clients',   label: t('nav.clients'),      icon: icons.clients },
+    { id: 'scanner',   label: t('mobile.scanner'),   icon: icons.scanner },
+    { id: 'campaigns', label: t('nav.campaigns'),    icon: icons.campaigns },
+    { id: 'settings',  label: t('mobile.more'),      icon: icons.settings },
   ];
 
   return (
@@ -45,7 +48,7 @@ export default function MobileBottomNav({ activeTab, onTabChange, scannerHref }:
                     <path d={tab.icon} />
                   </svg>
                 </div>
-                <span className="text-[10px] font-semibold text-primary-600 mt-1">Scanner</span>
+                <span className="text-[10px] font-semibold text-primary-600 mt-1">{t('mobile.scanner')}</span>
               </a>
             );
           }

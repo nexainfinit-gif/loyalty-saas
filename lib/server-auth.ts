@@ -149,7 +149,7 @@ export async function requireOwner(
  */
 export async function requireScannerAuth(
   request: Request,
-): Promise<{ restaurantId: string } | NextResponse> {
+): Promise<{ restaurantId: string; userId: string | null } | NextResponse> {
   // Path 1: public cashier scanner — X-Scanner-Token header
   const scannerToken = request.headers.get('X-Scanner-Token');
   if (scannerToken) {
@@ -159,7 +159,7 @@ export async function requireScannerAuth(
       .eq('scanner_token', scannerToken)
       .maybeSingle();
 
-    if (restaurant) return { restaurantId: restaurant.id };
+    if (restaurant) return { restaurantId: restaurant.id, userId: null };
     return NextResponse.json({ error: 'Token scanner invalide.' }, { status: 401 });
   }
 
@@ -171,7 +171,7 @@ export async function requireScannerAuth(
   if (!ctx.restaurantId) {
     return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
   }
-  return { restaurantId: ctx.restaurantId };
+  return { restaurantId: ctx.restaurantId, userId: ctx.userId };
 }
 
 /**

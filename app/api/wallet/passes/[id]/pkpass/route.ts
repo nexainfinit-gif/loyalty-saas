@@ -6,6 +6,9 @@ import { buildPkpass, pkpassResponse } from '@/lib/apple-wallet';
 import type { PassBuildInput } from '@/lib/apple-wallet';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { pkpassCache } from '@/lib/pkpass-cache';
+import { auditLog } from '@/lib/audit';
+import { getTranslator, defaultLocale, locales } from '@/lib/i18n-server';
+import type { Locale } from '@/lib/i18n-server';
 
 // 10 downloads per minute per IP — pkpass generation is CPU-intensive (Sharp + JSZip + signing)
 const limiter = rateLimit({ prefix: 'pkpass-download', limit: 10, windowMs: 60_000 });
@@ -29,10 +32,17 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const { searchParams } = new URL(_request.url);
+  const rawLocale = searchParams.get('locale') ?? defaultLocale;
+  const locale: Locale = (locales as readonly string[]).includes(rawLocale)
+    ? (rawLocale as Locale)
+    : defaultLocale;
+  const t = await getTranslator(locale);
+
   const ip = getClientIp(_request);
   if (!limiter.check(ip).success) {
     return NextResponse.json(
-      { error: 'Trop de requêtes. Réessayez dans une minute.' },
+      { error: t('api.pkpassRateLimit') },
       { status: 429 },
     );
   }
@@ -59,19 +69,19 @@ export async function GET(
     .single();
 
   if (passErr || !pass) {
-    return NextResponse.json({ error: 'Pass introuvable.' }, { status: 404 });
+    return NextResponse.json({ error: t('api.passNotFound') }, { status: 404 });
   }
 
   if (pass.platform !== 'apple') {
     return NextResponse.json(
-      { error: 'Ce pass n\'est pas un pass Apple Wallet.' },
+      { error: t('api.notApplePass') },
       { status: 404 },
     );
   }
 
   if (pass.status !== 'active') {
     return NextResponse.json(
-      { error: `Ce pass est "${pass.status}" et ne peut plus être téléchargé.` },
+      { error: t('api.passStatusError', { status: pass.status }) },
       { status: 409 },
     );
   }
@@ -84,7 +94,7 @@ export async function GET(
     .single();
 
   if (custErr || !customer) {
-    return NextResponse.json({ error: 'Client introuvable.' }, { status: 404 });
+    return NextResponse.json({ error: t('api.customerNotFound') }, { status: 404 });
   }
 
   // ── Fetch restaurant ─────────────────────────────────────────────────────
@@ -95,7 +105,7 @@ export async function GET(
     .single();
 
   if (restErr || !restaurant) {
-    return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
+    return NextResponse.json({ error: t('api.restaurantNotFound') }, { status: 404 });
   }
 
   // ── Fetch loyalty_settings to resolve live values ────────────────────────
@@ -108,7 +118,7 @@ export async function GET(
   // ── Resolve template fields (join returns object or array) ───────────────
   const tmpl = Array.isArray(pass.template) ? pass.template[0] : pass.template;
   if (!tmpl) {
-    return NextResponse.json({ error: 'Template introuvable.' }, { status: 404 });
+    return NextResponse.json({ error: t('api.templateNotFound') }, { status: 404 });
   }
 
   // Merge: loyalty_settings overrides template config_json for live values.
@@ -153,6 +163,15 @@ export async function GET(
       pkpassCache.set(cacheKey, buffer);
     }
 
+    // Audit: log download event (fire-and-forget)
+    auditLog({
+      restaurantId: pass.restaurant_id,
+      action: 'pkpass_download',
+      targetType: 'wallet_pass',
+      targetId: passId,
+      metadata: { ip, customerId: pass.customer_id },
+    });
+
     const filename = `${restaurant.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-pass.pkpass`;
     return pkpassResponse(buffer, filename);
   } catch (err: unknown) {
@@ -162,14 +181,14 @@ export async function GET(
     if (message.includes('manquant') || message.includes('APPLE_')) {
       console.warn('[pkpass] Apple Wallet non configuré:', message);
       return NextResponse.json(
-        { error: 'Apple Wallet n\'est pas encore configuré sur ce serveur.' },
+        { error: t('api.appleWalletNotConfigured') },
         { status: 503 },
       );
     }
 
     console.error('[pkpass]', err);
     return NextResponse.json(
-      { error: 'Erreur lors de la génération du pass Apple Wallet.' },
+      { error: t('api.pkpassGenerationError') },
       { status: 500 },
     );
   }

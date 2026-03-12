@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ReBites — Tableau de bord fidélité",
-  description: "Gérez votre programme de fidélité restaurant",
+  title: "ReBites — Loyalty Platform",
+  description: "Restaurant loyalty program management",
 };
 
 export default function RootLayout({
@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#f6f8fb" />

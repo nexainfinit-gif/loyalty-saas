@@ -1,45 +1,22 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings';
 
 interface TutorialStep {
   tab: Tab;
-  title: string;
-  description: string;
+  titleKey: string;
+  descKey: string;
 }
 
 const STEPS: TutorialStep[] = [
-  {
-    tab: 'overview',
-    title: "Vue d'ensemble",
-    description: "Votre tableau de bord principal. Retrouvez vos KPIs clés, l'état de santé de votre activité et les actions recommandées.",
-  },
-  {
-    tab: 'clients',
-    title: 'Clients',
-    description: "La liste complète de vos clients. Recherchez, filtrez par activité, consultez leurs points et exportez vos données en CSV.",
-  },
-  {
-    tab: 'loyalty',
-    title: 'Fidélité',
-    description: "Configurez votre programme : points ou tampons, seuil de récompense, message personnalisé. Tout se règle ici.",
-  },
-  {
-    tab: 'campaigns',
-    title: 'Campagnes',
-    description: "Envoyez des emails ciblés : relance des inactifs, anniversaires, offres spéciales. Choisissez un modèle ou créez le vôtre.",
-  },
-  {
-    tab: 'analytics',
-    title: 'Analytics',
-    description: "Suivez vos performances : inscriptions, rétention, clients actifs. Les graphiques vous montrent ce qui fonctionne.",
-  },
-  {
-    tab: 'settings',
-    title: 'Paramètres',
-    description: "Gérez votre commerce : nom, logo, couleur, lien d'inscription, QR code scanner et abonnement.",
-  },
+  { tab: 'overview',   titleKey: 'tutorial.overviewTitle',   descKey: 'tutorial.overviewDesc' },
+  { tab: 'clients',    titleKey: 'tutorial.clientsTitle',    descKey: 'tutorial.clientsDesc' },
+  { tab: 'loyalty',    titleKey: 'tutorial.loyaltyTitle',    descKey: 'tutorial.loyaltyDesc' },
+  { tab: 'campaigns',  titleKey: 'tutorial.campaignsTitle',  descKey: 'tutorial.campaignsDesc' },
+  { tab: 'analytics',  titleKey: 'tutorial.analyticsTitle',  descKey: 'tutorial.analyticsDesc' },
+  { tab: 'settings',   titleKey: 'tutorial.settingsTitle',   descKey: 'tutorial.settingsDesc' },
 ];
 
 interface Props {
@@ -48,6 +25,7 @@ interface Props {
 }
 
 export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
@@ -167,14 +145,14 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
             <div className="p-5">
               {/* Step counter */}
               <p className="text-[11px] font-semibold text-primary-600 mb-1.5">
-                Étape {currentStep + 1} sur {STEPS.length}
+                {t('tutorial.stepOf', { current: currentStep + 1, total: STEPS.length })}
               </p>
 
               {/* Title */}
-              <h3 className="text-base font-bold text-gray-900 mb-2">{step.title}</h3>
+              <h3 className="text-base font-bold text-gray-900 mb-2">{t(step.titleKey)}</h3>
 
               {/* Description */}
-              <p className="text-sm text-gray-500 leading-relaxed">{step.description}</p>
+              <p className="text-sm text-gray-500 leading-relaxed">{t(step.descKey)}</p>
             </div>
 
             {/* Actions */}
@@ -183,7 +161,7 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
                 onClick={onComplete}
                 className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
               >
-                Passer
+                {t('tutorial.skip')}
               </button>
 
               <div className="flex items-center gap-2">
@@ -199,7 +177,7 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
                   onClick={handleNext}
                   className="px-4 py-2 bg-gray-900 text-white text-xs font-semibold rounded-xl hover:bg-gray-800 transition-colors"
                 >
-                  {isLast ? 'Commencer !' : 'Suivant →'}
+                  {isLast ? t('tutorial.start') : t('tutorial.nextBtn')}
                 </button>
               </div>
             </div>

@@ -412,7 +412,7 @@ export function generateSaveJwt(data: GooglePassData): string {
   const claims = {
     iss:     CLIENT_EMAIL,
     aud:     'google',
-    origins: ['*'],
+    origins: [process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'],
     typ:     'savetowallet',
     payload: { loyaltyObjects: [buildLoyaltyObject(data)] },
   };

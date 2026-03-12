@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import QRCode from 'react-qr-code';
 import AddToAppleWalletButton from '@/components/AddToAppleWalletButton';
+import { useTranslation } from '@/lib/i18n';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -14,6 +15,7 @@ interface Restaurant {
 }
 
 export default function RegisterForm({ restaurant }: { restaurant: Restaurant }) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [successData, setSuccessData] = useState<{
@@ -67,11 +69,11 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
 
   const validateField = (name: string, value: string) => {
     let error = '';
-    if (name === 'firstName' && !value.trim()) error = 'Le prénom est requis';
-    if (name === 'lastName' && !value.trim()) error = 'Le nom est requis';
+    if (name === 'firstName' && !value.trim()) error = t('register.firstNameRequired');
+    if (name === 'lastName' && !value.trim()) error = t('register.lastNameRequired');
     if (name === 'email') {
-      if (!value.trim()) error = "L'email est requis";
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Email invalide';
+      if (!value.trim()) error = t('register.emailRequired');
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = t('register.emailInvalid');
     }
     setFieldErrors((prev) => {
       if (!error) { const { [name]: _, ...rest } = prev; return rest; }
@@ -107,7 +109,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
       setSuccessData(data);
       setStatus('success');
     } else {
-      setErrorMsg(data.error || 'Une erreur est survenue.');
+      setErrorMsg(data.error || t('register.genericError'));
       setStatus('error');
     }
   }
@@ -175,7 +177,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             color: '#111',
             margin: '0 0 0.5rem',
           }}>
-            Bienvenue !
+            {t('register.welcome')}
           </h1>
 
           <p className="fade-up-2" style={{
@@ -191,7 +193,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             fontSize: '0.9rem',
             margin: '0 0 2rem',
           }}>
-            Membre fidélité · <strong style={{ color: restaurant.color }}>{successData.restaurantName}</strong>
+            {t('register.memberLabel')}<strong style={{ color: restaurant.color }}>{successData.restaurantName}</strong>
           </p>
 
           {/* QR Code */}
@@ -213,8 +215,9 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
               fontSize: '0.75rem',
               margin: '1rem 0 0',
               lineHeight: 1.5,
+              whiteSpace: 'pre-line',
             }}>
-              Présentez ce QR code à chaque visite<br />pour gagner des points
+              {t('register.qrInstruction')}
             </p>
           </div>
 
@@ -245,7 +248,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
                   </svg>
-                  Ajouter à Google Wallet
+                  {t('register.addToGoogleWallet')}
                 </a>
               )}
               {successData.appleWalletUrl && (() => {
@@ -264,7 +267,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             fontSize: '0.75rem',
             margin: 0,
           }}>
-            Un email avec votre QR code vous a été envoyé
+            {t('register.emailSentQr')}
           </p>
 
           <p className="fade-up-4" style={{
@@ -276,7 +279,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             padding: '0.625rem 1rem',
             borderRadius: '10px',
           }}>
-            Un email de vérification vous a été envoyé
+            {t('register.emailVerificationSent')}
           </p>
         </div>
       </div>
@@ -400,7 +403,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             margin: 0,
             fontWeight: 300,
           }}>
-            Programme de fidélité
+            {t('register.programTitle')}
           </p>
         </div>
 
@@ -412,12 +415,12 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
-                  Prénom *
+                  {t('register.firstNameLabel')}
                 </label>
                 <input
                   name="firstName"
                   autoComplete="given-name"
-                  placeholder="Jean"
+                  placeholder={t('register.firstNamePlaceholder')}
                   required
                   style={{
                     ...inputStyle('firstName'),
@@ -432,12 +435,12 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
-                  Nom *
+                  {t('register.lastNameLabel')}
                 </label>
                 <input
                   name="lastName"
                   autoComplete="family-name"
-                  placeholder="Dupont"
+                  placeholder={t('register.lastNamePlaceholder')}
                   required
                   style={{
                     ...inputStyle('lastName'),
@@ -455,13 +458,13 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             {/* Email */}
             <div>
               <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
-                Email *
+                {t('register.emailLabel')}
               </label>
               <input
                 name="email"
                 type="email"
                 autoComplete="email"
-                placeholder="jean@exemple.com"
+                placeholder={t('register.emailPlaceholder')}
                 required
                 style={{
                   ...inputStyle('email'),
@@ -479,7 +482,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
-                  Anniversaire
+                  {t('register.birthdayLabel')}
                 </label>
                 <input
                   name="birthDate"
@@ -492,12 +495,12 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
               </div>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#666', display: 'block', marginBottom: '0.4rem' }}>
-                  Code postal
+                  {t('register.postalCodeLabel')}
                 </label>
                 <input
                   name="postalCode"
                   autoComplete="postal-code"
-                  placeholder="1000"
+                  placeholder={t('register.postalCodePlaceholder')}
                   style={inputStyle('postalCode')}
                   onFocus={() => setFocusedField('postalCode')}
                   onBlur={() => setFocusedField(null)}
@@ -523,10 +526,9 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
                 style={{ marginTop: '2px', accentColor: restaurant.color, flexShrink: 0 }}
               />
               <span style={{ fontSize: '0.75rem', color: '#777', lineHeight: 1.5 }}>
-                J&apos;accepte de recevoir des offres et actualités.
-                Données traitées conformément au RGPD. Voir notre{' '}
+                {t('register.gdprConsent')}{' '}
                 <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: restaurant.color, fontWeight: 500, textDecoration: 'underline' }}>
-                  politique de confidentialité
+                  {t('register.privacyPolicyLink')}
                 </a>. *
               </span>
             </label>
@@ -576,7 +578,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
                 boxShadow: status === 'loading' ? 'none' : `0 4px 12px ${restaurant.color}40`,
               }}
             >
-              {status === 'loading' ? '⏳ Inscription...' : '✨ Obtenir ma carte fidélité'}
+              {status === 'loading' ? t('register.submitting') : t('register.submitBtn')}
             </button>
           </form>
 
@@ -588,7 +590,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
             marginTop: '1.25rem',
             marginBottom: 0,
           }}>
-            Inscription gratuite · Pas de spam · Résiliable à tout moment
+            {t('register.footer')}
           </p>
         </div>
       </div>

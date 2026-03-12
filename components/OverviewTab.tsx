@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import {
   AreaChart, Area, XAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
+import { useTranslation } from '@/lib/i18n';
 
 /* ─── Types ─────────────────────────────────────────────── */
 interface Customer {
@@ -134,6 +135,7 @@ export default function OverviewTab({
   onCampaignOpen,
   restaurantSlug,
 }: Props) {
+  const { t, locale } = useTranslation();
   const [period, setPeriod] = useState<Period>('30d');
   const today = new Date();
 
@@ -209,42 +211,41 @@ export default function OverviewTab({
       d.setDate(d.getDate() - (periodDays - 1 - i));
       const dayStr = d.toISOString().split('T')[0];
       return {
-        date: d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit' }),
-        Visites: transactions.filter(t => t.created_at.startsWith(dayStr) && t.type === 'visit').length,
+        date: d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }),
+        [t('overview.visitsLabel')]: transactions.filter(t => t.created_at.startsWith(dayStr) && t.type === 'visit').length,
       };
     });
-  }, [transactions, periodDays]);
+  }, [transactions, periodDays, t]);
 
   /* ══════════════════════════════════════════════════════════
      FEATURE 1: PROGRAM SCORE (0–100)
      ──────────────────────────────────────────────────────── */
   const programScore = useMemo(() => {
-    if (totalCustomers === 0) return { score: 0, label: 'Pas encore de donnees', color: 'text-gray-400' as const };
+    if (totalCustomers === 0) return { score: 0, label: t('overview.noData'), color: 'text-gray-400' as const };
 
-    // A. Activity ratio (0–30 pts) — how many clients are active?
+    // A. Activity ratio (0–30 pts)
     const activeRatio = totalCustomers > 0
       ? (restaurantMetrics?.active_customers_30d ?? kpis.activeThisPeriod) / totalCustomers
       : 0;
     const activityScore = clamp(Math.round(activeRatio * 100 * 0.3), 0, 30);
 
-    // B. Return rate (0–30 pts) — clients with 2+ visits
+    // B. Return rate (0–30 pts)
     const returnScore = clamp(Math.round(kpis.returnRate * 0.3), 0, 30);
 
-    // C. Rewards engagement (0–20 pts) — are rewards being triggered?
+    // C. Rewards engagement (0–20 pts)
     const rewardRatio = totalCustomers > 0 ? kpis.rewardsThisPeriod / totalCustomers : 0;
     const rewardScore = clamp(Math.round(Math.min(rewardRatio * 10, 1) * 20), 0, 20);
 
-    // D. Growth trend (0–20 pts) — are new clients arriving?
+    // D. Growth trend (0–20 pts)
     const growthTrend = kpis.trendNew ?? 0;
-    // -50% or worse → 0 pts, +50% or better → 20 pts, linear between
     const growthScore = clamp(Math.round(((growthTrend + 50) / 100) * 20), 0, 20);
 
     const total = clamp(activityScore + returnScore + rewardScore + growthScore, 0, 100);
 
-    const label = total >= 75 ? 'Excellent'
-      : total >= 55 ? 'Bon'
-      : total >= 35 ? 'A ameliorer'
-      : 'Faible';
+    const label = total >= 75 ? t('overview.healthExcellent')
+      : total >= 55 ? t('overview.healthGood')
+      : total >= 35 ? t('overview.healthImprove')
+      : t('overview.healthLow');
 
     const color = total >= 75 ? 'text-success-700' as const
       : total >= 55 ? 'text-primary-700' as const
@@ -252,7 +253,7 @@ export default function OverviewTab({
       : 'text-danger-700' as const;
 
     return { score: total, label, color };
-  }, [totalCustomers, restaurantMetrics, kpis]);
+  }, [totalCustomers, restaurantMetrics, kpis, t]);
 
   /* Score ring colors */
   const scoreRingColor = programScore.score >= 75 ? 'var(--color-success-600)'
@@ -266,53 +267,48 @@ export default function OverviewTab({
   const insights = useMemo(() => {
     const list: { text: string; icon: string; color: string }[] = [];
 
-    // Near-reward nudge (highest value — directly drives visits)
     if (kpis.nearReward > 0) {
       list.push({
-        text: `${kpis.nearReward} client${kpis.nearReward > 1 ? 's' : ''} proche${kpis.nearReward > 1 ? 's' : ''} d\u2019une recompense — un rappel peut booster les visites.`,
+        text: t('overview.nearRewardBoost', { count: kpis.nearReward }),
         icon: ICONS.gift,
         color: 'text-warning-700',
       });
     }
 
-    // Birthday opportunity
     if (kpis.birthdaysSoon > 0 && list.length < 2) {
       list.push({
-        text: `${kpis.birthdaysSoon} anniversaire${kpis.birthdaysSoon > 1 ? 's' : ''} cette semaine — une campagne pourrait booster le trafic.`,
+        text: t('overview.birthdayBoost', { count: kpis.birthdaysSoon }),
         icon: ICONS.cake,
         color: 'text-primary-700',
       });
     }
 
-    // Activity drop
     if (kpis.trendActive !== null && kpis.trendActive < -15 && list.length < 2) {
       list.push({
-        text: `L\u2019activite a baisse de ${Math.abs(kpis.trendActive)}% par rapport a la periode precedente.`,
+        text: t('overview.activityDecline', { percent: Math.abs(kpis.trendActive) }),
         icon: ICONS.warning,
         color: 'text-danger-700',
       });
     }
 
-    // No new clients
     if (kpis.newCustomers === 0 && totalCustomers > 0 && list.length < 2) {
       list.push({
-        text: 'Aucun nouveau client cette periode — partagez votre lien d\u2019inscription.',
+        text: t('overview.noNewClients'),
         icon: ICONS.userPlus,
         color: 'text-warning-700',
       });
     }
 
-    // Growth momentum
     if (kpis.trendNew !== null && kpis.trendNew > 20 && list.length < 2) {
       list.push({
-        text: `Croissance de +${kpis.trendNew}% de nouveaux clients — belle dynamique !`,
+        text: t('overview.growthPositive', { percent: kpis.trendNew }),
         icon: ICONS.trendUp,
         color: 'text-success-700',
       });
     }
 
     return list.slice(0, 2);
-  }, [kpis, totalCustomers]);
+  }, [kpis, totalCustomers, t]);
 
   /* ── Health status ── */
   const highRiskCount = growthTriggers.filter(t => t.type === 'risk' && t.severity === 'high').length;
@@ -322,9 +318,9 @@ export default function OverviewTab({
   const health: Health = highRiskCount > 0 ? 'attention' : medRiskCount > 0 ? 'watch' : 'healthy';
 
   const healthConfig = {
-    healthy:   { label: 'Programme en bonne sante', bg: 'bg-success-50', text: 'text-success-700', dot: 'bg-success-500' },
-    watch:     { label: 'A surveiller',             bg: 'bg-warning-50', text: 'text-warning-700', dot: 'bg-warning-500' },
-    attention: { label: 'Attention requise',        bg: 'bg-danger-50',  text: 'text-danger-700',  dot: 'bg-danger-500' },
+    healthy:   { label: t('overview.programHealthy'), bg: 'bg-success-50', text: 'text-success-700', dot: 'bg-success-500' },
+    watch:     { label: t('overview.programWatch'),   bg: 'bg-warning-50', text: 'text-warning-700', dot: 'bg-warning-500' },
+    attention: { label: t('overview.programAttention'), bg: 'bg-danger-50',  text: 'text-danger-700',  dot: 'bg-danger-500' },
   } as const;
 
   const hc = healthConfig[health];
@@ -335,14 +331,14 @@ export default function OverviewTab({
     const active = restaurantMetrics?.active_customers_30d ?? kpis.activeThisPeriod;
     if (active > 0) {
       const trend = kpis.trendActive;
-      parts.push(`${active} client${active > 1 ? 's' : ''} actif${active > 1 ? 's' : ''}${trend !== null && trend !== 0 ? ` (${trend > 0 ? '+' : ''}${trend}%)` : ''}`);
+      parts.push(`${t('overview.activeClientsInfo', { count: active })}${trend !== null && trend !== 0 ? ` (${trend > 0 ? '+' : ''}${trend}%)` : ''}`);
     } else {
-      parts.push('Aucun client actif cette periode');
+      parts.push(t('overview.noActiveClients'));
     }
-    if (kpis.nearReward > 0) parts.push(`${kpis.nearReward} proche${kpis.nearReward > 1 ? 's' : ''} d\u2019une recompense`);
-    if (kpis.birthdaysSoon > 0) parts.push(`${kpis.birthdaysSoon} anniversaire${kpis.birthdaysSoon > 1 ? 's' : ''} cette semaine`);
+    if (kpis.nearReward > 0) parts.push(t('overview.nearRewardInfo', { count: kpis.nearReward }));
+    if (kpis.birthdaysSoon > 0) parts.push(t('overview.birthdayInfo', { count: kpis.birthdaysSoon }));
     return parts.join(' \u00b7 ');
-  }, [restaurantMetrics, kpis]);
+  }, [restaurantMetrics, kpis, t]);
 
   /* ══════════════════════════════════════════════════════════
      FEATURE 3: SMART ACTION SHORTCUTS (max 3)
@@ -353,8 +349,8 @@ export default function OverviewTab({
     if (kpis.nearReward > 0) {
       list.push({
         icon: ICONS.gift,
-        text: `${kpis.nearReward} client${kpis.nearReward > 1 ? 's' : ''} proche${kpis.nearReward > 1 ? 's' : ''} de la recompense`,
-        cta: 'Envoyer un rappel',
+        text: t('overview.nearRewardAlert', { count: kpis.nearReward }),
+        cta: t('overview.sendReminder'),
         onClick: onCampaignOpen,
         accent: 'text-warning-700',
         bg: 'bg-warning-50',
@@ -364,8 +360,8 @@ export default function OverviewTab({
     if (kpis.birthdaysSoon > 0 && list.length < 3) {
       list.push({
         icon: ICONS.cake,
-        text: `${kpis.birthdaysSoon} anniversaire${kpis.birthdaysSoon > 1 ? 's' : ''} cette semaine`,
-        cta: 'Lancer une campagne',
+        text: t('overview.birthdayAlert', { count: kpis.birthdaysSoon }),
+        cta: t('overview.launchCampaign'),
         onClick: onCampaignOpen,
         accent: 'text-primary-700',
         bg: 'bg-primary-50',
@@ -375,8 +371,8 @@ export default function OverviewTab({
     if (kpis.inactiveCustomers > 5 && list.length < 3) {
       list.push({
         icon: ICONS.clock,
-        text: `${kpis.inactiveCustomers} clients inactifs depuis 45 jours`,
-        cta: 'Re-engager',
+        text: t('overview.inactiveAlert', { count: kpis.inactiveCustomers }),
+        cta: t('overview.reengage'),
         onClick: () => { onFilterChange('inactive'); onTabChange('campaigns'); },
         accent: 'text-danger-700',
         bg: 'bg-danger-50',
@@ -386,8 +382,8 @@ export default function OverviewTab({
     if (kpis.rewardsThisPeriod === 0 && totalCustomers > 5 && list.length < 3) {
       list.push({
         icon: ICONS.gift,
-        text: 'Aucune recompense declenchee',
-        cta: 'Verifier les seuils',
+        text: t('overview.noRewardsTriggered'),
+        cta: t('overview.checkThresholds'),
         onClick: () => onTabChange('loyalty'),
         accent: 'text-warning-700',
         bg: 'bg-warning-50',
@@ -397,8 +393,8 @@ export default function OverviewTab({
     if (kpis.newCustomers === 0 && totalCustomers > 0 && list.length < 3) {
       list.push({
         icon: ICONS.userPlus,
-        text: 'Aucun nouveau client cette periode',
-        cta: 'Copier le lien',
+        text: t('overview.noNewClients'),
+        cta: t('overview.copyLink'),
         onClick: () => {
           if (restaurantSlug) navigator.clipboard?.writeText?.(`${window.location.origin}/register/${restaurantSlug}`);
         },
@@ -412,45 +408,45 @@ export default function OverviewTab({
       .filter(t => t.type !== 'upgrade')
       .sort((a, b) => (a.severity === 'high' ? 0 : a.severity === 'medium' ? 1 : 2) - (b.severity === 'high' ? 0 : b.severity === 'medium' ? 1 : 2));
 
-    for (const t of triggerActions) {
+    for (const tr of triggerActions) {
       if (list.length >= 3) break;
       const alreadyCovered = list.some(a => a.text.includes('inactifs') || a.text.includes('recompense') || a.text.includes('nouveau'));
-      if (alreadyCovered && (t.key.includes('churn') || t.key.includes('reward') || t.key.includes('growth'))) continue;
+      if (alreadyCovered && (tr.key.includes('churn') || tr.key.includes('reward') || tr.key.includes('growth'))) continue;
       list.push({
-        icon: t.type === 'risk' ? ICONS.warning : ICONS.trendUp,
-        text: t.title,
-        cta: t.type === 'risk' ? 'Agir' : 'Explorer',
+        icon: tr.type === 'risk' ? ICONS.warning : ICONS.trendUp,
+        text: tr.title,
+        cta: tr.type === 'risk' ? t('overview.actionBtn') : t('overview.exploreBtn'),
         onClick: () => {
-          if (t.key.includes('campaign') || t.key.includes('churn') || t.key.includes('engagement') || t.key.includes('re_')) onTabChange('campaigns');
-          else if (t.key.includes('reward') || t.key.includes('no_rewards')) onTabChange('loyalty');
+          if (tr.key.includes('campaign') || tr.key.includes('churn') || tr.key.includes('engagement') || tr.key.includes('re_')) onTabChange('campaigns');
+          else if (tr.key.includes('reward') || tr.key.includes('no_rewards')) onTabChange('loyalty');
           else onTabChange('clients');
         },
-        accent: t.type === 'risk' ? 'text-danger-700' : 'text-primary-700',
-        bg: t.type === 'risk' ? 'bg-danger-50' : 'bg-primary-50',
+        accent: tr.type === 'risk' ? 'text-danger-700' : 'text-primary-700',
+        bg: tr.type === 'risk' ? 'bg-danger-50' : 'bg-primary-50',
       });
     }
 
     return list.slice(0, 3);
-  }, [kpis, totalCustomers, growthTriggers, restaurantSlug, onTabChange, onFilterChange, onCampaignOpen]);
+  }, [kpis, totalCustomers, growthTriggers, restaurantSlug, onTabChange, onFilterChange, onCampaignOpen, t]);
 
   /* ── Segments ── */
   const segments = [
     {
-      label: 'VIP',
+      label: t('overview.segmentVip'),
       value: kpis.vipCustomers,
       bg: 'bg-vip-50',
       text: 'text-vip-700',
       onClick: () => { onFilterChange('vip'); onTabChange('clients'); },
     },
     {
-      label: 'Proches recompense',
+      label: t('overview.segmentNearReward'),
       value: kpis.nearReward,
       bg: 'bg-warning-50',
       text: 'text-warning-700',
       onClick: () => onTabChange('clients'),
     },
     {
-      label: 'Inactifs',
+      label: t('overview.segmentInactive'),
       value: kpis.inactiveCustomers,
       bg: 'bg-gray-50',
       text: 'text-gray-600',
@@ -459,7 +455,7 @@ export default function OverviewTab({
   ];
 
   /* ── Period label ── */
-  const periodLabel = period === '7d' ? '7 derniers jours' : period === '30d' ? '30 derniers jours' : '90 derniers jours';
+  const periodLabel = period === '7d' ? t('analytics.period7dFull') : period === '30d' ? t('analytics.period30dFull') : t('analytics.period90dFull');
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -467,9 +463,9 @@ export default function OverviewTab({
       {/* ═══ A. HEADER ═══════════════════════════════════════════ */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Vue d&apos;ensemble</h2>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{t('overview.title')}</h2>
           <p className="text-sm text-gray-400 mt-1">
-            {today.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {today.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             <span className="mx-1.5 text-gray-200">&middot;</span>
             {periodLabel}
           </p>
@@ -486,7 +482,7 @@ export default function OverviewTab({
                   period === p ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
                 ].join(' ')}
               >
-                {p === '7d' ? '7j' : p === '30d' ? '30j' : '90j'}
+                {p === '7d' ? t('analytics.period7d') : p === '30d' ? t('analytics.period30d') : t('analytics.period90d')}
               </button>
             ))}
           </div>
@@ -496,7 +492,7 @@ export default function OverviewTab({
             className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
           >
             <I d={ICONS.mail} className="w-3.5 h-3.5" />
-            Campagne
+            {t('overview.campaignLabel')}
           </button>
         </div>
       </div>
@@ -542,31 +538,31 @@ export default function OverviewTab({
       {/* ═══ C. 4 KPI CARDS ══════════════════════════════════════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          label="Clients actifs"
-          value={restaurantMetrics?.active_customers_30d ?? kpis.activeThisPeriod}
+          label={t('overview.kpiActiveClients')}
+          value={kpis.activeThisPeriod}
           trend={kpis.trendActive}
           icon={ICONS.users}
           iconBg="bg-primary-50"
           iconColor="text-primary-600"
         />
         <KpiCard
-          label="Nouveaux clients"
-          value={restaurantMetrics?.new_customers_30d ?? kpis.newCustomers}
+          label={t('overview.kpiNewClients')}
+          value={kpis.newCustomers}
           trend={kpis.trendNew}
           icon={ICONS.userPlus}
           iconBg="bg-success-50"
           iconColor="text-success-600"
         />
         <KpiCard
-          label="Taux de fidelite"
-          value={`${restaurantMetrics?.repeat_rate != null ? Number(restaurantMetrics.repeat_rate).toFixed(0) : kpis.returnRate}%`}
+          label={t('overview.kpiLoyaltyRate')}
+          value={`${kpis.returnRate}%`}
           icon={ICONS.refresh}
           iconBg="bg-warning-50"
           iconColor="text-warning-600"
-          sub="2+ visites"
+          sub={t('overview.kpiTwoPlus')}
         />
         <KpiCard
-          label="Recompenses"
+          label={t('overview.kpiRewards')}
           value={kpis.rewardsThisPeriod}
           trend={kpis.trendRewards}
           icon={ICONS.gift}
@@ -580,7 +576,7 @@ export default function OverviewTab({
 
         {/* Activity chart — 3 cols */}
         <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-5">Activite</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-5">{t('overview.activityTitle')}</h3>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
               <defs>
@@ -608,7 +604,7 @@ export default function OverviewTab({
               />
               <Area
                 type="monotone"
-                dataKey="Visites"
+                dataKey={t('overview.visitsLabel')}
                 stroke="var(--color-primary-600)"
                 strokeWidth={2}
                 fill="url(#ovGrad)"
@@ -622,7 +618,7 @@ export default function OverviewTab({
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
             <I d={ICONS.bolt} className="w-3.5 h-3.5 text-gray-400" />
-            <h3 className="text-sm font-semibold text-gray-900">Actions prioritaires</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{t('overview.priorityActions')}</h3>
           </div>
           <div className="flex-1 p-4 flex flex-col gap-2.5">
             {triggersLoading && (
@@ -634,8 +630,8 @@ export default function OverviewTab({
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center py-4">
                   <I d={ICONS.check} className="w-8 h-8 text-success-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400 font-medium">Rien a faire</p>
-                  <p className="text-xs text-gray-300 mt-0.5">Votre programme se porte bien</p>
+                  <p className="text-sm text-gray-400 font-medium">{t('overview.nothingToDo')}</p>
+                  <p className="text-xs text-gray-300 mt-0.5">{t('overview.programHealthy')}</p>
                 </div>
               </div>
             )}
@@ -663,7 +659,7 @@ export default function OverviewTab({
 
       {/* ═══ E. SEGMENTS COMPACT ═════════════════════════════════ */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-5 py-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Segments a surveiller</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('overview.segmentsToWatch')}</h3>
         <div className="grid grid-cols-3 gap-3">
           {segments.map((seg, i) => (
             <button
@@ -740,6 +736,7 @@ function KpiCard({
   iconColor: string;
   sub?: string;
 }) {
+  const { locale } = useTranslation();
   return (
     <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="flex items-center justify-between mb-4">
@@ -749,7 +746,7 @@ function KpiCard({
         </div>
       </div>
       <p className="text-3xl font-bold text-gray-900 tabular-nums tracking-tight">
-        {typeof value === 'number' ? value.toLocaleString('fr-FR') : value}
+        {typeof value === 'number' ? value.toLocaleString(locale) : value}
       </p>
       <div className="mt-1.5 h-5 flex items-center">
         {trend !== undefined && trend !== null ? (
