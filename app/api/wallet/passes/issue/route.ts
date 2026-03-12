@@ -208,18 +208,20 @@ export async function POST(request: Request) {
   // ── Apple Wallet: insert DB row only (pkpass generated on download) ────────
   const applePassId    = randomUUID();
   const appleShortCode = applePassId.replace(/-/g, '').slice(0, 8).toUpperCase();
+  const appleAuthToken = randomUUID().replace(/-/g, ''); // 32 hex chars (>16 char Apple minimum)
 
   const { data: newPass, error: insertErr } = await supabaseAdmin
     .from('wallet_passes')
     .insert({
-      id:            applePassId,
-      short_code:    appleShortCode,
-      restaurant_id: guard.restaurantId,
-      customer_id:   customerId,
-      template_id:   templateId,
-      platform:      'apple',
-      status:        'active',
-      expires_at:    expiresAt,
+      id:                   applePassId,
+      short_code:           appleShortCode,
+      restaurant_id:        guard.restaurantId,
+      customer_id:          customerId,
+      template_id:          templateId,
+      platform:             'apple',
+      status:               'active',
+      expires_at:           expiresAt,
+      authentication_token: appleAuthToken,
     })
     .select()
     .single();

@@ -476,6 +476,16 @@ export default function DashboardPage() {
     });
     setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, total_points: Math.max(0, c.total_points + delta) } : c));
     toast.success(delta > 0 ? t('dashboard.toastPointsAdded', { delta }) : t('dashboard.toastPointsRemoved', { delta }));
+
+    // Fire-and-forget: trigger Apple Wallet push notification for updated pass
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (!s) return;
+      fetch('/api/wallet/push-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
+        body: JSON.stringify({ customer_id: customerId }),
+      }).catch(() => {/* non-blocking */});
+    });
   }
 
   function copyWalletUrl(customerId: string) {

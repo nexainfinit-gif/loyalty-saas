@@ -4,6 +4,7 @@ import { requireAuth, requireScannerAuth } from '@/lib/server-auth';
 import { NextResponse } from 'next/server';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
+import { pushPassUpdate } from '@/lib/apns';
 import { getTranslator, defaultLocale, locales, type Locale } from '@/lib/i18n-server';
 
 // Rate limiting: max 30 scans per IP per minute (covers busy service periods)
@@ -268,6 +269,31 @@ export async function POST(
   }).then(({ error }) => {
     if (error) logger.error({ ctx: 'scan', rid: restaurantId, msg: 'wallet_sync_queue insert failed', err: error.message });
   });
+
+  // ── Fire-and-forget APNS push for Apple Wallet passes ──────────────────
+  void (async () => {
+    try {
+      const { data: applePasses } = await supabaseAdmin
+        .from('wallet_passes')
+        .select('id, push_token')
+        .eq('customer_id', customer.id)
+        .eq('platform', 'apple')
+        .eq('status', 'active')
+        .not('push_token', 'is', null);
+
+      if (applePasses?.length) {
+        await Promise.allSettled(applePasses.map(async (pass) => {
+          try {
+            await pushPassUpdate(pass.push_token!);
+          } catch (err) {
+            logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push failed', passId: pass.id, err: err instanceof Error ? err.message : String(err) });
+          }
+        }));
+      }
+    } catch (err) {
+      logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push lookup failed', err: err instanceof Error ? err.message : String(err) });
+    }
+  })();
 
   return Response.json(responsePayload);
 }

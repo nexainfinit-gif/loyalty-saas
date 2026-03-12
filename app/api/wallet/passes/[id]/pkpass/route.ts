@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { buildPkpass, pkpassResponse } from '@/lib/apple-wallet';
 import type { PassBuildInput } from '@/lib/apple-wallet';
+import { randomUUID } from 'crypto';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { pkpassCache } from '@/lib/pkpass-cache';
 import { auditLog } from '@/lib/audit';
@@ -56,6 +57,7 @@ export async function GET(
       platform,
       status,
       serial_number,
+      authentication_token,
       customer_id,
       restaurant_id,
       pass_version,
@@ -133,6 +135,16 @@ export async function GET(
     } : {}),
   };
 
+  // ── Ensure authentication_token exists (backfill for pre-migration passes) ─
+  let authToken: string | null = (pass as { authentication_token?: string | null }).authentication_token ?? null;
+  if (!authToken) {
+    authToken = randomUUID().replace(/-/g, ''); // 32 hex chars (>16 char Apple minimum)
+    await supabaseAdmin
+      .from('wallet_passes')
+      .update({ authentication_token: authToken })
+      .eq('id', passId);
+  }
+
   // ── Build pkpass ─────────────────────────────────────────────────────────
   const input: PassBuildInput = {
     passId,
@@ -146,8 +158,9 @@ export async function GET(
     stampsCount:    customer.stamps_count  ?? 0,
     totalPoints:    customer.total_points  ?? 0,
     qrToken:        customer.qr_token      ?? passId,
-    restaurantName: restaurant.name,
-    logoUrl:        restaurant.logo_url,
+    restaurantName:      restaurant.name,
+    logoUrl:             restaurant.logo_url,
+    authenticationToken: authToken,
   };
 
   try {

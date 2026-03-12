@@ -28,6 +28,8 @@ export interface PassBuildInput {
   /** Restaurant info */
   restaurantName: string;
   logoUrl?:       string | null;
+  /** Authentication token for push updates (min 16 chars, from wallet_passes.authentication_token) */
+  authenticationToken?: string | null;
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -66,6 +68,11 @@ function buildPassJson(
     foregroundColor:     'rgb(255, 255, 255)',
     labelColor:          'rgb(255, 255, 255)',
     logoText:            input.restaurantName,
+    // Push update registration — only included when authentication_token is available
+    ...(input.authenticationToken ? {
+      webServiceURL:       `${process.env.NEXT_PUBLIC_APP_URL}/api/wallet/webservice`,
+      authenticationToken: input.authenticationToken,
+    } : {}),
     // QR barcode — dual format for backward compatibility
     barcode: {
       message:         input.qrToken,

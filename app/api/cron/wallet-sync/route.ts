@@ -8,6 +8,7 @@
 
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { updateLoyaltyObject } from '@/lib/google-wallet';
+import { pushPassUpdate } from '@/lib/apns';
 import { logger } from '@/lib/logger';
 
 const MAX_QUEUE_DRAIN = 50;
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const stats = { queue_processed: 0, queue_synced: 0, queue_skipped: 0, retried: 0, succeeded: 0, failed: 0 };
+  const stats = { queue_processed: 0, queue_synced: 0, queue_skipped: 0, retried: 0, succeeded: 0, failed: 0, apns_sent: 0, apns_failed: 0 };
 
   // ── Phase 1: Drain wallet_sync_queue ──────────────────────────────────
   const { data: queueItems } = await supabaseAdmin
@@ -51,8 +52,17 @@ export async function GET(req: Request) {
         .eq('status', 'active')
         .not('object_id', 'is', null);
 
-      if (!googlePasses?.length) {
-        // No Google passes to sync — mark done
+      // Find active Apple passes for this customer (for APNS push)
+      const { data: applePasses } = await supabaseAdmin
+        .from('wallet_passes')
+        .select('id, push_token')
+        .eq('customer_id', item.customer_id)
+        .eq('platform', 'apple')
+        .eq('status', 'active')
+        .not('push_token', 'is', null);
+
+      if (!googlePasses?.length && !applePasses?.length) {
+        // No passes to sync — mark done
         await supabaseAdmin
           .from('wallet_sync_queue')
           .update({ status: 'done', processed_at: new Date().toISOString() })
@@ -83,26 +93,43 @@ export async function GET(req: Request) {
         .maybeSingle();
 
       let allOk = true;
-      await Promise.allSettled(googlePasses.map(async (pass) => {
-        const passKind = (pass.wallet_pass_templates as unknown as { pass_kind: string } | null)?.pass_kind ?? 'points';
 
-        const result = await updateLoyaltyObject(pass.object_id!, {
-          passKind:    passKind as 'stamps' | 'points',
-          totalPoints: customer.total_points ?? 0,
-          stampsCount: customer.stamps_count ?? 0,
-          stampsTotal: settings?.stamps_total ?? 10,
-        });
+      // Sync Google passes
+      if (googlePasses?.length) {
+        await Promise.allSettled(googlePasses.map(async (pass) => {
+          const passKind = (pass.wallet_pass_templates as unknown as { pass_kind: string } | null)?.pass_kind ?? 'points';
 
-        await supabaseAdmin
-          .from('wallet_passes')
-          .update({
-            last_synced_at: result.ok ? new Date().toISOString() : undefined,
-            sync_error:     result.ok ? null : (result.error ?? 'Queue sync failed'),
-          })
-          .eq('id', pass.id);
+          const result = await updateLoyaltyObject(pass.object_id!, {
+            passKind:    passKind as 'stamps' | 'points',
+            totalPoints: customer.total_points ?? 0,
+            stampsCount: customer.stamps_count ?? 0,
+            stampsTotal: settings?.stamps_total ?? 10,
+          });
 
-        if (!result.ok) allOk = false;
-      }));
+          await supabaseAdmin
+            .from('wallet_passes')
+            .update({
+              last_synced_at: result.ok ? new Date().toISOString() : undefined,
+              sync_error:     result.ok ? null : (result.error ?? 'Queue sync failed'),
+            })
+            .eq('id', pass.id);
+
+          if (!result.ok) allOk = false;
+        }));
+      }
+
+      // Send APNS push notifications to Apple passes (fire-and-forget per pass)
+      if (applePasses?.length) {
+        await Promise.allSettled(applePasses.map(async (pass) => {
+          try {
+            await pushPassUpdate(pass.push_token!);
+            stats.apns_sent++;
+          } catch (err) {
+            stats.apns_failed++;
+            logger.error({ ctx: 'cron/wallet-sync', msg: 'APNS push failed', passId: pass.id, err: err instanceof Error ? err.message : String(err) });
+          }
+        }));
+      }
 
       await supabaseAdmin
         .from('wallet_sync_queue')
@@ -167,8 +194,32 @@ export async function GET(req: Request) {
         })
         .eq('id', pass.id);
 
-      if (result.ok) stats.succeeded++;
-      else           stats.failed++;
+      if (result.ok) {
+        stats.succeeded++;
+
+        // Also send APNS push to any active Apple passes for this customer
+        const { data: applePassesRetry } = await supabaseAdmin
+          .from('wallet_passes')
+          .select('id, push_token')
+          .eq('customer_id', pass.customer_id)
+          .eq('platform', 'apple')
+          .eq('status', 'active')
+          .not('push_token', 'is', null);
+
+        if (applePassesRetry?.length) {
+          await Promise.allSettled(applePassesRetry.map(async (ap) => {
+            try {
+              await pushPassUpdate(ap.push_token!);
+              stats.apns_sent++;
+            } catch (err) {
+              stats.apns_failed++;
+              logger.error({ ctx: 'cron/wallet-sync', msg: 'APNS push failed (retry phase)', passId: ap.id, err: err instanceof Error ? err.message : String(err) });
+            }
+          }));
+        }
+      } else {
+        stats.failed++;
+      }
     }));
   }
 
