@@ -66,6 +66,9 @@ export default function ScannerPage() {
     video.srcObject = streamRef.current;
     video.play().catch((err) => {
       console.error('[Scanner] video.play() failed:', err.name, err.message);
+      setErrorMsg(t('scanner.cameraError', { errorName: `play: ${err.name}` }));
+      setStatus('error');
+      stopCamera();
     });
 
     // Give the video a moment to receive its first frame before scanning
@@ -116,16 +119,27 @@ export default function ScannerPage() {
   }, [cameraActive]);
 
   async function startCamera() {
-    if (typeof window !== 'undefined' && location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    // HTTPS is required for getUserMedia (except localhost / 127.0.0.1)
+    if (typeof window !== 'undefined' && location.protocol !== 'https:'
+        && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
       setErrorMsg(t('scanner.httpsRequired'));
       setStatus('error');
       return;
     }
+
+    // Check if mediaDevices API is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setErrorMsg(t('scanner.cameraError', { errorName: 'MediaDevices API unavailable' }));
+      setStatus('error');
+      return;
+    }
+
     try {
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       } catch {
+        // Fallback: try any camera (front-facing on desktop)
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
       }
       streamRef.current = stream;
@@ -137,7 +151,9 @@ export default function ScannerPage() {
           ? t('scanner.cameraBlocked')
           : err.name === 'NotFoundError'
           ? t('scanner.noCamera')
-          : t('scanner.cameraError', { errorName: err.name });
+          : err.name === 'NotReadableError'
+          ? t('scanner.cameraError', { errorName: 'Camera already in use' })
+          : t('scanner.cameraError', { errorName: err.name || err.message || 'Unknown error' });
       setErrorMsg(msg);
       setStatus('error');
     }
@@ -451,7 +467,7 @@ export default function ScannerPage() {
                 width: '100%', fontFamily: "'DM Sans', sans-serif",
               }}
             >
-              {status === 'loading' ? '⏳ Traitement...' : 'Valider le scan'}
+              {status === 'loading' ? t('scanner.processing') : t('scanner.validateBtn')}
             </button>
           </div>
 
