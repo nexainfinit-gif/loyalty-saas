@@ -174,7 +174,9 @@ function getCachedCredentials() {
 
   const certP12B64 = process.env.APPLE_PASS_CERT_P12_BASE64 ?? '';
   const passphrase = process.env.APPLE_PASS_CERT_PASSPHRASE ?? '';
-  const wwdrPem    = process.env.APPLE_WWDR_PEM             ?? '';
+  const wwdrRaw    = process.env.APPLE_WWDR_PEM             ?? '';
+  // Accept PEM as-is or base64-encoded (for Vercel env var compatibility)
+  const wwdrPem    = wwdrRaw.startsWith('-----') ? wwdrRaw : Buffer.from(wwdrRaw, 'base64').toString('utf-8');
 
   if (!certP12B64 || !wwdrPem) {
     throw new Error(
