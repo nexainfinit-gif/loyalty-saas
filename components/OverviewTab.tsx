@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   AreaChart, Area, XAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -73,6 +73,7 @@ interface Props {
   onFilterChange: (filter: string) => void;
   onCampaignOpen: () => void;
   restaurantSlug?: string;
+  referralEnabled?: boolean;
 }
 
 type Period = '7d' | '30d' | '90d';
@@ -134,6 +135,7 @@ export default function OverviewTab({
   onFilterChange,
   onCampaignOpen,
   restaurantSlug,
+  referralEnabled,
 }: Props) {
   const { t, locale } = useTranslation();
   const [period, setPeriod] = useState<Period>('30d');
@@ -673,6 +675,9 @@ export default function OverviewTab({
           ))}
         </div>
       </div>
+
+      {/* ═══ F. REFERRAL INSIGHT (conditional) ═════════════════════ */}
+      {referralEnabled && <ReferralInsight t={t} />}
     </div>
   );
 }
@@ -772,5 +777,44 @@ function TrendBadge({ value }: { value: number }) {
     <span className="inline-flex items-center gap-1 text-xs font-semibold text-danger-700 bg-danger-50 px-2 py-0.5 rounded-full">
       {value}%
     </span>
+  );
+}
+
+/* ─── Referral Insight Card (self-contained / modular) ──── */
+function ReferralInsight({ t }: { t: (key: string, params?: Record<string, string | number>) => string }) {
+  const [stats, setStats] = useState<{ thisMonth: number; total: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/referral/stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data) return;
+        setStats({ thisMonth: data.thisPeriod ?? 0, total: data.total ?? 0 });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!stats || (stats.thisMonth === 0 && stats.total === 0)) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-5 py-4">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
+          <svg className="w-4.5 h-4.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900">{t('referral.statsTitle')}</p>
+          <p className="text-xs text-gray-500">
+            {t('referral.statsThisMonth', { count: stats.thisMonth })}
+            <span className="mx-1.5 text-gray-200">&middot;</span>
+            {t('referral.statsTotal', { count: stats.total })}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

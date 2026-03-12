@@ -87,7 +87,7 @@ export async function POST(
     return Response.json({ error: (parsed as { success: false; error: string }).error }, { status: 400 })
   }
 
-  const { first_name, email, birth_date, phone, consent_marketing } = parsed.data
+  const { first_name, email, birth_date, phone, consent_marketing, ref } = parsed.data
 
   // ── Rate limit: max RATE_MAX registrations per restaurant per RATE_WINDOW_MS ──
   const windowStart = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
@@ -176,5 +176,49 @@ export async function POST(
     }
   }
 
-  return Response.json({ success: true, customer_id: customer.id, appleWalletUrl })
+  // ── Handle referral if ref code provided (non-blocking) ──────────────
+  let referralCode: string | null = null;
+  let referralBonus: { referrer: number; referee: number } | null = null;
+  try {
+    const { generateReferralCode } = await import('@/lib/referral');
+    referralCode = await generateReferralCode(restaurant.id, customer.id);
+  } catch (refCodeErr) {
+    logger.error({ ctx: 'register/slug', rid: restaurant.id, msg: 'Referral code generation failed', err: refCodeErr });
+  }
+
+  if (ref && ref.trim()) {
+    try {
+      const { getReferralConfig, validateReferralCode, processReferral } = await import('@/lib/referral');
+      const config = await getReferralConfig(restaurant.id);
+      if (config.enabled) {
+        // Fetch loyalty settings for program_type
+        const { data: loyaltySettings } = await supabase
+          .from('loyalty_settings')
+          .select('program_type')
+          .eq('restaurant_id', restaurant.id)
+          .maybeSingle();
+
+        const validation = await validateReferralCode(restaurant.id, ref.trim(), email);
+        if (validation.valid && validation.referrerId) {
+          const result = await processReferral({
+            restaurantId: restaurant.id,
+            referrerId: validation.referrerId,
+            refereeId: customer.id,
+            programType: loyaltySettings?.program_type ?? 'points',
+            config,
+          });
+          if (result.success) {
+            referralBonus = {
+              referrer: result.referrerReward ?? 0,
+              referee: result.refereeReward ?? 0,
+            };
+          }
+        }
+      }
+    } catch (refErr) {
+      logger.error({ ctx: 'register/slug', rid: restaurant.id, msg: 'Referral processing failed', err: refErr });
+    }
+  }
+
+  return Response.json({ success: true, customer_id: customer.id, appleWalletUrl, referralCode, referralBonus })
 }

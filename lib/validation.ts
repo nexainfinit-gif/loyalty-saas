@@ -12,6 +12,7 @@ export const registerSchema = z.object({
   birthDate:      z.string().date().optional().nullable(),
   postalCode:     z.string().regex(/^\d{4,10}$/, 'Code postal invalide').optional().nullable(),
   marketingConsent: z.boolean(),
+  ref:            z.string().trim().max(100).optional().nullable(),
 });
 
 /** Schema for POST /api/register/[slug] (slug-based registration route) */
@@ -21,6 +22,7 @@ export const registerSlugSchema = z.object({
   birth_date:        z.string().date().optional().nullable(),
   phone:             z.string().trim().max(20).optional().nullable(),
   consent_marketing: z.boolean().optional().default(false),
+  ref:               z.string().trim().max(100).optional().nullable(),
 });
 
 export type ParseResult<T> =

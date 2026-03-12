@@ -354,7 +354,35 @@
     "statsSummaryStamps": "tampons par carte · ",
     "statsSummaryPoints": "pt/scan · Seuil : ",
     "savingBtn": "Sauvegarde...",
-    "saveBtn": "Sauvegarder"
+    "saveBtn": "Sauvegarder",
+    "tabReferral": "Parrainage",
+    "referralEnabled": "Activer le programme de parrainage",
+    "referralEnabledDesc": "Vos clients peuvent inviter leurs amis et gagner des récompenses",
+    "referralRewardReferrer": "Récompense du parrain",
+    "referralRewardReferrerDesc": "Points offerts au client qui parraine",
+    "referralRewardReferee": "Récompense du filleul",
+    "referralRewardRefereeDesc": "Points bonus pour le nouveau client",
+    "referralMaxPerCustomer": "Max parrainages par client",
+    "referralMaxPerCustomerDesc": "Limiter le nombre d'amis que chaque client peut parrainer",
+    "referralSaved": "Paramètres de parrainage sauvegardés",
+    "referralUpgrade": "Passez au plan Starter pour débloquer le parrainage"
+  },
+  "referral": {
+    "shareTitle": "Invitez un ami",
+    "shareDescription": "Partagez ce lien et gagnez tous les deux des récompenses !",
+    "shareButton": "Partager mon lien",
+    "copyLink": "Copier le lien",
+    "linkCopied": "Lien copié !",
+    "bonusReceived": "Vous avez reçu {points} points bonus grâce à un parrainage !",
+    "referredBy": "Parrainé par {name}",
+    "maxReached": "Vous avez atteint le maximum de parrainages",
+    "invalidCode": "Ce code de parrainage n'est plus valide",
+    "statsTitle": "Parrainages",
+    "statsThisMonth": "{count} clients parrainés ce mois",
+    "statsTotal": "{count} parrainages au total",
+    "topReferrers": "Meilleurs parrains",
+    "youEarn": "Vous gagnez {points} {type} par ami invité",
+    "friendGets": "Votre ami reçoit {points} {type} de bienvenue"
   },
   "analytics": {
     "title": "Analytiques",
@@ -548,6 +576,19 @@
     "welcomePoints": "🎁 {points} points de bienvenue ont été ajoutés à votre carte !",
     "consentRequired": "Vous devez accepter de recevoir vos récompenses.",
     "emailAlreadyRegistered": "Cet email est déjà inscrit à ce programme."
+  },
+  "referral": {
+    "title": "Parrainez vos amis",
+    "description": "Partagez votre lien et gagnez des récompenses quand vos amis rejoignent le programme de {restaurant} !",
+    "rewardPoints": "Gagnez {amount} points par parrainage",
+    "rewardStamps": "Gagnez {amount} tampon(s) par parrainage",
+    "copyLink": "Copier le lien",
+    "copied": "Copié !",
+    "share": "Partager",
+    "shareTitle": "Rejoins le programme fidélité de {restaurant}",
+    "shareText": "Rejoins le programme fidélité de {restaurant} et reçois tes récompenses !",
+    "referralBonus": "Vous avez reçu {amount} points bonus grâce à votre ami(e) !",
+    "referralBonusStamps": "Vous avez reçu {amount} tampon(s) bonus grâce à votre ami(e) !"
   },
   "support": {
     "backToDashboard": "Retour au tableau de bord",

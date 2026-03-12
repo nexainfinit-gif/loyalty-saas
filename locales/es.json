@@ -354,7 +354,35 @@
     "statsSummaryStamps": "sellos por tarjeta · ",
     "statsSummaryPoints": "pt/escaneo · Umbral: ",
     "savingBtn": "Guardando...",
-    "saveBtn": "Guardar"
+    "saveBtn": "Guardar",
+    "tabReferral": "Referidos",
+    "referralEnabled": "Activar programa de referidos",
+    "referralEnabledDesc": "Permite a tus clientes invitar amigos y ganar recompensas",
+    "referralRewardReferrer": "Recompensa del referente",
+    "referralRewardReferrerDesc": "Puntos otorgados al cliente que refiere",
+    "referralRewardReferee": "Recompensa del amigo",
+    "referralRewardRefereeDesc": "Puntos de bienvenida para el nuevo cliente",
+    "referralMaxPerCustomer": "Máx. referidos por cliente",
+    "referralMaxPerCustomerDesc": "Limitar cuántos amigos puede referir cada cliente",
+    "referralSaved": "Configuración de referidos guardada",
+    "referralUpgrade": "Actualiza a Starter para desbloquear referidos"
+  },
+  "referral": {
+    "shareTitle": "Invita a un amigo",
+    "shareDescription": "¡Comparte este enlace y ambos ganarán recompensas!",
+    "shareButton": "Compartir mi enlace",
+    "copyLink": "Copiar enlace",
+    "linkCopied": "¡Enlace copiado!",
+    "bonusReceived": "¡Has recibido {points} puntos bonus por un referido!",
+    "referredBy": "Referido por {name}",
+    "maxReached": "Has alcanzado el número máximo de referidos",
+    "invalidCode": "Este código de referido ya no es válido",
+    "statsTitle": "Referidos",
+    "statsThisMonth": "{count} clientes referidos este mes",
+    "statsTotal": "{count} referidos en total",
+    "topReferrers": "Mejores referentes",
+    "youEarn": "Ganas {points} {type} por amigo invitado",
+    "friendGets": "Tu amigo recibe {points} {type} de bienvenida"
   },
   "analytics": {
     "title": "Analíticas",
@@ -548,6 +576,19 @@
     "welcomePoints": "🎁 ¡Se han añadido {points} puntos de bienvenida a tu tarjeta!",
     "consentRequired": "Debes aceptar para recibir tus recompensas.",
     "emailAlreadyRegistered": "Este email ya está registrado en este programa."
+  },
+  "referral": {
+    "title": "Invita a tus amigos",
+    "description": "Comparte tu enlace y gana recompensas cuando tus amigos se unan al programa de {restaurant}!",
+    "rewardPoints": "Gana {amount} puntos por cada referido",
+    "rewardStamps": "Gana {amount} sello(s) por cada referido",
+    "copyLink": "Copiar enlace",
+    "copied": "Copiado!",
+    "share": "Compartir",
+    "shareTitle": "Únete al programa de fidelidad de {restaurant}",
+    "shareText": "Únete al programa de fidelidad de {restaurant} y recibe tus recompensas!",
+    "referralBonus": "Recibiste {amount} puntos bonus de tu amigo!",
+    "referralBonusStamps": "Recibiste {amount} sello(s) bonus de tu amigo!"
   },
   "support": {
     "backToDashboard": "Volver al panel",

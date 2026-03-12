@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import QRCode from 'react-qr-code';
 import AddToAppleWalletButton from '@/components/AddToAppleWalletButton';
+import ReferralShareCard from '@/components/ReferralShareCard';
 import { useTranslation } from '@/lib/i18n';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -14,8 +15,13 @@ interface Restaurant {
   logo_url: string | null;
 }
 
-export default function RegisterForm({ restaurant }: { restaurant: Restaurant }) {
-  const { t } = useTranslation();
+interface RegisterFormProps {
+  restaurant: Restaurant;
+  refCode?: string | null;
+}
+
+export default function RegisterForm({ restaurant, refCode }: RegisterFormProps) {
+  const { t, locale } = useTranslation();
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [successData, setSuccessData] = useState<{
@@ -24,6 +30,10 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
     restaurantName: string;
     walletLink: string | null;
     appleWalletUrl?: string | null;
+    referralCode?: string | null;
+    referralBonus?: number | null;
+    programType?: 'points' | 'stamps';
+    referralRewardAmount?: number;
   } | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -100,6 +110,7 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
         postalCode: form.get('postalCode') || null,
         marketingConsent: form.get('marketingConsent') === 'on',
         ...(captchaToken ? { captchaToken } : {}),
+        ...(refCode ? { ref: refCode } : {}),
       }),
     });
 
@@ -281,6 +292,42 @@ export default function RegisterForm({ restaurant }: { restaurant: Restaurant })
           }}>
             {t('register.emailVerificationSent')}
           </p>
+
+          {/* Referral bonus message */}
+          {successData.referralBonus != null && successData.referralBonus > 0 && (
+            <div className="fade-up-4" style={{
+              background: '#f0fdf4',
+              borderRadius: '10px',
+              padding: '0.625rem 1rem',
+              marginTop: '0.75rem',
+              border: '1.5px solid #bbf7d0',
+            }}>
+              <p style={{
+                fontSize: '0.8rem',
+                color: '#15803d',
+                margin: 0,
+                fontWeight: 600,
+              }}>
+                {successData.programType === 'stamps'
+                  ? t('referral.referralBonusStamps', { amount: String(successData.referralBonus) })
+                  : t('referral.referralBonus', { amount: String(successData.referralBonus) })
+                }
+              </p>
+            </div>
+          )}
+
+          {/* Referral share card */}
+          {successData.referralCode && (
+            <ReferralShareCard
+              referralCode={successData.referralCode}
+              restaurantSlug={restaurant.slug}
+              restaurantName={successData.restaurantName}
+              restaurantColor={restaurant.color}
+              rewardAmount={successData.referralRewardAmount}
+              programType={successData.programType ?? 'points'}
+              locale={locale}
+            />
+          )}
         </div>
       </div>
     );

@@ -354,7 +354,35 @@
     "statsSummaryStamps": "stamps per card · ",
     "statsSummaryPoints": "pt/scan · Threshold: ",
     "savingBtn": "Saving...",
-    "saveBtn": "Save"
+    "saveBtn": "Save",
+    "tabReferral": "Referrals",
+    "referralEnabled": "Enable referral program",
+    "referralEnabledDesc": "Let your customers invite friends and earn rewards",
+    "referralRewardReferrer": "Referrer reward",
+    "referralRewardReferrerDesc": "Points given to the customer who refers",
+    "referralRewardReferee": "Friend reward",
+    "referralRewardRefereeDesc": "Bonus points for the new customer",
+    "referralMaxPerCustomer": "Max referrals per customer",
+    "referralMaxPerCustomerDesc": "Limit how many friends each customer can refer",
+    "referralSaved": "Referral settings saved",
+    "referralUpgrade": "Upgrade to Starter to unlock referrals"
+  },
+  "referral": {
+    "shareTitle": "Invite a friend",
+    "shareDescription": "Share this link and you'll both earn rewards!",
+    "shareButton": "Share my link",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied!",
+    "bonusReceived": "You received {points} bonus points from a referral!",
+    "referredBy": "Referred by {name}",
+    "maxReached": "You've reached the maximum number of referrals",
+    "invalidCode": "This referral code is no longer valid",
+    "statsTitle": "Referrals",
+    "statsThisMonth": "{count} customers referred this month",
+    "statsTotal": "{count} total referrals",
+    "topReferrers": "Top referrers",
+    "youEarn": "You earn {points} {type} per friend invited",
+    "friendGets": "Your friend gets {points} {type} welcome bonus"
   },
   "analytics": {
     "title": "Analytics",
@@ -548,6 +576,19 @@
     "welcomePoints": "🎁 {points} welcome points have been added to your card!",
     "consentRequired": "You must agree to receive your rewards.",
     "emailAlreadyRegistered": "This email is already registered in this program."
+  },
+  "referral": {
+    "title": "Refer your friends",
+    "description": "Share your link and earn rewards when your friends join {restaurant}'s program!",
+    "rewardPoints": "Earn {amount} points per referral",
+    "rewardStamps": "Earn {amount} stamp(s) per referral",
+    "copyLink": "Copy link",
+    "copied": "Copied!",
+    "share": "Share",
+    "shareTitle": "Join {restaurant}'s loyalty program",
+    "shareText": "Join {restaurant}'s loyalty program and get your rewards!",
+    "referralBonus": "You received {amount} bonus points from your friend!",
+    "referralBonusStamps": "You received {amount} bonus stamp(s) from your friend!"
   },
   "support": {
     "backToDashboard": "Back to dashboard",

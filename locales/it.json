@@ -354,7 +354,35 @@
     "statsSummaryStamps": "timbri per carta · ",
     "statsSummaryPoints": "pt/scansione · Soglia: ",
     "savingBtn": "Salvataggio...",
-    "saveBtn": "Salva"
+    "saveBtn": "Salva",
+    "tabReferral": "Passaparola",
+    "referralEnabled": "Attiva il programma di passaparola",
+    "referralEnabledDesc": "I tuoi clienti possono invitare amici e guadagnare premi",
+    "referralRewardReferrer": "Premio per chi invita",
+    "referralRewardReferrerDesc": "Punti assegnati al cliente che invita",
+    "referralRewardReferee": "Premio per l'amico",
+    "referralRewardRefereeDesc": "Punti bonus per il nuovo cliente",
+    "referralMaxPerCustomer": "Max inviti per cliente",
+    "referralMaxPerCustomerDesc": "Limita quanti amici ogni cliente può invitare",
+    "referralSaved": "Impostazioni passaparola salvate",
+    "referralUpgrade": "Passa al piano Starter per sbloccare il passaparola"
+  },
+  "referral": {
+    "shareTitle": "Invita un amico",
+    "shareDescription": "Condividi questo link e guadagnate entrambi dei premi!",
+    "shareButton": "Condividi il mio link",
+    "copyLink": "Copia link",
+    "linkCopied": "Link copiato!",
+    "bonusReceived": "Hai ricevuto {points} punti bonus grazie a un passaparola!",
+    "referredBy": "Invitato da {name}",
+    "maxReached": "Hai raggiunto il numero massimo di inviti",
+    "invalidCode": "Questo codice di invito non è più valido",
+    "statsTitle": "Passaparola",
+    "statsThisMonth": "{count} clienti invitati questo mese",
+    "statsTotal": "{count} inviti in totale",
+    "topReferrers": "Migliori promotori",
+    "youEarn": "Guadagni {points} {type} per ogni amico invitato",
+    "friendGets": "Il tuo amico riceve {points} {type} di benvenuto"
   },
   "analytics": {
     "title": "Statistiche",
@@ -548,6 +576,19 @@
     "welcomePoints": "🎁 {points} punti di benvenuto sono stati aggiunti alla tua carta!",
     "consentRequired": "Devi accettare per ricevere i tuoi premi.",
     "emailAlreadyRegistered": "Questa email è già registrata in questo programma."
+  },
+  "referral": {
+    "title": "Invita i tuoi amici",
+    "description": "Condividi il tuo link e guadagna premi quando i tuoi amici si uniscono al programma di {restaurant}!",
+    "rewardPoints": "Guadagna {amount} punti per ogni invito",
+    "rewardStamps": "Guadagna {amount} timbro/i per ogni invito",
+    "copyLink": "Copia il link",
+    "copied": "Copiato!",
+    "share": "Condividi",
+    "shareTitle": "Unisciti al programma fedeltà di {restaurant}",
+    "shareText": "Unisciti al programma fedeltà di {restaurant} e ricevi i tuoi premi!",
+    "referralBonus": "Hai ricevuto {amount} punti bonus dal tuo amico!",
+    "referralBonusStamps": "Hai ricevuto {amount} timbro/i bonus dal tuo amico!"
   },
   "support": {
     "backToDashboard": "Torna alla dashboard",

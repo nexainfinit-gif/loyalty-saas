@@ -354,7 +354,35 @@
     "statsSummaryStamps": "stempels per kaart · ",
     "statsSummaryPoints": "pt/scan · Drempel: ",
     "savingBtn": "Opslaan...",
-    "saveBtn": "Opslaan"
+    "saveBtn": "Opslaan",
+    "tabReferral": "Doorverwijzingen",
+    "referralEnabled": "Doorverwijzingsprogramma inschakelen",
+    "referralEnabledDesc": "Laat uw klanten vrienden uitnodigen en beloningen verdienen",
+    "referralRewardReferrer": "Beloning voor verwijzer",
+    "referralRewardReferrerDesc": "Punten die de verwijzende klant ontvangt",
+    "referralRewardReferee": "Beloning voor vriend",
+    "referralRewardRefereeDesc": "Bonuspunten voor de nieuwe klant",
+    "referralMaxPerCustomer": "Max doorverwijzingen per klant",
+    "referralMaxPerCustomerDesc": "Beperk hoeveel vrienden elke klant kan doorverwijzen",
+    "referralSaved": "Doorverwijzingsinstellingen opgeslagen",
+    "referralUpgrade": "Upgrade naar Starter om doorverwijzingen te ontgrendelen"
+  },
+  "referral": {
+    "shareTitle": "Nodig een vriend uit",
+    "shareDescription": "Deel deze link en verdien beiden beloningen!",
+    "shareButton": "Deel mijn link",
+    "copyLink": "Link kopiëren",
+    "linkCopied": "Link gekopieerd!",
+    "bonusReceived": "U heeft {points} bonuspunten ontvangen dankzij een doorverwijzing!",
+    "referredBy": "Doorverwezen door {name}",
+    "maxReached": "U heeft het maximale aantal doorverwijzingen bereikt",
+    "invalidCode": "Deze doorverwijzingscode is niet meer geldig",
+    "statsTitle": "Doorverwijzingen",
+    "statsThisMonth": "{count} klanten doorverwezen deze maand",
+    "statsTotal": "{count} doorverwijzingen in totaal",
+    "topReferrers": "Beste verwijzers",
+    "youEarn": "U verdient {points} {type} per uitgenodigde vriend",
+    "friendGets": "Uw vriend ontvangt {points} {type} welkomstbonus"
   },
   "analytics": {
     "title": "Analyses",
@@ -548,6 +576,19 @@
     "welcomePoints": "🎁 {points} welkomstpunten zijn toegevoegd aan uw kaart!",
     "consentRequired": "U moet akkoord gaan met het ontvangen van uw beloningen.",
     "emailAlreadyRegistered": "Dit e-mailadres is al ingeschreven voor dit programma."
+  },
+  "referral": {
+    "title": "Nodig je vrienden uit",
+    "description": "Deel je link en verdien beloningen wanneer je vrienden zich aanmelden bij het programma van {restaurant}!",
+    "rewardPoints": "Verdien {amount} punten per verwijzing",
+    "rewardStamps": "Verdien {amount} stempel(s) per verwijzing",
+    "copyLink": "Link kopiëren",
+    "copied": "Gekopieerd!",
+    "share": "Delen",
+    "shareTitle": "Doe mee met het loyaliteitsprogramma van {restaurant}",
+    "shareText": "Doe mee met het loyaliteitsprogramma van {restaurant} en ontvang je beloningen!",
+    "referralBonus": "Je hebt {amount} bonuspunten ontvangen van je vriend!",
+    "referralBonusStamps": "Je hebt {amount} bonusstempel(s) ontvangen van je vriend!"
   },
   "support": {
     "backToDashboard": "Terug naar dashboard",

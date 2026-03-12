@@ -24,6 +24,14 @@ interface WelcomeEmailProps {
   restaurantColor: string;
   qrToken: string;
   appleWalletUrl?: string | null;
+  /** If the customer was referred, the bonus points/stamps they received. */
+  referralBonusReceived?: number | null;
+  /** Referral code for this customer to share with friends. */
+  referralCode?: string | null;
+  /** Reward amount the referrer earns per successful referral. */
+  referralRewardAmount?: number | null;
+  /** Program type for referral reward labeling. */
+  programType?: 'points' | 'stamps';
 }
 
 export async function sendWelcomeEmail({
@@ -33,12 +41,20 @@ export async function sendWelcomeEmail({
   restaurantColor,
   qrToken,
   appleWalletUrl,
+  referralBonusReceived,
+  referralCode,
+  referralRewardAmount,
+  programType,
 }: WelcomeEmailProps) {
   const scanUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/scan/${qrToken}`;
   const qrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(scanUrl)}&size=250`;
   const safeColor = safeCssColor(restaurantColor);
   const safeName  = esc(restaurantName);
   const safeFname = esc(firstName);
+  const rewardLabel = programType === 'stamps' ? 'tampon(s)' : 'point(s)';
+  const referralLink = referralCode
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/register/${referralCode}`
+    : null;
 
   await resend.emails.send({
     from: `${restaurantName} <noreply@rebites.be>`,
@@ -83,6 +99,31 @@ export async function sendWelcomeEmail({
         </div>
         ` : ''}
 
+        ${referralBonusReceived ? `
+        <div style="background: #f0fdf4; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #bbf7d0;">
+          <p style="margin: 0; color: #166534; font-size: 0.9rem; text-align: center;">
+            <strong>Cadeau de bienvenue !</strong><br/>
+            Un ami vous a parrainé — vous recevez <strong>${referralBonusReceived} ${rewardLabel}</strong> en bonus.
+          </p>
+        </div>
+        ` : ''}
+
+        ${referralCode && referralRewardAmount ? `
+        <div style="background: #eff6ff; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; border: 1px solid #bfdbfe;">
+          <p style="margin: 0 0 0.5rem 0; color: #1e40af; font-size: 0.95rem; font-weight: 600; text-align: center;">
+            Parrainez vos amis !
+          </p>
+          <p style="margin: 0 0 1rem 0; color: #374151; font-size: 0.85rem; text-align: center;">
+            Invitez vos proches et gagnez <strong>${referralRewardAmount} ${rewardLabel}</strong> pour chaque ami qui rejoint le programme.
+          </p>
+          <div style="text-align: center;">
+            <a href="${referralLink}" target="_blank" style="display: inline-block; background: ${safeColor}; color: white; text-decoration: none; padding: 0.625rem 1.25rem; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">
+              Partager mon lien de parrainage
+            </a>
+          </div>
+        </div>
+        ` : ''}
+
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
 
         <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
@@ -90,6 +131,94 @@ export async function sendWelcomeEmail({
           à tout moment en répondant à cet email ou en cliquant sur
           <a href="${process.env.NEXT_PUBLIC_APP_URL}/api/unsubscribe?token=${qrToken}" style="color: #9ca3af; text-decoration: underline;">Se désinscrire</a>.<br/>
           ${safeName} — Programme de fidélité
+        </p>
+      </div>
+    `,
+  });
+}
+
+/* ── Referral success email (sent to the referrer) ─────────────────────── */
+
+interface ReferralSuccessEmailProps {
+  to: string;
+  referrerName: string;
+  refereeName: string;
+  rewardPoints: number;
+  programType: 'points' | 'stamps';
+  restaurantName: string;
+  restaurantColor: string;
+  /** qr_token of the referrer for unsubscribe link. */
+  qrToken?: string;
+  /** Referral code for the referrer to keep sharing. */
+  referralCode?: string;
+}
+
+export async function sendReferralSuccessEmail({
+  to,
+  referrerName,
+  refereeName,
+  rewardPoints,
+  programType,
+  restaurantName,
+  restaurantColor,
+  qrToken,
+  referralCode,
+}: ReferralSuccessEmailProps) {
+  const safeColor       = safeCssColor(restaurantColor);
+  const safeName        = esc(restaurantName);
+  const safeReferrer    = esc(referrerName);
+  const safeReferee     = esc(refereeName);
+  const rewardLabel     = programType === 'stamps' ? 'tampon(s)' : 'point(s)';
+  const referralLink    = referralCode
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/register/${referralCode}`
+    : null;
+  const unsubUrl        = qrToken
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/api/unsubscribe?token=${qrToken}`
+    : null;
+
+  await resend.emails.send({
+    from: `${restaurantName} <noreply@rebites.be>`,
+    to,
+    subject: `${restaurantName} — Votre ami a rejoint le programme !`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+
+        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
+          <h1 style="color: white; margin: 0; font-size: 1.5rem;">Parrainage réussi !</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeName}</p>
+        </div>
+
+        <p style="color: #374151; font-size: 1rem;">
+          Bonjour <strong>${safeReferrer}</strong>,
+        </p>
+
+        <p style="color: #374151;">
+          Bonne nouvelle ! Votre ami(e) <strong>${safeReferee}</strong> vient de rejoindre le
+          programme de fidélité <strong>${safeName}</strong> grâce à votre parrainage.
+        </p>
+
+        <div style="background: #f0fdf4; border-radius: 12px; padding: 1.25rem; margin: 1.5rem 0; border: 1px solid #bbf7d0; text-align: center;">
+          <p style="margin: 0 0 0.25rem 0; color: #166534; font-size: 0.85rem;">Vous avez gagné</p>
+          <p style="margin: 0; color: #166534; font-size: 1.5rem; font-weight: 700;">${rewardPoints} ${rewardLabel}</p>
+        </div>
+
+        <p style="color: #374151; font-size: 0.9rem;">
+          Continuez à partager votre lien de parrainage pour gagner encore plus de ${rewardLabel} !
+        </p>
+
+        ${referralLink ? `
+        <div style="text-align: center; margin: 1.5rem 0;">
+          <a href="${referralLink}" target="_blank" style="display: inline-block; background: ${safeColor}; color: white; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
+            Partager mon lien de parrainage
+          </a>
+        </div>
+        ` : ''}
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
+          ${safeName} — Programme de fidélité<br/>
+          ${unsubUrl ? `<a href="${unsubUrl}" style="color: #9ca3af; text-decoration: underline;">Se désinscrire</a>` : ''}
         </p>
       </div>
     `,

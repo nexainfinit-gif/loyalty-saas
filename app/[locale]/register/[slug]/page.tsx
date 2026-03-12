@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import AddToAppleWalletButton from '@/components/AddToAppleWalletButton';
+import ReferralShareCard from '@/components/ReferralShareCard';
 import { useTranslation } from '@/lib/i18n';
 import { CompactLocaleSwitcher } from '@/components/LocaleSwitcher';
 
@@ -19,7 +20,10 @@ type Step = 'form' | 'success';
 
 export default function RegisterPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const slug = params.slug as string;
+  const locale = (params.locale as string) ?? 'fr';
+  const refCode = searchParams.get('ref');
   const { t } = useTranslation();
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -32,6 +36,10 @@ export default function RegisterPage() {
   const [walletUrl, setWalletUrl] = useState<string | null>(null);
   const [appleWalletUrl, setAppleWalletUrl] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralBonus, setReferralBonus] = useState<number | null>(null);
+  const [programType, setProgramType] = useState<'points' | 'stamps'>('points');
+  const [referralRewardAmount, setReferralRewardAmount] = useState<number | undefined>(undefined);
   const turnstileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -102,7 +110,7 @@ export default function RegisterPage() {
     const res = await fetch(`/api/register/${slug}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ first_name, email, birth_date: birth_date || null, phone: phone || null, consent_marketing, ...(captchaToken ? { captchaToken } : {}) }),
+      body: JSON.stringify({ first_name, email, birth_date: birth_date || null, phone: phone || null, consent_marketing, ...(captchaToken ? { captchaToken } : {}), ...(refCode ? { ref: refCode } : {}) }),
     });
 
     const data = await res.json();
@@ -119,6 +127,10 @@ export default function RegisterPage() {
 
     setCustomerName(first_name);
     setAppleWalletUrl(data.appleWalletUrl ?? null);
+    if (data.referralCode) setReferralCode(data.referralCode);
+    if (data.referralBonus) setReferralBonus(data.referralBonus);
+    if (data.programType) setProgramType(data.programType);
+    if (data.referralRewardAmount) setReferralRewardAmount(data.referralRewardAmount);
     const walletRes = await fetch(`/api/wallet/${data.customer_id}`);
     const walletData = await walletRes.json();
     if (walletData.walletUrl) setWalletUrl(walletData.walletUrl);
@@ -406,6 +418,34 @@ export default function RegisterPage() {
                 {t('registerSlug.welcomePoints', { points: '10' })}
               </p>
             </div>
+
+            {/* Referral bonus message */}
+            {referralBonus != null && referralBonus > 0 && (
+              <div style={{
+                background: '#f0fdf4', borderRadius: '12px', padding: '1rem',
+                border: '1.5px solid #bbf7d0', marginTop: '0.75rem',
+              }}>
+                <p style={{ fontSize: '0.82rem', color: '#15803d', margin: 0, lineHeight: 1.6, fontWeight: 600 }}>
+                  {programType === 'stamps'
+                    ? t('referral.referralBonusStamps', { amount: String(referralBonus) })
+                    : t('referral.referralBonus', { amount: String(referralBonus) })
+                  }
+                </p>
+              </div>
+            )}
+
+            {/* Referral share card */}
+            {referralCode && restaurant && (
+              <ReferralShareCard
+                referralCode={referralCode}
+                restaurantSlug={slug}
+                restaurantName={restaurant.name}
+                restaurantColor={color}
+                rewardAmount={referralRewardAmount}
+                programType={programType}
+                locale={locale}
+              />
+            )}
           </div>
         )}
       </div>

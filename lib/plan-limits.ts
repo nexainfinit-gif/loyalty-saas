@@ -9,19 +9,19 @@ export const PLAN_LIMITS = {
     maxTemplates:         1,
     maxCampaignsPerMonth: 2,
     maxCustomers:         100,
-    features:             ['loyalty_basic'],
+    features:             ['loyalty_basic'] as readonly string[],
   },
   starter: {
     maxTemplates:         3,
     maxCampaignsPerMonth: 10,
     maxCustomers:         500,
-    features:             ['loyalty_basic', 'campaigns_email', 'wallet_apple'],
+    features:             ['loyalty_basic', 'campaigns_email', 'wallet_apple', 'referral_program'] as readonly string[],
   },
   pro: {
     maxTemplates:         10,
     maxCampaignsPerMonth: -1, // unlimited
     maxCustomers:         -1, // unlimited
-    features:             ['loyalty_basic', 'campaigns_email', 'wallet_apple', 'wallet_google', 'analytics_advanced'],
+    features:             ['loyalty_basic', 'campaigns_email', 'wallet_apple', 'wallet_google', 'analytics_advanced', 'referral_program'] as readonly string[],
   },
 } as const;
 
@@ -29,6 +29,14 @@ export type PlanName = keyof typeof PLAN_LIMITS;
 
 export function getPlanLimits(plan: string | null) {
   return PLAN_LIMITS[(plan as PlanName) ?? 'free'] ?? PLAN_LIMITS.free;
+}
+
+/**
+ * Check whether a plan includes a given feature flag.
+ */
+export function hasFeature(plan: string | null, feature: string): boolean {
+  const limits = getPlanLimits(plan);
+  return (limits.features as readonly string[]).includes(feature);
 }
 
 /* ── Resource limit checker ───────────────────────────────────────────────── */

@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
     birthDate,
     postalCode,
     marketingConsent,
+    ref,
   } = parsed.data;
 
   const { data: restaurant, error: restError } = await supabase
@@ -191,6 +192,50 @@ export async function POST(req: NextRequest) {
     logger.error({ ctx: 'register', rid: restaurant.id, msg: 'Verification email failed', err: verifyEmailError });
   }
 
+  // ── Handle referral if ref code provided (non-blocking) ──────────────
+  let referralCode: string | null = null;
+  let referralBonus: { referrer: number; referee: number } | null = null;
+  try {
+    const { generateReferralCode } = await import('@/lib/referral');
+    referralCode = await generateReferralCode(restaurant.id, customer.id);
+  } catch (refCodeErr) {
+    logger.error({ ctx: 'register', rid: restaurant.id, msg: 'Referral code generation failed', err: refCodeErr });
+  }
+
+  if (ref && ref.trim()) {
+    try {
+      const { getReferralConfig, validateReferralCode, processReferral } = await import('@/lib/referral');
+      const config = await getReferralConfig(restaurant.id);
+      if (config.enabled) {
+        // Fetch loyalty settings for program_type
+        const { data: loyaltySettings } = await supabase
+          .from('loyalty_settings')
+          .select('program_type')
+          .eq('restaurant_id', restaurant.id)
+          .maybeSingle();
+
+        const validation = await validateReferralCode(restaurant.id, ref.trim(), email);
+        if (validation.valid && validation.referrerId) {
+          const result = await processReferral({
+            restaurantId: restaurant.id,
+            referrerId: validation.referrerId,
+            refereeId: customer.id,
+            programType: loyaltySettings?.program_type ?? 'points',
+            config,
+          });
+          if (result.success) {
+            referralBonus = {
+              referrer: result.referrerReward ?? 0,
+              referee: result.refereeReward ?? 0,
+            };
+          }
+        }
+      }
+    } catch (refErr) {
+      logger.error({ ctx: 'register', rid: restaurant.id, msg: 'Referral processing failed', err: refErr });
+    }
+  }
+
   return NextResponse.json({
     success: true,
     qrToken: customer.qr_token,
@@ -198,5 +243,7 @@ export async function POST(req: NextRequest) {
     restaurantName: restaurant.name,
     walletLink,
     appleWalletUrl,
+    referralCode,
+    referralBonus,
   });
 }
