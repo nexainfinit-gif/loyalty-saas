@@ -37,6 +37,7 @@ export default function ScannerPage() {
   const videoRef    = useRef<HTMLVideoElement>(null);
   const streamRef   = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startingRef = useRef(false); // guard against double-click
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -64,7 +65,10 @@ export default function ScannerPage() {
 
     const video = videoRef.current;
     video.srcObject = streamRef.current;
+    // play() is needed because we removed autoPlay to avoid play/play race on iOS
     video.play().catch((err) => {
+      // AbortError = interrupted by stopCamera or new play(), safe to ignore
+      if (err.name === 'AbortError') return;
       console.error('[Scanner] video.play() failed:', err.name, err.message);
       setErrorMsg(t('scanner.cameraError', { errorName: `play: ${err.name}` }));
       setStatus('error');
@@ -119,11 +123,16 @@ export default function ScannerPage() {
   }, [cameraActive]);
 
   async function startCamera() {
+    // Prevent double-click: if already starting or active, bail out
+    if (startingRef.current || cameraActive) return;
+    startingRef.current = true;
+
     // HTTPS is required for getUserMedia (except localhost / 127.0.0.1)
     if (typeof window !== 'undefined' && location.protocol !== 'https:'
         && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
       setErrorMsg(t('scanner.httpsRequired'));
       setStatus('error');
+      startingRef.current = false;
       return;
     }
 
@@ -131,6 +140,7 @@ export default function ScannerPage() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setErrorMsg(t('scanner.cameraError', { errorName: 'MediaDevices API unavailable' }));
       setStatus('error');
+      startingRef.current = false;
       return;
     }
 
@@ -156,6 +166,8 @@ export default function ScannerPage() {
           : t('scanner.cameraError', { errorName: err.name || err.message || 'Unknown error' });
       setErrorMsg(msg);
       setStatus('error');
+    } finally {
+      startingRef.current = false;
     }
   }
 
@@ -395,7 +407,7 @@ export default function ScannerPage() {
                 <video
                   ref={videoRef}
                   style={{ width: '100%', display: 'block', maxHeight: '300px', objectFit: 'cover' }}
-                  autoPlay muted playsInline
+                  muted playsInline
                 />
                 <div style={{
                   position: 'absolute', inset: 0,
