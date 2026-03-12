@@ -123,8 +123,8 @@ export async function sendPassUpdatePush(pushToken: string): Promise<PushResult>
         ':method':       'POST',
         ':path':         `/3/device/${pushToken}`,
         'apns-topic':    passTypeId,
-        'apns-push-type': 'alert',
-        'content-type':  'application/json',
+        // No apns-push-type header for Wallet pass updates (Apple spec).
+        // The empty body {} tells the device to fetch the updated pass.
       });
 
       // Set a timeout to avoid hanging connections

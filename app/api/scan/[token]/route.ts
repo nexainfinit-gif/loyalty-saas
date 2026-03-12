@@ -271,20 +271,21 @@ export async function POST(
   });
 
   // ── Fire-and-forget APNS push for Apple Wallet passes ──────────────────
+  // pushPassUpdate(passId) fetches registrations from wallet_push_registrations,
+  // increments pass_version, and sends APNS push to all registered devices.
   void (async () => {
     try {
       const { data: applePasses } = await supabaseAdmin
         .from('wallet_passes')
-        .select('id, push_token')
+        .select('id')
         .eq('customer_id', customer.id)
         .eq('platform', 'apple')
-        .eq('status', 'active')
-        .not('push_token', 'is', null);
+        .eq('status', 'active');
 
       if (applePasses?.length) {
         await Promise.allSettled(applePasses.map(async (pass) => {
           try {
-            await pushPassUpdate(pass.push_token!);
+            await pushPassUpdate(pass.id);
           } catch (err) {
             logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push failed', passId: pass.id, err: err instanceof Error ? err.message : String(err) });
           }
