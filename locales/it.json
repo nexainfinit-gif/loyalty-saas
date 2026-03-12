@@ -365,7 +365,11 @@
     "referralMaxPerCustomer": "Max inviti per cliente",
     "referralMaxPerCustomerDesc": "Limita quanti amici ogni cliente può invitare",
     "referralSaved": "Impostazioni passaparola salvate",
-    "referralUpgrade": "Passa al piano Starter per sbloccare il passaparola"
+    "referralUpgrade": "Passa al piano Starter per sbloccare il passaparola",
+    "vipThresholdPoints": "Soglia VIP (punti)",
+    "vipThresholdStamps": "Soglia VIP (timbri)",
+    "vipThresholdDesc": "Numero minimo di punti (o timbri) perché un cliente sia considerato VIP",
+    "vipThresholdSaved": "Soglia VIP salvata"
   },
   "referral": {
     "shareTitle": "Invita un amico",

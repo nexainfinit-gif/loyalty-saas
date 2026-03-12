@@ -365,7 +365,11 @@
     "referralMaxPerCustomer": "Max doorverwijzingen per klant",
     "referralMaxPerCustomerDesc": "Beperk hoeveel vrienden elke klant kan doorverwijzen",
     "referralSaved": "Doorverwijzingsinstellingen opgeslagen",
-    "referralUpgrade": "Upgrade naar Starter om doorverwijzingen te ontgrendelen"
+    "referralUpgrade": "Upgrade naar Starter om doorverwijzingen te ontgrendelen",
+    "vipThresholdPoints": "VIP-drempel (punten)",
+    "vipThresholdStamps": "VIP-drempel (stempels)",
+    "vipThresholdDesc": "Minimum aantal punten (of stempels) om als VIP-klant beschouwd te worden",
+    "vipThresholdSaved": "VIP-drempel opgeslagen"
   },
   "referral": {
     "shareTitle": "Nodig een vriend uit",

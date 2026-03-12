@@ -365,7 +365,11 @@
     "referralMaxPerCustomer": "Max parrainages par client",
     "referralMaxPerCustomerDesc": "Limiter le nombre d'amis que chaque client peut parrainer",
     "referralSaved": "Paramètres de parrainage sauvegardés",
-    "referralUpgrade": "Passez au plan Starter pour débloquer le parrainage"
+    "referralUpgrade": "Passez au plan Starter pour débloquer le parrainage",
+    "vipThresholdPoints": "Seuil VIP (points)",
+    "vipThresholdStamps": "Seuil VIP (tampons)",
+    "vipThresholdDesc": "Nombre minimum de points (ou tampons) pour qu'un client soit considéré VIP",
+    "vipThresholdSaved": "Seuil VIP sauvegardé"
   },
   "referral": {
     "shareTitle": "Invitez un ami",

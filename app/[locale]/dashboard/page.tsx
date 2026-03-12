@@ -76,6 +76,8 @@ interface LoyaltySettings {
   stamps_total: number;
   mode_changed_at: string | null;
   previous_program_type: string | null;
+  vip_threshold_points: number;
+  vip_threshold_stamps: number;
 }
 
 interface Campaign {
@@ -133,11 +135,20 @@ const BOOKING_ELIGIBLE_TYPES = new Set([
 ]);
 
 /* ─── Helpers ────────────────────────────────────────────── */
-function getCustomerStatus(c: Customer): 'vip' | 'active' | 'inactive' {
-  if (!c.last_visit_at) return 'inactive';
-  const days = (Date.now() - new Date(c.last_visit_at).getTime()) / 86400000;
-  if (days > 30) return 'inactive';
-  if (c.total_points >= 100) return 'vip';
+function getCustomerStatus(
+  c: Customer,
+  programType: 'points' | 'stamps',
+  vipThreshold: number
+): 'vip' | 'active' | 'inactive' {
+  const inactiveDays = 30;
+  const lastVisit = c.last_visit_at ? new Date(c.last_visit_at) : null;
+  if (!lastVisit || (Date.now() - lastVisit.getTime()) > inactiveDays * 86400000) return 'inactive';
+
+  if (programType === 'stamps') {
+    if ((c.stamps_count ?? 0) >= vipThreshold) return 'vip';
+  } else {
+    if (c.total_points >= vipThreshold) return 'vip';
+  }
   return 'active';
 }
 
@@ -193,6 +204,8 @@ export default function DashboardPage() {
     stamps_total: 10,
     mode_changed_at: null,
     previous_program_type: null,
+    vip_threshold_points: 100,
+    vip_threshold_stamps: 10,
   });
   const [savingSettings, setSavingSettings]   = useState(false);
   const [logoFile,       setLogoFile]         = useState<File | null>(null);
@@ -444,7 +457,8 @@ export default function DashboardPage() {
 
   const filteredCustomers = customers.filter(c => {
     const matchSearch = search === '' || `${c.first_name} ${c.last_name} ${c.email}`.toLowerCase().includes(search.toLowerCase());
-    const status      = getCustomerStatus(c);
+    const vipThreshold = loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points;
+    const status      = getCustomerStatus(c, loyaltySettings.program_type, vipThreshold);
     const matchFilter =
       filter === 'all'      ? true :
       filter === 'inactive' ? status === 'inactive' :
@@ -528,6 +542,8 @@ export default function DashboardPage() {
       stamps_total: loyaltySettings.stamps_total,
       mode_changed_at: loyaltySettings.mode_changed_at,
       previous_program_type: loyaltySettings.previous_program_type,
+      vip_threshold_points: loyaltySettings.vip_threshold_points,
+      vip_threshold_stamps: loyaltySettings.vip_threshold_stamps,
     }, { onConflict: 'restaurant_id' });
     setSavingSettings(false);
     toast.success(t('dashboard.toastLoyaltySaved'));
@@ -576,7 +592,7 @@ export default function DashboardPage() {
       case 'birthday':     return birthdaysSoon.length;
       case 'near_reward':  return nearReward.length;
       case 'active':       return activeCustomers;
-      case 'vip':          return customers.filter(c => getCustomerStatus(c) === 'vip').length;
+      case 'vip':          { const vt = loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points; return customers.filter(c => getCustomerStatus(c, loyaltySettings.program_type, vt) === 'vip').length; }
       default:             return totalCustomers;
     }
   }
@@ -1048,7 +1064,7 @@ export default function DashboardPage() {
                         <p className="font-semibold text-gray-900 truncate">{c.first_name} {c.last_name}</p>
                         <p className="text-xs text-gray-400 truncate mt-0.5">{c.email}</p>
                       </div>
-                      <StatusBadge status={getCustomerStatus(c)} t={t} />
+                      <StatusBadge status={getCustomerStatus(c, loyaltySettings.program_type, loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points)} t={t} />
                     </div>
 
                     <div className="grid grid-cols-3 gap-3 mb-3">
@@ -1173,7 +1189,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-3.5 text-gray-500 whitespace-nowrap">
                           {c.last_visit_at ? new Date(c.last_visit_at).toLocaleDateString(locale) : '—'}
                         </td>
-                        <td className="px-4 py-3.5"><StatusBadge status={getCustomerStatus(c)} t={t} /></td>
+                        <td className="px-4 py-3.5"><StatusBadge status={getCustomerStatus(c, loyaltySettings.program_type, loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points)} t={t} /></td>
                         {enabledKpiKeys.includes('wallet_pass_rate') && (
                           <td className="px-4 py-3.5">
                             {walletPassCustomerIds.has(c.id)
@@ -1496,7 +1512,7 @@ export default function DashboardPage() {
                               <option value="inactive_45">{t('campaigns.segmentInactive45', { count: inactives45.length })}</option>
                               <option value="birthday">{t('campaigns.segmentBirthday', { count: birthdaysSoon.length })}</option>
                               <option value="near_reward">{t('campaigns.segmentNearReward', { count: nearReward.length })}</option>
-                              <option value="vip">{t('campaigns.segmentVip', { count: customers.filter(c => getCustomerStatus(c) === 'vip').length })}</option>
+                              <option value="vip">{t('campaigns.segmentVip', { count: customers.filter(c => getCustomerStatus(c, loyaltySettings.program_type, loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points) === 'vip').length })}</option>
                             </select>
                           </div>
 

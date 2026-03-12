@@ -365,7 +365,11 @@
     "referralMaxPerCustomer": "Máx. referidos por cliente",
     "referralMaxPerCustomerDesc": "Limitar cuántos amigos puede referir cada cliente",
     "referralSaved": "Configuración de referidos guardada",
-    "referralUpgrade": "Actualiza a Starter para desbloquear referidos"
+    "referralUpgrade": "Actualiza a Starter para desbloquear referidos",
+    "vipThresholdPoints": "Umbral VIP (puntos)",
+    "vipThresholdStamps": "Umbral VIP (sellos)",
+    "vipThresholdDesc": "Puntos (o sellos) mínimos para que un cliente sea considerado VIP",
+    "vipThresholdSaved": "Umbral VIP guardado"
   },
   "referral": {
     "shareTitle": "Invita a un amigo",

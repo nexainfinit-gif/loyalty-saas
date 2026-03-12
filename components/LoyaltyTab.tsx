@@ -12,6 +12,8 @@ export interface LoyaltySettings {
   stamps_total: number;
   mode_changed_at: string | null;
   previous_program_type: string | null;
+  vip_threshold_points: number;
+  vip_threshold_stamps: number;
 }
 
 interface Transaction {
@@ -353,6 +355,27 @@ export default function LoyaltyTab({
                 </>
               )}
             </div>
+          </div>
+
+          {/* VIP threshold */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">
+              {settings.program_type === 'stamps' ? t('loyalty.vipThresholdStamps') : t('loyalty.vipThresholdPoints')}
+            </h3>
+            <p className="text-xs text-gray-400 mb-5">{t('loyalty.vipThresholdDesc')}</p>
+            <input
+              type="number" min="1"
+              value={settings.program_type === 'stamps' ? settings.vip_threshold_stamps : settings.vip_threshold_points}
+              onChange={e => {
+                const val = parseInt(e.target.value) || 1;
+                if (settings.program_type === 'stamps') {
+                  update({ vip_threshold_stamps: val });
+                } else {
+                  update({ vip_threshold_points: val });
+                }
+              }}
+              className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-all max-w-xs"
+            />
           </div>
 
           {/* Bonus rules (Pro teaser) */}

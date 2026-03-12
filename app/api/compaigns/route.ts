@@ -36,9 +36,20 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Champs manquants' }, { status: 400 })
   }
 
+  // Fetch loyalty settings for VIP threshold
+  const { data: loyaltySettings } = await supabaseAdmin
+    .from('loyalty_settings').select('program_type, vip_threshold_points, vip_threshold_stamps, reward_threshold')
+    .eq('restaurant_id', restaurant.id).maybeSingle()
+
+  const programType = loyaltySettings?.program_type ?? 'points'
+  const vipThreshold = programType === 'stamps'
+    ? (loyaltySettings?.vip_threshold_stamps ?? 10)
+    : (loyaltySettings?.vip_threshold_points ?? 100)
+  const rewardThreshold = loyaltySettings?.reward_threshold ?? 100
+
   // Récupère les destinataires selon le segment
   const { data: allCustomers } = await supabaseAdmin
-    .from('customers').select('id, first_name, last_name, email, total_points, last_visit_at, birth_date, consent_marketing, qr_token')
+    .from('customers').select('id, first_name, last_name, email, total_points, stamps_count, last_visit_at, birth_date, consent_marketing, qr_token')
     .eq('restaurant_id', restaurant.id)
 
   const customers = allCustomers ?? []
@@ -59,13 +70,16 @@ export async function POST(req: Request) {
         const in7 = new Date(); in7.setDate(today.getDate() + 7)
         return next >= today && next <= in7
       case 'near_reward':
-        return c.total_points >= 80 && c.total_points < 100
+        return c.total_points >= (rewardThreshold * 0.8) && c.total_points < rewardThreshold
       case 'all':
         return true
       case 'active':
         return c.last_visit_at && (now - new Date(c.last_visit_at).getTime()) < 30 * 86400000
       case 'vip':
-        return c.total_points >= 100
+        if (programType === 'stamps') {
+          return (c.stamps_count ?? 0) >= vipThreshold
+        }
+        return c.total_points >= vipThreshold
       default:
         return true
     }

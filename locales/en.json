@@ -365,7 +365,11 @@
     "referralMaxPerCustomer": "Max referrals per customer",
     "referralMaxPerCustomerDesc": "Limit how many friends each customer can refer",
     "referralSaved": "Referral settings saved",
-    "referralUpgrade": "Upgrade to Starter to unlock referrals"
+    "referralUpgrade": "Upgrade to Starter to unlock referrals",
+    "vipThresholdPoints": "VIP threshold (points)",
+    "vipThresholdStamps": "VIP threshold (stamps)",
+    "vipThresholdDesc": "Minimum points (or stamps) for a customer to be considered VIP",
+    "vipThresholdSaved": "VIP threshold saved"
   },
   "referral": {
     "shareTitle": "Invite a friend",
