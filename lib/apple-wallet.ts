@@ -323,7 +323,7 @@ export function pkpassResponse(buffer: Buffer, filename = 'pass.pkpass'): Respon
   return new Response(new Uint8Array(buffer), {
     headers: {
       'Content-Type':        'application/vnd.apple.pkpass',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': `inline; filename="${filename}"`,
       'Content-Length':      String(buffer.length),
       'Cache-Control':       'no-store, no-cache',
     },
