@@ -82,13 +82,7 @@ function buildPassJson(
     message:         input.qrToken,
     format:          barcodeFormat,
     messageEncoding: 'iso-8859-1',
-    ...(barcodeAltText ? { altText: barcodeAltText } : {}),
   };
-
-  // Default altText when none specified
-  if (!barcodeAltText) {
-    barcodeEntry.altText = 'Présentez ce code au comptoir';
-  }
 
   const base: Record<string, unknown> = {
     formatVersion:       1,
