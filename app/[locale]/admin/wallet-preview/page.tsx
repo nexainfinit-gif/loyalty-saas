@@ -55,9 +55,10 @@ interface Controls {
   stampsTotal:    number;
   currentStamps:  number;
   rewardText:     string;
-  headerFields:   PassField[];
+  headerFields:    PassField[];
   secondaryFields: PassField[];
-  backFields:     PassField[];
+  auxiliaryFields: PassField[];
+  backFields:      PassField[];
   // Barcode
   barcodePayload: string;
   barcodeFormat:  BarcodeFormat;
@@ -114,6 +115,7 @@ function buildPassJson(c: Controls): object {
   };
   if (c.headerFields.length > 0)    card.headerFields    = c.headerFields;
   if (c.secondaryFields.length > 0) card.secondaryFields = c.secondaryFields;
+  if (c.auxiliaryFields.length > 0) card.auxiliaryFields = [...card.auxiliaryFields as PassField[], ...c.auxiliaryFields];
   if (c.backFields.length > 0)      card.backFields      = c.backFields;
 
   return {
@@ -149,6 +151,7 @@ function metaToControls(meta: PassMeta): Controls {
     rewardText:      meta.rewardMessage,
     headerFields:    [],
     secondaryFields: [],
+    auxiliaryFields: [],
     backFields:      [],
     barcodePayload:  'EXAMPLE_QR_TOKEN',
     barcodeFormat:   'PKBarcodeFormatQR',
@@ -179,6 +182,7 @@ function configJsonToControls(base: Controls, cfg: Record<string, unknown>): Con
     rewardText:      (cfg.rewardText as string) ?? base.rewardText,
     headerFields:    Array.isArray(cfg.headerFields) ? cfg.headerFields as PassField[] : base.headerFields,
     secondaryFields: Array.isArray(cfg.secondaryFields) ? cfg.secondaryFields as PassField[] : base.secondaryFields,
+    auxiliaryFields: Array.isArray(cfg.auxiliaryFields) ? cfg.auxiliaryFields as PassField[] : base.auxiliaryFields,
     backFields:      Array.isArray(cfg.backFields) ? cfg.backFields as PassField[] : base.backFields,
     barcodeFormat:   (cfg.barcodeFormat as BarcodeFormat) ?? base.barcodeFormat,
     barcodeAltText:  (cfg.barcodeAltText as string) ?? base.barcodeAltText,
@@ -284,6 +288,18 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
       {c.secondaryFields.length > 0 && (
         <div className="px-5 pb-3 flex gap-4 flex-wrap">
           {c.secondaryFields.map((f, i) => (
+            <div key={i} className="min-w-0">
+              <p className="text-[9px] uppercase tracking-widest font-medium" style={{ color: c.labelColor, opacity: 0.7 }}>{f.label}</p>
+              <p className="text-sm font-medium" style={{ color: c.foregroundColor }}>{f.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Auxiliary fields (custom) ──────────────────────────────── */}
+      {c.auxiliaryFields.length > 0 && (
+        <div className="px-5 pb-3 flex gap-4 flex-wrap">
+          {c.auxiliaryFields.map((f, i) => (
             <div key={i} className="min-w-0">
               <p className="text-[9px] uppercase tracking-widest font-medium" style={{ color: c.labelColor, opacity: 0.7 }}>{f.label}</p>
               <p className="text-sm font-medium" style={{ color: c.foregroundColor }}>{f.value}</p>
@@ -950,6 +966,7 @@ function controlsToConfigJson(c: Controls): Record<string, unknown> {
     rewardText:      c.rewardText,
     headerFields:    c.headerFields,
     secondaryFields: c.secondaryFields,
+    auxiliaryFields: c.auxiliaryFields,
     backFields:      c.backFields,
     barcodeFormat:   c.barcodeFormat,
     barcodeAltText:  c.barcodeAltText,
@@ -1435,6 +1452,12 @@ export default function WalletPreviewPage() {
                     <span className="font-mono text-gray-600">{controls.secondaryFields.length}</span>
                   </div>
                 )}
+                {controls.auxiliaryFields.length > 0 && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400">auxiliaryFields</span>
+                    <span className="font-mono text-gray-600">{controls.auxiliaryFields.length + 2}</span>
+                  </div>
+                )}
                 {controls.backFields.length > 0 && (
                   <div className="flex justify-between gap-2">
                     <span className="text-gray-400">backFields</span>
@@ -1627,18 +1650,85 @@ export default function WalletPreviewPage() {
 
             {/* ── Champs ─────────────────────────────────────────────────── */}
             <Section title={t('walletPreview.sectionFields')} defaultOpen={false}>
-              <div>
-                <p className="text-xs font-medium text-gray-500 mb-2">{t('walletPreview.headerFieldsLabel')}</p>
+
+              {/* Zone map */}
+              <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-[11px]">
+                <p className="font-semibold text-gray-600 mb-2">{t('walletPreview.zoneMapTitle')}</p>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
+                  <span className="text-gray-500">headerFields — {t('walletPreview.zoneHeaderDesc')}</span>
+                  <span className="ml-auto font-mono text-gray-400">max 3</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                  <span className="text-gray-500">primaryFields — {t('walletPreview.zonePrimaryDesc')}</span>
+                  <span className="ml-auto font-mono text-gray-400">max 1</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+                  <span className="text-gray-500">secondaryFields — {t('walletPreview.zoneSecondaryDesc')}</span>
+                  <span className="ml-auto font-mono text-gray-400">max 4</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />
+                  <span className="text-gray-500">auxiliaryFields — {t('walletPreview.zoneAuxiliaryDesc')}</span>
+                  <span className="ml-auto font-mono text-gray-400">max 4</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-gray-400 flex-shrink-0" />
+                  <span className="text-gray-500">backFields — {t('walletPreview.zoneBackDesc')}</span>
+                  <span className="ml-auto font-mono text-gray-400">{t('walletPreview.zoneUnlimited')}</span>
+                </div>
+              </div>
+
+              {/* headerFields */}
+              <div className="border-t border-gray-100 pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
+                    <p className="text-xs font-medium text-gray-500">{t('walletPreview.headerFieldsLabel')}</p>
+                  </div>
+                  <span className="text-[10px] font-mono text-gray-400">{controls.headerFields.length}/3</span>
+                </div>
                 <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.headerFieldsHint')}</p>
                 <FieldListEditor fields={controls.headerFields} onChange={f => handleChange('headerFields', f)} maxFields={3} addLabel={t('walletPreview.addField')} />
               </div>
+
+              {/* secondaryFields */}
               <div className="border-t border-gray-100 pt-4">
-                <p className="text-xs font-medium text-gray-500 mb-2">{t('walletPreview.secondaryFieldsLabel')}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+                    <p className="text-xs font-medium text-gray-500">{t('walletPreview.secondaryFieldsLabel')}</p>
+                  </div>
+                  <span className="text-[10px] font-mono text-gray-400">{controls.secondaryFields.length}/4</span>
+                </div>
                 <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.secondaryFieldsHint')}</p>
-                <FieldListEditor fields={controls.secondaryFields} onChange={f => handleChange('secondaryFields', f)} maxFields={2} addLabel={t('walletPreview.addField')} />
+                <FieldListEditor fields={controls.secondaryFields} onChange={f => handleChange('secondaryFields', f)} maxFields={4} addLabel={t('walletPreview.addField')} />
               </div>
+
+              {/* auxiliaryFields */}
               <div className="border-t border-gray-100 pt-4">
-                <p className="text-xs font-medium text-gray-500 mb-2">{t('walletPreview.backFieldsLabel')}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />
+                    <p className="text-xs font-medium text-gray-500">{t('walletPreview.auxiliaryFieldsLabel')}</p>
+                  </div>
+                  <span className="text-[10px] font-mono text-gray-400">{controls.auxiliaryFields.length}/2</span>
+                </div>
+                <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.auxiliaryFieldsHint')}</p>
+                <FieldListEditor fields={controls.auxiliaryFields} onChange={f => handleChange('auxiliaryFields', f)} maxFields={2} addLabel={t('walletPreview.addField')} />
+              </div>
+
+              {/* backFields */}
+              <div className="border-t border-gray-100 pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-gray-400 flex-shrink-0" />
+                    <p className="text-xs font-medium text-gray-500">{t('walletPreview.backFieldsLabel')}</p>
+                  </div>
+                  <span className="text-[10px] font-mono text-gray-400">{controls.backFields.length}/10</span>
+                </div>
                 <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.backFieldsHint')}</p>
                 <FieldListEditor fields={controls.backFields} onChange={f => handleChange('backFields', f)} maxFields={10} addLabel={t('walletPreview.addField')} />
               </div>

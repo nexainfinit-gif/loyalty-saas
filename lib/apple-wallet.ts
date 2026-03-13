@@ -102,9 +102,10 @@ function buildPassJson(
     barcodes: [barcodeEntry],
   };
 
-  // Custom fields from config_json (header, secondary, back)
+  // Custom fields from config_json (header, secondary, auxiliary, back)
   const cfgHeaderFields    = Array.isArray(cfg.headerFields)    ? cfg.headerFields as Record<string, string>[]    : [];
   const cfgSecondaryFields = Array.isArray(cfg.secondaryFields) ? cfg.secondaryFields as Record<string, string>[] : [];
+  const cfgAuxiliaryFields = Array.isArray(cfg.auxiliaryFields) ? cfg.auxiliaryFields as Record<string, string>[] : [];
   const cfgBackFields      = Array.isArray(cfg.backFields)      ? cfg.backFields as Record<string, string>[]      : [];
 
   const holderField = {
@@ -118,7 +119,7 @@ function buildPassJson(
     const rewardMsg   = String(cfg.reward_message ?? 'Récompense offerte');
     const storeCard: Record<string, unknown> = {
       primaryFields:   [{ key: 'stamps',  label: 'TAMPONS',      value: `${input.stampsCount} / ${stampsTotal}`, changeMessage: 'Tampons mis à jour : %@' }],
-      auxiliaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }],
+      auxiliaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgAuxiliaryFields],
     };
     if (cfgHeaderFields.length > 0)    storeCard.headerFields    = cfgHeaderFields;
     if (cfgSecondaryFields.length > 0) storeCard.secondaryFields = cfgSecondaryFields;
@@ -128,7 +129,7 @@ function buildPassJson(
     const threshold = Number(cfg.reward_threshold ?? 100);
     const storeCard: Record<string, unknown> = {
       primaryFields:   [{ key: 'points',  label: 'POINTS',            value: String(input.totalPoints), changeMessage: 'Votre solde est maintenant de %@ points' }],
-      auxiliaryFields: [holderField, { key: 'reward', label: 'SEUIL RÉCOMPENSE', value: `${threshold} pts` }],
+      auxiliaryFields: [holderField, { key: 'reward', label: 'SEUIL RÉCOMPENSE', value: `${threshold} pts` }, ...cfgAuxiliaryFields],
     };
     if (cfgHeaderFields.length > 0)    storeCard.headerFields    = cfgHeaderFields;
     if (cfgSecondaryFields.length > 0) storeCard.secondaryFields = cfgSecondaryFields;
