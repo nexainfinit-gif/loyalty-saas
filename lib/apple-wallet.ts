@@ -61,7 +61,25 @@ function buildPassJson(
   passTypeId: string,
   teamId:     string,
 ): Buffer {
-  const color = hexToRgb(input.primaryColor ?? '#4f6bed');
+  const cfg = input.configJson ?? {};
+
+  // Colors — config_json overrides, then input.primaryColor, then defaults
+  const bgColor = hexToRgb(input.primaryColor ?? (cfg.bgColor as string) ?? '#4f6bed');
+  const fgColor = cfg.foregroundColor ? hexToRgb(cfg.foregroundColor as string) : 'rgb(255, 255, 255)';
+  const lblColor = cfg.labelColor ? hexToRgb(cfg.labelColor as string) : 'rgb(255, 255, 255)';
+
+  // LogoText — config_json override or restaurant name
+  const logoText = (cfg.logoText as string) ?? input.restaurantName;
+
+  // Barcode — format + altText from config_json
+  const barcodeFormat = (cfg.barcodeFormat as string) ?? 'PKBarcodeFormatQR';
+  const barcodeAltText = cfg.barcodeAltText as string | undefined;
+  const barcodeEntry = {
+    message:         input.qrToken,
+    format:          barcodeFormat,
+    messageEncoding: 'iso-8859-1' as const,
+    ...(barcodeAltText ? { altText: barcodeAltText } : {}),
+  };
 
   const base: Record<string, unknown> = {
     formatVersion:       1,
@@ -70,27 +88,24 @@ function buildPassJson(
     teamIdentifier:      teamId,
     organizationName:    input.restaurantName,
     description:         'Carte de fidélité',
-    backgroundColor:     color,
-    foregroundColor:     'rgb(255, 255, 255)',
-    labelColor:          'rgb(255, 255, 255)',
-    logoText:            input.restaurantName,
+    backgroundColor:     bgColor,
+    foregroundColor:     fgColor,
+    labelColor:          lblColor,
+    logoText,
     // Push update registration — only included when authentication_token is available
     ...(input.authenticationToken ? {
       webServiceURL:       `${getAppUrl()}/api/wallet/webservice`,
       authenticationToken: input.authenticationToken,
     } : {}),
-    // QR barcode — dual format for backward compatibility
-    barcode: {
-      message:         input.qrToken,
-      format:          'PKBarcodeFormatQR',
-      messageEncoding: 'iso-8859-1',
-    },
-    barcodes: [{
-      message:         input.qrToken,
-      format:          'PKBarcodeFormatQR',
-      messageEncoding: 'iso-8859-1',
-    }],
+    // Barcode — dual format for backward compatibility
+    barcode:  barcodeEntry,
+    barcodes: [barcodeEntry],
   };
+
+  // Custom fields from config_json (header, secondary, back)
+  const cfgHeaderFields    = Array.isArray(cfg.headerFields)    ? cfg.headerFields as Record<string, string>[]    : [];
+  const cfgSecondaryFields = Array.isArray(cfg.secondaryFields) ? cfg.secondaryFields as Record<string, string>[] : [];
+  const cfgBackFields      = Array.isArray(cfg.backFields)      ? cfg.backFields as Record<string, string>[]      : [];
 
   const holderField = {
     key:   'holder',
@@ -99,26 +114,34 @@ function buildPassJson(
   };
 
   if (input.passKind === 'stamps') {
-    const stampsTotal = Number(input.configJson?.stamps_total  ?? 10);
-    const rewardMsg   = String(input.configJson?.reward_message ?? 'Récompense offerte');
-    base.storeCard = {
+    const stampsTotal = Number(cfg.stamps_total  ?? 10);
+    const rewardMsg   = String(cfg.reward_message ?? 'Récompense offerte');
+    const storeCard: Record<string, unknown> = {
       primaryFields:   [{ key: 'stamps',  label: 'TAMPONS',      value: `${input.stampsCount} / ${stampsTotal}`, changeMessage: 'Tampons mis à jour : %@' }],
       auxiliaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }],
     };
+    if (cfgHeaderFields.length > 0)    storeCard.headerFields    = cfgHeaderFields;
+    if (cfgSecondaryFields.length > 0) storeCard.secondaryFields = cfgSecondaryFields;
+    if (cfgBackFields.length > 0)      storeCard.backFields      = cfgBackFields;
+    base.storeCard = storeCard;
   } else if (input.passKind === 'points') {
-    const threshold = Number(input.configJson?.reward_threshold ?? 100);
-    base.storeCard = {
+    const threshold = Number(cfg.reward_threshold ?? 100);
+    const storeCard: Record<string, unknown> = {
       primaryFields:   [{ key: 'points',  label: 'POINTS',            value: String(input.totalPoints), changeMessage: 'Votre solde est maintenant de %@ points' }],
       auxiliaryFields: [holderField, { key: 'reward', label: 'SEUIL RÉCOMPENSE', value: `${threshold} pts` }],
     };
+    if (cfgHeaderFields.length > 0)    storeCard.headerFields    = cfgHeaderFields;
+    if (cfgSecondaryFields.length > 0) storeCard.secondaryFields = cfgSecondaryFields;
+    if (cfgBackFields.length > 0)      storeCard.backFields      = cfgBackFields;
+    base.storeCard = storeCard;
   } else {
     // event
-    const eventName = String(input.configJson?.event_name ?? input.restaurantName);
-    const eventDate = String(input.configJson?.event_date ?? '');
+    const eventName = String(cfg.event_name ?? input.restaurantName);
+    const eventDate = String(cfg.event_date ?? '');
     base.eventTicket = {
       primaryFields:   [{ key: 'event', label: 'ÉVÉNEMENT', value: eventName }],
       auxiliaryFields: eventDate ? [{ key: 'date', label: 'DATE', value: eventDate }] : [],
-      backFields:      [holderField],
+      backFields:      [holderField, ...cfgBackFields],
     };
   }
 
@@ -284,16 +307,27 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
   }
 
   const color = input.primaryColor ?? '#4f6bed';
+  const stripImageUrl = input.configJson?.stripImageUrl as string | undefined;
 
   // ── 1. Generate all pass files ─────────────────────────────────────────────
-  const [passJson, icon1x, icon2x, icon3x, logo1x, logo2x] = await Promise.all([
+  const imagePromises: Promise<Buffer>[] = [
     Promise.resolve(buildPassJson(input, passTypeId, teamId)),
     solidSquare(color,  29,  29),   // icon.png       (required)
     solidSquare(color,  58,  58),   // icon@2x.png    (required)
     solidSquare(color,  87,  87),   // icon@3x.png    (recommended)
     fetchOrSolid(input.logoUrl, 160,  50, color),  // logo.png
     fetchOrSolid(input.logoUrl, 320, 100, color),  // logo@2x.png
-  ]);
+  ];
+  // Strip image — optional banner behind primary fields (375×123 @1x, 750×246 @2x)
+  if (stripImageUrl) {
+    imagePromises.push(
+      fetchOrSolid(stripImageUrl, 375, 123, color),   // strip.png
+      fetchOrSolid(stripImageUrl, 750, 246, color),   // strip@2x.png
+    );
+  }
+
+  const results = await Promise.all(imagePromises);
+  const [passJson, icon1x, icon2x, icon3x, logo1x, logo2x] = results;
 
   const files: Record<string, Buffer> = {
     'pass.json':   passJson,
@@ -303,6 +337,10 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     'logo.png':    logo1x,
     'logo@2x.png': logo2x,
   };
+  if (stripImageUrl && results.length > 6) {
+    files['strip.png']    = results[6];
+    files['strip@2x.png'] = results[7];
+  }
 
   // ── 2. manifest.json — SHA-1 hash of every file ────────────────────────────
   const manifest: Record<string, string> = {};
