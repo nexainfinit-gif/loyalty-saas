@@ -5,11 +5,10 @@
 // to tell the device to fetch the updated pass from our web service endpoint.
 // The push body is literally `{}` — Apple Wallet just needs the nudge.
 //
-// Uses HTTP/2 (required by Apple) with the same P12 certificate used for
-// signing passes.
+// Uses HTTP/2 (required by Apple) with the Pass Type Certificate (P12/PFX)
+// for TLS client authentication.
 
 import * as http2 from 'http2';
-import forge from 'node-forge';
 import { supabaseAdmin } from './supabase-admin';
 
 /* ── Constants ─────────────────────────────────────────────────────────────── */
@@ -23,53 +22,6 @@ export interface PushResult {
   pushToken: string;
   success:   boolean;
   error?:    string;
-}
-
-/* ── Certificate handling ──────────────────────────────────────────────────── */
-
-// Cache parsed PEM cert + key at module level (same pattern as apple-wallet.ts)
-let _cachedCertPem: string | null = null;
-let _cachedKeyPem:  string | null = null;
-
-/**
- * Extract PEM-encoded certificate and private key from the P12 bundle.
- * Reuses the same env vars as apple-wallet.ts:
- *   APPLE_PASS_CERT_P12_BASE64 — base64 P12/PFX file
- *   APPLE_PASS_CERT_PASSPHRASE — P12 passphrase
- */
-function getCertCredentials(): { certPem: string; keyPem: string } {
-  if (_cachedCertPem && _cachedKeyPem) {
-    return { certPem: _cachedCertPem, keyPem: _cachedKeyPem };
-  }
-
-  const certP12B64 = process.env.APPLE_PASS_CERT_P12_BASE64 ?? '';
-  const passphrase = process.env.APPLE_PASS_CERT_PASSPHRASE ?? '';
-
-  if (!certP12B64) {
-    throw new Error(
-      'APNS: APPLE_PASS_CERT_P12_BASE64 manquant. ' +
-      'Configurez cette variable d\'environnement.',
-    );
-  }
-
-  const p12Der  = forge.util.decode64(certP12B64);
-  const p12Asn1 = forge.asn1.fromDer(p12Der);
-  const p12     = forge.pkcs12.pkcs12FromAsn1(p12Asn1, passphrase);
-
-  const certBags = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] ?? [];
-  const keyBags  = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag] ?? [];
-
-  const cert = certBags[0]?.cert;
-  const pkey = keyBags[0]?.key;
-
-  if (!cert || !pkey) {
-    throw new Error('APNS: certificat ou clé privée introuvable dans le P12.');
-  }
-
-  _cachedCertPem = forge.pki.certificateToPem(cert);
-  _cachedKeyPem  = forge.pki.privateKeyToPem(pkey);
-
-  return { certPem: _cachedCertPem, keyPem: _cachedKeyPem };
 }
 
 /* ── APNS gateway selection ────────────────────────────────────────────────── */
@@ -98,20 +50,41 @@ export async function sendPassUpdatePush(pushToken: string): Promise<PushResult>
     };
   }
 
-  const { certPem, keyPem } = getCertCredentials();
+  const certP12B64 = process.env.APPLE_PASS_CERT_P12_BASE64 ?? '';
+  const passphrase = process.env.APPLE_PASS_CERT_PASSPHRASE ?? '';
+
+  if (!certP12B64) {
+    return {
+      pushToken,
+      success: false,
+      error:   'APPLE_PASS_CERT_P12_BASE64 not configured',
+    };
+  }
+
   const apnsUrl = getApnsUrl();
+  console.log(`[APNS] Connecting to ${apnsUrl} for token ${pushToken.slice(0, 12)}...`);
 
   return new Promise<PushResult>((resolve) => {
     let client: http2.ClientHttp2Session | null = null;
+    let resolved = false;
+
+    const safeResolve = (result: PushResult) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(result);
+      }
+    };
 
     try {
+      // Use P12/PFX directly — more reliable than extracting PEM via node-forge
       client = http2.connect(apnsUrl, {
-        cert: certPem,
-        key:  keyPem,
+        pfx:        Buffer.from(certP12B64, 'base64'),
+        passphrase: passphrase,
       });
 
       client.on('error', (err) => {
-        resolve({
+        console.error(`[APNS] HTTP/2 connection error:`, err.message);
+        safeResolve({
           pushToken,
           success: false,
           error:   `HTTP/2 connection error: ${err.message}`,
@@ -123,14 +96,12 @@ export async function sendPassUpdatePush(pushToken: string): Promise<PushResult>
         ':method':       'POST',
         ':path':         `/3/device/${pushToken}`,
         'apns-topic':    passTypeId,
-        // No apns-push-type header for Wallet pass updates (Apple spec).
-        // The empty body {} tells the device to fetch the updated pass.
       });
 
       // Set a timeout to avoid hanging connections
       req.setTimeout(15_000, () => {
         req.close(http2.constants.NGHTTP2_CANCEL);
-        resolve({
+        safeResolve({
           pushToken,
           success: false,
           error:   'APNS request timed out (15s)',
@@ -152,7 +123,8 @@ export async function sendPassUpdatePush(pushToken: string): Promise<PushResult>
       req.on('end', () => {
         client?.close();
         if (responseStatus === 200) {
-          resolve({ pushToken, success: true });
+          console.log(`[APNS] Push succeeded for token ${pushToken.slice(0, 12)}...`);
+          safeResolve({ pushToken, success: true });
         } else {
           let errorMsg = `APNS HTTP ${responseStatus}`;
           if (responseBody) {
@@ -163,13 +135,15 @@ export async function sendPassUpdatePush(pushToken: string): Promise<PushResult>
               errorMsg += `: ${responseBody.slice(0, 200)}`;
             }
           }
-          resolve({ pushToken, success: false, error: errorMsg });
+          console.warn(`[APNS] Push failed: ${errorMsg}`);
+          safeResolve({ pushToken, success: false, error: errorMsg });
         }
       });
 
       req.on('error', (err) => {
         client?.close();
-        resolve({
+        console.error(`[APNS] Request error:`, err.message);
+        safeResolve({
           pushToken,
           success: false,
           error:   `APNS request error: ${err.message}`,
@@ -181,10 +155,12 @@ export async function sendPassUpdatePush(pushToken: string): Promise<PushResult>
 
     } catch (err) {
       client?.close();
-      resolve({
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[APNS] Push exception:`, msg);
+      safeResolve({
         pushToken,
         success: false,
-        error:   `APNS push failed: ${err instanceof Error ? err.message : String(err)}`,
+        error:   `APNS push failed: ${msg}`,
       });
     }
   });
