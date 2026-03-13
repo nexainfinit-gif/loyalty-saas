@@ -160,7 +160,7 @@ export async function GET(
     lastName:       customer.last_name  ?? '',
     stampsCount:    customer.stamps_count  ?? 0,
     totalPoints:    customer.total_points  ?? 0,
-    qrToken:        customer.qr_token      ?? passId,
+    qrToken:        customer.qr_token      ?? customer.id,
     restaurantName:      restaurant.name,
     logoUrl:             restaurant.logo_url,
     authenticationToken: authToken,

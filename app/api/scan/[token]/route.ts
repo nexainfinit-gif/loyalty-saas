@@ -24,14 +24,15 @@ type ScanCustomer = {
  * Resolution order (stops at first match):
  *  1. customers.qr_token = token  → camera scan (full UUID from barcode.value)
  *  2. customers.id       = token  → legacy passes (barcode.value was customer.id)
- *  3. wallet_passes.short_code = token → manual entry (8-char code shown under QR)
+ *  3. wallet_passes.id   = token  → barcode fallback (some passes stored pass.id)
+ *  4. wallet_passes.short_code = token → manual entry (8-char code shown under QR)
  *
  * All lookups are scoped to restaurantId.
  */
 async function resolveScanToken(
   token: string,
   restaurantId: string,
-): Promise<{ customer: ScanCustomer | null; resolvedBy: 'qr_token' | 'id' | 'short_code' | 'none' }> {
+): Promise<{ customer: ScanCustomer | null; resolvedBy: 'qr_token' | 'id' | 'pass_id' | 'short_code' | 'none' }> {
   // 1. qr_token (primary — what camera reads from barcode.value)
   const { data: byQrToken } = await supabaseAdmin
     .from('customers')
@@ -52,7 +53,27 @@ async function resolveScanToken(
 
   if (byId) return { customer: byId as ScanCustomer, resolvedBy: 'id' };
 
-  // 3. short_code via wallet_passes (manual entry — 8-char code shown under QR)
+  // 3. wallet_passes.id (barcode fallback — some passes stored pass.id as barcode value)
+  const { data: byPassId } = await supabaseAdmin
+    .from('wallet_passes')
+    .select('customer_id')
+    .eq('id', token)
+    .eq('restaurant_id', restaurantId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (byPassId?.customer_id) {
+    const { data: custFromPass } = await supabaseAdmin
+      .from('customers')
+      .select('id, first_name, last_name, total_points, stamps_count')
+      .eq('id', byPassId.customer_id)
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle();
+
+    if (custFromPass) return { customer: custFromPass as ScanCustomer, resolvedBy: 'pass_id' };
+  }
+
+  // 4. short_code via wallet_passes (manual entry — 8-char code shown under QR)
   const { data: passRow } = await supabaseAdmin
     .from('wallet_passes')
     .select('customer_id')
