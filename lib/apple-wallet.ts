@@ -36,6 +36,8 @@ export interface PassBuildInput {
   logoUrl?:       string | null;
   /** Authentication token for push updates (min 16 chars, from wallet_passes.authentication_token) */
   authenticationToken?: string | null;
+  /** When true, shows a special reward celebration card instead of stamp grid */
+  rewardPending?: boolean;
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -135,13 +137,28 @@ function buildPassJson(
     const stampsTotal = Number(cfg.stamps_total  ?? 10);
     const rewardMsg   = String(cfg.reward_message ?? 'Récompense offerte');
     const remaining   = Math.max(0, stampsTotal - input.stampsCount);
-    const storeCard: Record<string, unknown> = {
-      headerFields:    autoHeaderFields,
-      primaryFields:   [],
-      secondaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgSecondaryFields],
-      auxiliaryFields: [{ key: 'remaining', label: 'RESTANTS', value: `${remaining} tampons` }, ...cfgAuxiliaryFields],
-      backFields:      [...defaultBackFields, ...cfgBackFields],
-    };
+
+    let storeCard: Record<string, unknown>;
+
+    if (input.rewardPending) {
+      // ── Special reward card: all stamps filled, awaiting collection ────
+      storeCard = {
+        headerFields:    [{ key: 'status', label: 'STATUT', value: '🎉 Complète !' }],
+        primaryFields:   [{ key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }],
+        secondaryFields: [holderField, ...cfgSecondaryFields],
+        auxiliaryFields: [{ key: 'action', label: 'ACTION', value: 'Présentez au comptoir' }, ...cfgAuxiliaryFields],
+        backFields:      [...defaultBackFields, ...cfgBackFields],
+      };
+    } else {
+      // ── Normal stamp card ─────────────────────────────────────────────
+      storeCard = {
+        headerFields:    autoHeaderFields,
+        primaryFields:   [],
+        secondaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgSecondaryFields],
+        auxiliaryFields: [{ key: 'remaining', label: 'RESTANTS', value: `${remaining} tampons` }, ...cfgAuxiliaryFields],
+        backFields:      [...defaultBackFields, ...cfgBackFields],
+      };
+    }
     base.storeCard = storeCard;
   } else if (input.passKind === 'points') {
     const threshold = Number(cfg.reward_threshold ?? 100);
@@ -297,6 +314,48 @@ async function generateStampStrip(opts: {
     },
   })
     .composite(composites)
+    .png()
+    .toBuffer();
+}
+
+/* ── Reward celebration strip ───────────────────────────────────────────────── */
+
+/**
+ * Generate a celebration strip for the reward pending state.
+ * Shows a trophy/star icon with "RÉCOMPENSE" text on transparent background.
+ */
+async function generateRewardStrip(opts: {
+  width: number;
+  height: number;
+  fgColor: string;
+}): Promise<Buffer> {
+  const { width, height, fgColor } = opts;
+  const fg = fgColor.replace('#', '').padEnd(6, 'f');
+  const r = parseInt(fg.slice(0, 2), 16);
+  const g = parseInt(fg.slice(2, 4), 16);
+  const b = parseInt(fg.slice(4, 6), 16);
+
+  const starSize = Math.floor(height * 0.45);
+  const fontSize = Math.floor(height * 0.16);
+  const subFontSize = Math.floor(height * 0.10);
+  const cx = width / 2;
+  const starY = height * 0.35;
+  const textY = height * 0.72;
+  const subTextY = height * 0.88;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    <text x="${cx}" y="${starY}" text-anchor="middle" dominant-baseline="central"
+      font-size="${starSize}" fill="rgb(${r},${g},${b})">🎉</text>
+    <text x="${cx}" y="${textY}" text-anchor="middle"
+      font-family="system-ui,sans-serif" font-size="${fontSize}"
+      font-weight="bold" fill="rgb(${r},${g},${b})">RÉCOMPENSE DISPONIBLE</text>
+    <text x="${cx}" y="${subTextY}" text-anchor="middle"
+      font-family="system-ui,sans-serif" font-size="${subFontSize}"
+      fill="rgb(${r},${g},${b})" opacity="0.7">Scannez pour récolter</text>
+  </svg>`;
+
+  return sharp(Buffer.from(svg))
+    .resize(width, height)
     .png()
     .toBuffer();
 }
@@ -467,6 +526,7 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
 
   // Auto-generate stamp grid strip for stamps mode (unless custom strip is set)
   const autoStampStrip = input.passKind === 'stamps' && !stripImageUrl;
+  const autoRewardStrip = input.passKind === 'stamps' && !stripImageUrl && input.rewardPending;
   const stampsTotal = Number(cfg.stamps_total ?? 10);
   const stampFilledUrl = (cfg.stampFilledUrl as string) || undefined;
   const stampEmptyUrl  = (cfg.stampEmptyUrl  as string) || undefined;
@@ -487,6 +547,12 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     imagePromises.push(
       fetchOrSolid(stripImageUrl, 375, 123, color),   // strip.png
       fetchOrSolid(stripImageUrl, 750, 246, color),   // strip@2x.png
+    );
+  } else if (autoRewardStrip) {
+    // Reward pending: celebration strip instead of stamp grid
+    imagePromises.push(
+      generateRewardStrip({ width: 375, height: 123, fgColor: fgHex }),
+      generateRewardStrip({ width: 750, height: 246, fgColor: fgHex }),
     );
   } else if (autoStampStrip) {
     const stampOpts = {

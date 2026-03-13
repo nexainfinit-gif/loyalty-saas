@@ -38,6 +38,7 @@ interface ScanResult {
   stamps_total: number;
   stamp_card_completed: boolean;
   reward_triggered: boolean;
+  reward_redeemed: boolean;
   reward_message: string;
   scan_action_label: string | null;
 }
@@ -303,7 +304,13 @@ export default function PublicScannerPage() {
             </div>
           )}
 
-          {result.stamp_card_completed ? (
+          {result.reward_redeemed ? (
+            <>
+              <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🎁</div>
+              <h2 style={{ color: '#7C3AED', fontWeight: 700, margin: '0 0 0.5rem' }}>{t('scanner.rewardRedeemed')}</h2>
+              <p style={{ color: '#5B21B6', background: '#EDE9FE', padding: '0.75rem', borderRadius: '10px', fontSize: '0.9rem', margin: '0 0 1.25rem' }}>{result.reward_message}</p>
+            </>
+          ) : result.stamp_card_completed ? (
             <>
               <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🎉</div>
               <h2 style={{ color: '#059669', fontWeight: 700, margin: '0 0 0.5rem' }}>{t('scanner.cardComplete')}</h2>
@@ -328,12 +335,12 @@ export default function PublicScannerPage() {
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', margin: '1.25rem 0' }}>
             {result.program_type === 'stamps' ? (
               <>
-                <div style={{ background: result.stamp_card_completed ? '#D1FAE5' : '#F0FDF4', borderRadius: '12px', padding: '0.875rem 1.5rem' }}>
-                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280' }}>{result.stamp_card_completed ? t('scanner.cardCompleted') : t('scanner.stampAdded')}</p>
-                  <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: result.stamp_card_completed ? '#059669' : '#16A34A' }}>{result.stamp_card_completed ? '✓' : `+${result.stamps_added}`}</p>
+                <div style={{ background: result.reward_redeemed ? '#EDE9FE' : result.stamp_card_completed ? '#D1FAE5' : '#F0FDF4', borderRadius: '12px', padding: '0.875rem 1.5rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280' }}>{result.reward_redeemed ? t('scanner.rewardCollected') : result.stamp_card_completed ? t('scanner.cardCompleted') : t('scanner.stampAdded')}</p>
+                  <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: result.reward_redeemed ? '#7C3AED' : result.stamp_card_completed ? '#059669' : '#16A34A' }}>{result.reward_redeemed ? '🎁' : result.stamp_card_completed ? '✓' : `+${result.stamps_added}`}</p>
                 </div>
                 <div style={{ background: '#EFF6FF', borderRadius: '12px', padding: '0.875rem 1.5rem' }}>
-                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280' }}>{result.stamp_card_completed ? t('scanner.newCard') : t('scanner.card')}</p>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280' }}>{result.reward_redeemed ? t('scanner.newCard') : result.stamp_card_completed ? t('scanner.rewardPending') : t('scanner.card')}</p>
                   <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#2563EB' }}>{result.customer.stamps_count} / {result.stamps_total}</p>
                 </div>
               </>

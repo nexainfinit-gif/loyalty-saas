@@ -16,6 +16,7 @@ type ScanCustomer = {
   last_name: string;
   total_points: number;
   stamps_count: number;
+  reward_pending: boolean;
 };
 
 /**
@@ -36,7 +37,7 @@ async function resolveScanToken(
   // 1. qr_token (primary — what camera reads from barcode.value)
   const { data: byQrToken } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, last_name, total_points, stamps_count')
+    .select('id, first_name, last_name, total_points, stamps_count, reward_pending')
     .eq('qr_token', token)
     .eq('restaurant_id', restaurantId)
     .maybeSingle();
@@ -46,7 +47,7 @@ async function resolveScanToken(
   // 2. customer.id (legacy fallback)
   const { data: byId } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, last_name, total_points, stamps_count')
+    .select('id, first_name, last_name, total_points, stamps_count, reward_pending')
     .eq('id', token)
     .eq('restaurant_id', restaurantId)
     .maybeSingle();
@@ -65,7 +66,7 @@ async function resolveScanToken(
   if (byPassId?.customer_id) {
     const { data: custFromPass } = await supabaseAdmin
       .from('customers')
-      .select('id, first_name, last_name, total_points, stamps_count')
+      .select('id, first_name, last_name, total_points, stamps_count, reward_pending')
       .eq('id', byPassId.customer_id)
       .eq('restaurant_id', restaurantId)
       .maybeSingle();
@@ -85,7 +86,7 @@ async function resolveScanToken(
   if (passRow?.customer_id) {
     const { data: byShortCode } = await supabaseAdmin
       .from('customers')
-      .select('id, first_name, last_name, total_points, stamps_count')
+      .select('id, first_name, last_name, total_points, stamps_count, reward_pending')
       .eq('id', passRow.customer_id)
       .eq('restaurant_id', restaurantId)
       .maybeSingle();
@@ -220,7 +221,103 @@ export async function POST(
   // Capture pre-scan balances for audit trail
   const balanceBefore = customer.total_points;
   const stampsBefore  = customer.stamps_count ?? 0;
+  const currentStamps = customer.stamps_count ?? 0;
+  const isRewardPending = customer.reward_pending ?? false;
 
+  // ── Reward redemption: if reward is pending, this scan collects it ────
+  if (programType === 'stamps' && isRewardPending) {
+    // Reset stamps to 0 via negative delta (triggers completed_cards increment)
+    const resetDelta = -currentStamps;
+    const { error: redeemErr } = await supabaseAdmin.from('transactions').insert({
+      restaurant_id: restaurantId,
+      customer_id:   customer.id,
+      type:          'reward_redeem',
+      points_delta:  0,
+      stamps_delta:  resetDelta,
+      balance_after: balanceBefore,
+      metadata:      { reason: 'Récompense récoltée' },
+    });
+
+    if (redeemErr) {
+      logger.error({ ctx: 'scan', rid: restaurantId, msg: 'reward redeem insert failed', err: redeemErr.message });
+      return Response.json({ error: t('api.scanError') }, { status: 500 });
+    }
+
+    // Clear reward_pending flag
+    await supabaseAdmin.from('customers')
+      .update({ reward_pending: false })
+      .eq('id', customer.id);
+
+    // Re-read balances after reset
+    const { data: freshRedeem } = await supabaseAdmin
+      .from('customers')
+      .select('total_points, stamps_count')
+      .eq('id', customer.id)
+      .maybeSingle();
+
+    const responsePayload = {
+      success: true,
+      program_type: programType,
+      customer: {
+        id:           customer.id,
+        first_name:   customer.first_name,
+        last_name:    customer.last_name,
+        total_points: freshRedeem?.total_points ?? balanceBefore,
+        stamps_count: freshRedeem?.stamps_count ?? 0,
+      },
+      points_added:         0,
+      reward_triggered:     false,
+      reward_redeemed:      true,
+      stamps_added:         0,
+      stamps_total:         stampsTotal,
+      stamp_card_completed: false,
+      reward_message: settings?.reward_message ?? t('api.defaultReward'),
+      scan_action_label: null,
+    };
+
+    // Insert scan_events audit row for the redemption
+    const scanEventInsert = {
+      restaurant_id:       restaurantId,
+      customer_id:         customer.id,
+      idempotency_key:     idempotencyKey,
+      resolved_by:         resolvedBy,
+      points_awarded:      0,
+      stamps_delta:        resetDelta,
+      balance_before:      balanceBefore,
+      balance_after:       freshRedeem?.total_points ?? balanceBefore,
+      stamps_before:       stampsBefore,
+      stamps_after:        freshRedeem?.stamps_count ?? 0,
+      program_type:        programType,
+      reward_triggered:    false,
+      stamp_card_completed: false,
+      scanner_user_id:     scannerUserId,
+      response_cache:      responsePayload,
+    };
+
+    const { data: scanEvent } = await supabaseAdmin
+      .from('scan_events').insert(scanEventInsert).select('id').single();
+
+    // Wallet sync + APNS push
+    await supabaseAdmin.from('wallet_sync_queue').insert({
+      scan_event_id: scanEvent?.id ?? null,
+      customer_id:   customer.id,
+      restaurant_id: restaurantId,
+    });
+    try {
+      const { data: applePasses } = await supabaseAdmin
+        .from('wallet_passes').select('id')
+        .eq('customer_id', customer.id).eq('platform', 'apple').eq('status', 'active');
+      if (applePasses?.length) {
+        await Promise.allSettled(applePasses.map(pass => pushPassUpdate(pass.id)));
+      }
+    } catch (err) {
+      logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push failed', err: err instanceof Error ? err.message : String(err) });
+    }
+
+    return Response.json(responsePayload);
+  }
+
+  // ── Normal scan flow ──────────────────────────────────────────────────
   const newBalance = balanceBefore + pointsToAdd;
 
   // Points-mode reward
@@ -230,11 +327,12 @@ export async function POST(
     && newBalance >= rewardThreshold;
 
   // Stamps-mode completion (pointsToAdd acts as stamps count in stamps mode)
-  const currentStamps      = customer.stamps_count ?? 0;
   const stampsToAdd        = programType === 'stamps' ? pointsToAdd : 0;
   const stampCardCompleted = programType === 'stamps' && (currentStamps + stampsToAdd) >= stampsTotal;
+  // When card completes: DON'T reset stamps. Keep at max for reward card display.
+  // Stamps will be reset on the next scan (reward redemption above).
   const stampsDelta    = programType !== 'stamps' ? 0
-    : stampCardCompleted ? (stampsToAdd - stampsTotal)
+    : stampCardCompleted ? (stampsTotal - currentStamps)  // cap at stampsTotal
     : stampsToAdd;
 
   // ── Transaction insert (DB trigger atomically updates customer) ────────
@@ -257,6 +355,13 @@ export async function POST(
       { error: t('api.scanError') },
       { status: 500 },
     );
+  }
+
+  // If stamp card just completed, set reward_pending = true
+  if (stampCardCompleted) {
+    await supabaseAdmin.from('customers')
+      .update({ reward_pending: true })
+      .eq('id', customer.id);
   }
 
   // ── Re-read actual post-trigger balances (concurrency-safe) ───────────
@@ -282,6 +387,7 @@ export async function POST(
     },
     points_added:         pointsToAdd,
     reward_triggered:     rewardTriggered,
+    reward_redeemed:      false,
     stamps_added:         stampsToAdd,
     stamps_total:         stampsTotal,
     stamp_card_completed: stampCardCompleted,

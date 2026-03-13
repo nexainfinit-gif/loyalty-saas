@@ -109,7 +109,8 @@
       "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas/docs -type f -name \"*.md\" 2>/dev/null | head -20)",
       "WebSearch",
       "WebFetch(domain:medium.com)",
-      "Bash(wc -l C:/Users/Mehdi/Desktop/loyalty-saas/app/*/dashboard/wallet-preview/page.tsx)"
+      "Bash(wc -l C:/Users/Mehdi/Desktop/loyalty-saas/app/*/dashboard/wallet-preview/page.tsx)",
+      "Bash(find C:/Users/Mehdi/Desktop/loyalty-saas -name \"supabase.sql\" -o -name \"schema.sql\" -o -name \"*schema*\" 2>/dev/null | head -10)"
     ]
   },
   "enabledPlugins": {
