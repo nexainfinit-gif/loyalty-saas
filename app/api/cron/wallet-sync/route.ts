@@ -88,19 +88,20 @@ export async function GET(req: Request) {
 
       const { data: settings } = await supabaseAdmin
         .from('loyalty_settings')
-        .select('stamps_total')
+        .select('stamps_total, program_type')
         .eq('restaurant_id', item.restaurant_id)
         .maybeSingle();
+
+      // passKind: loyalty_settings.program_type is the source of truth
+      const effectivePassKind = (settings?.program_type === 'stamps' ? 'stamps' : 'points') as 'stamps' | 'points';
 
       let allOk = true;
 
       // Sync Google passes
       if (googlePasses?.length) {
         await Promise.allSettled(googlePasses.map(async (pass) => {
-          const passKind = (pass.wallet_pass_templates as unknown as { pass_kind: string } | null)?.pass_kind ?? 'points';
-
           const result = await updateLoyaltyObject(pass.object_id!, {
-            passKind:    passKind as 'stamps' | 'points',
+            passKind:    effectivePassKind,
             totalPoints: customer.total_points ?? 0,
             stampsCount: customer.stamps_count ?? 0,
             stampsTotal: settings?.stamps_total ?? 10,
@@ -171,16 +172,17 @@ export async function GET(req: Request) {
 
       if (!customer) { stats.failed++; return; }
 
-      const passKind = (pass.wallet_pass_templates as unknown as { pass_kind: string } | null)?.pass_kind ?? 'points';
-
       const { data: settings } = await supabaseAdmin
         .from('loyalty_settings')
-        .select('stamps_total')
+        .select('stamps_total, program_type')
         .eq('restaurant_id', pass.restaurant_id)
         .maybeSingle();
 
+      // passKind: loyalty_settings.program_type is the source of truth
+      const effectivePassKind = (settings?.program_type === 'stamps' ? 'stamps' : 'points') as 'stamps' | 'points';
+
       const result = await updateLoyaltyObject(pass.object_id!, {
-        passKind:    passKind as 'stamps' | 'points',
+        passKind:    effectivePassKind,
         totalPoints: customer.total_points ?? 0,
         stampsCount: customer.stamps_count ?? 0,
         stampsTotal: settings?.stamps_total ?? 10,

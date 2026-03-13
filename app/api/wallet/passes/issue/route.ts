@@ -153,6 +153,10 @@ export async function POST(request: Request) {
       } : {}),
     };
 
+    // passKind: loyalty_settings.program_type is the source of truth — ensures
+    // the card type (stamps vs points) always matches the active program.
+    const effectivePassKind = (loyaltySettings?.program_type === 'stamps' ? 'stamps' : 'points') as 'stamps' | 'points';
+
     const passId    = randomUUID();
     const shortCode = passId.replace(/-/g, '').slice(0, 8).toUpperCase();
 
@@ -169,7 +173,7 @@ export async function POST(request: Request) {
       restaurantName: restaurant.name,
       primaryColor:   template.primary_color ?? restaurant.primary_color ?? '#4f6bed',
       logoUrl:        restaurant.logo_url,
-      passKind:       template.pass_kind as 'stamps' | 'points' | 'event',
+      passKind:       effectivePassKind,
       configJson:     resolvedConfig,
     });
 

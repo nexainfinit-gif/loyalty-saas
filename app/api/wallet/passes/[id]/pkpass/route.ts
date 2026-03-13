@@ -113,7 +113,7 @@ export async function GET(
   // ── Fetch loyalty_settings to resolve live values ────────────────────────
   const { data: loyaltySettings } = await supabaseAdmin
     .from('loyalty_settings')
-    .select('stamps_total, reward_threshold, reward_message, points_per_scan')
+    .select('stamps_total, reward_threshold, reward_message, points_per_scan, program_type')
     .eq('restaurant_id', pass.restaurant_id)
     .maybeSingle();
 
@@ -146,10 +146,13 @@ export async function GET(
   }
 
   // ── Build pkpass ─────────────────────────────────────────────────────────
+  // passKind: loyalty_settings.program_type is the source of truth
+  const effectivePassKind = (loyaltySettings?.program_type === 'stamps' ? 'stamps' : 'points') as 'stamps' | 'points';
+
   const input: PassBuildInput = {
     passId,
     serialNumber:   pass.serial_number ?? passId,
-    passKind:       tmpl.pass_kind as 'stamps' | 'points' | 'event',
+    passKind:       effectivePassKind,
     configJson:     resolvedConfig,
     primaryColor:   tmpl.primary_color ?? restaurant.primary_color,
     customerId:     customer.id,

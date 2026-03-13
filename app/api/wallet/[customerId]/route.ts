@@ -50,23 +50,19 @@ export async function GET(
     .maybeSingle();
 
   if (existingPass && existingPass.object_id) {
-    // Resolve passKind BEFORE the update call — it controls which field/format is written.
-    // Bug fix: previously passKind was resolved after the update, so every call used the
-    // default 'points' format and overwrote the stamps display with "X pts" instead of "X/Y".
-    const passKind = (existingPass.wallet_pass_templates as unknown as { pass_kind: string } | null)?.pass_kind ?? 'points';
+    // passKind: loyalty_settings.program_type is the source of truth — ensures
+    // the card type (stamps vs points) always matches the active program.
+    const { data: lsForSync } = await supabaseAdmin
+      .from('loyalty_settings')
+      .select('stamps_total, program_type')
+      .eq('restaurant_id', guard.restaurantId)
+      .maybeSingle();
 
-    // For stamps passes, fetch stamps_total so the counter renders correctly.
-    const { data: lsForSync } = passKind === 'stamps'
-      ? await supabaseAdmin
-          .from('loyalty_settings')
-          .select('stamps_total')
-          .eq('restaurant_id', guard.restaurantId)
-          .maybeSingle()
-      : { data: null };
+    const effectivePassKind = (lsForSync?.program_type === 'stamps' ? 'stamps' : 'points') as 'stamps' | 'points';
 
     // Update existing pass with latest loyalty state — fire-and-forget
     void updateLoyaltyObject(existingPass.object_id, {
-      passKind:    passKind as 'stamps' | 'points',
+      passKind:    effectivePassKind,
       totalPoints: customer.total_points ?? 0,
       stampsCount: customer.stamps_count ?? 0,
       stampsTotal: lsForSync?.stamps_total ?? 10,
@@ -91,7 +87,7 @@ export async function GET(
     // Reconstruct the save JWT using the stored objectId (Phase-3 naming) and the
     // restaurantId-based classId. This ensures Google presents the EXISTING object
     // rather than trying to create a new one with a mismatched ID.
-    const classId  = computeClassId(guard.restaurantId, passKind);
+    const classId  = computeClassId(guard.restaurantId, effectivePassKind);
 
     const saveUrl = generateSaveJwt({
       objectId:        existingPass.object_id,
@@ -100,13 +96,13 @@ export async function GET(
       displayName:     `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim(),
       totalPoints:     customer.total_points  ?? 0,
       stampsCount:     customer.stamps_count  ?? 0,
-      stampsTotal:     10,
+      stampsTotal:     lsForSync?.stamps_total ?? 10,
       rewardThreshold: 100,
       rewardMessage:   'Récompense offerte !',
       qrToken:         customer.qr_token ?? customer.id,
       restaurantName:  restaurant.name,
       primaryColor:    restaurant.primary_color ?? '#4f6bed',
-      passKind:        passKind as 'stamps' | 'points' | 'event',
+      passKind:        effectivePassKind,
     });
 
     await supabaseAdmin
@@ -142,9 +138,12 @@ export async function GET(
     // Fetch loyalty settings for resolved config
     const { data: loyaltySettings } = await supabaseAdmin
       .from('loyalty_settings')
-      .select('stamps_total, reward_threshold, reward_message, points_per_scan')
+      .select('stamps_total, reward_threshold, reward_message, points_per_scan, program_type')
       .eq('restaurant_id', guard.restaurantId)
       .maybeSingle();
+
+    // passKind: loyalty_settings.program_type is the source of truth
+    const newPassKind = (loyaltySettings?.program_type === 'stamps' ? 'stamps' : 'points') as 'stamps' | 'points';
 
     const resolvedConfig: Record<string, unknown> = {
       ...((anyTemplate.config_json as Record<string, unknown>) ?? {}),
@@ -165,7 +164,7 @@ export async function GET(
       restaurantName: restaurant.name,
       primaryColor:   anyTemplate.primary_color ?? restaurant.primary_color ?? '#4f6bed',
       logoUrl:        restaurant.logo_url,
-      passKind:       anyTemplate.pass_kind as 'stamps' | 'points' | 'event',
+      passKind:       newPassKind,
       configJson:     resolvedConfig,
     });
 
