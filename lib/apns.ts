@@ -43,46 +43,49 @@ async function sendPushViaCurl(
   const apnsHost = env === 'production' ? 'api.push.apple.com' : 'api.sandbox.push.apple.com';
 
   try {
-    // Write P12 to a temp file, send via curl, then clean up
     const { execSync } = await import('child_process');
-    const { writeFileSync, unlinkSync, mkdtempSync } = await import('fs');
+    const { writeFileSync, readFileSync, unlinkSync, mkdtempSync } = await import('fs');
     const { join } = await import('path');
     const os = await import('os');
 
     const tmpDir = mkdtempSync(join(os.tmpdir(), 'apns-'));
     const p12Path = join(tmpDir, 'cert.p12');
+    const bodyPath = join(tmpDir, 'body.txt');
 
     writeFileSync(p12Path, Buffer.from(certP12B64, 'base64'));
 
+    // -o writes response body to file, -w prints only the status code to stdout
     const curlCmd = [
-      'curl', '-s', '-w', '\\n%{http_code}',
+      'curl', '-s',
+      '-o', bodyPath,
+      '-w', '%{http_code}',
       '--http2',
       '--cert-type', 'P12',
       '--cert', `${p12Path}:${passphrase}`,
       '-X', 'POST',
-      '-H', `apns-topic: ${passTypeId}`,
-      '-d', '{}',
+      '-H', `"apns-topic: ${passTypeId}"`,
+      '-d', '"{}"',
       '--max-time', '10',
       `https://${apnsHost}/3/device/${pushToken}`,
     ].join(' ');
 
-    const output = execSync(curlCmd, {
+    const statusStr = execSync(curlCmd, {
       timeout: 12_000,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    }).trim();
+
+    const statusCode = parseInt(statusStr, 10);
+
+    // Read response body
+    let body = '';
+    try { body = readFileSync(bodyPath, 'utf-8'); } catch {}
 
     // Clean up
     try { unlinkSync(p12Path); } catch {}
+    try { unlinkSync(bodyPath); } catch {}
     try { const { rmdirSync } = await import('fs'); rmdirSync(tmpDir); } catch {}
 
-    // Parse output: body\nstatus_code
-    const lines = output.trim().split('\n');
-    const statusCode = parseInt(lines[lines.length - 1], 10);
-    const body = lines.slice(0, -1).join('\n');
-
     if (statusCode === 200) {
-      console.log(`[APNS] Push succeeded via curl for token ${pushToken.slice(0, 12)}...`);
       return { pushToken, success: true };
     }
 
@@ -95,13 +98,11 @@ async function sendPushViaCurl(
         errorMsg += `: ${body.slice(0, 200)}`;
       }
     }
-    console.warn(`[APNS] Push failed via curl: ${errorMsg}`);
     return { pushToken, success: false, error: errorMsg };
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[APNS] curl push failed:`, msg);
-    return { pushToken, success: false, error: `curl push failed: ${msg}` };
+    return { pushToken, success: false, error: `curl failed: ${msg}` };
   }
 }
 
