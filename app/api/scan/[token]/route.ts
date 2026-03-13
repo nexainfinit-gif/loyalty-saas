@@ -270,30 +270,32 @@ export async function POST(
   if (syncErr) logger.error({ ctx: 'scan', rid: restaurantId, msg: 'wallet_sync_queue insert failed', err: syncErr.message });
 
   // APNS push for Apple Wallet passes
+  let apnsDebug: unknown = null;
   try {
-    const { data: applePasses } = await supabaseAdmin
+    const { data: applePasses, error: appleErr } = await supabaseAdmin
       .from('wallet_passes')
       .select('id')
       .eq('customer_id', customer.id)
       .eq('platform', 'apple')
       .eq('status', 'active');
 
-    logger.info({ ctx: 'scan', rid: restaurantId, msg: `Apple passes found: ${applePasses?.length ?? 0}`, customerId: customer.id });
+    apnsDebug = { passesFound: applePasses?.length ?? 0, queryError: appleErr?.message ?? null };
 
     if (applePasses?.length) {
       const results = await Promise.allSettled(applePasses.map(pass => pushPassUpdate(pass.id)));
-      for (let i = 0; i < results.length; i++) {
-        const r = results[i];
-        if (r.status === 'rejected') {
-          logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push failed', passId: applePasses[i].id, err: String(r.reason) });
-        }
-      }
+      const pushResults = results.map((r, i) => ({
+        passId: applePasses[i].id,
+        status: r.status,
+        value: r.status === 'fulfilled' ? r.value : undefined,
+        error: r.status === 'rejected' ? String(r.reason) : undefined,
+      }));
+      apnsDebug = { ...apnsDebug as object, pushResults };
     }
   } catch (err) {
-    logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push lookup failed', err: err instanceof Error ? err.message : String(err) });
+    apnsDebug = { error: err instanceof Error ? err.message : String(err) };
   }
 
-  return Response.json(responsePayload);
+  return Response.json({ ...responsePayload, _apns_debug: apnsDebug });
 }
 
 export async function GET(
