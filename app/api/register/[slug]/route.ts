@@ -1,12 +1,10 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
-import { Resend } from 'resend'
-import { autoIssueApplePass } from '@/lib/wallet-auto-issue'
+import { sendVerificationEmail } from '@/lib/email'
 import { registerSlugSchema, parseBody } from '@/lib/validation'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { checkPlanLimit, planLimitError } from '@/lib/plan-limits'
 import { logger } from '@/lib/logger'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
+import crypto from 'crypto'
 
 // Rate limiting: IP-based (10 req/min) + per-restaurant (20 reg/min)
 const ipLimiter = rateLimit({ prefix: 'register-slug-ip', limit: 10, windowMs: 60_000 })
@@ -104,6 +102,8 @@ export async function POST(
     );
   }
 
+  const emailVerificationToken = crypto.randomUUID()
+
   const { data: customer, error } = await supabase
     .from('customers')
     .insert({
@@ -114,6 +114,8 @@ export async function POST(
       phone: phone ?? null,
       consent_marketing: consent_marketing ?? false,
       consent_ip: ip,
+      email_verified: false,
+      email_verification_token: emailVerificationToken,
     })
     .select()
     .single()
@@ -135,44 +137,18 @@ export async function POST(
     metadata: { reason: 'Bienvenue' },
   })
 
-  // Auto-issue Apple Wallet pass if the restaurant has a default template.
-  const applePassId = await autoIssueApplePass({
-    restaurantId: restaurant.id,
-    customerId: customer.id,
-  })
-  const appleWalletUrl = applePassId
-    ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${applePassId}/pkpass`
-    : null
-
-  if (consent_marketing && process.env.RESEND_API_KEY) {
-    const safeName  = restaurant.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    const safeFname = first_name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    const safeColor = /^#[0-9A-Fa-f]{3,6}$/.test(restaurant.primary_color ?? '') ? restaurant.primary_color : '#FF6B35'
-
+  // Send verification email (no wallet card until email is confirmed)
+  if (process.env.RESEND_API_KEY) {
     try {
-      await resend.emails.send({
-        from: `${restaurant.name} <noreply@rebites.be>`,
+      await sendVerificationEmail({
         to: email,
-        subject: `Bienvenue chez ${restaurant.name} 🎉`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 2rem;">
-            <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
-              <h1 style="color: white; margin: 0;">Bienvenue, ${safeFname} ! 🎉</h1>
-            </div>
-            <p>Votre carte fidélité <strong>${safeName}</strong> est active.</p>
-            <p>Vous avez reçu <strong>10 points de bienvenue</strong> !</p>
-            ${appleWalletUrl ? `
-            <div style="text-align: center; margin: 1.5rem 0;">
-              <a href="${appleWalletUrl}" target="_blank" style="display: inline-block; background: #000000; color: #ffffff; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
-                 Ajouter à Apple Wallet
-              </a>
-            </div>
-            ` : ''}
-          </div>
-        `,
+        firstName: first_name,
+        restaurantName: restaurant.name,
+        restaurantColor: restaurant.primary_color ?? '#FF6B35',
+        verificationToken: emailVerificationToken,
       })
     } catch (emailErr) {
-      logger.error({ ctx: 'register/slug', rid: restaurant.id, msg: 'Welcome email failed', err: emailErr })
+      logger.error({ ctx: 'register/slug', rid: restaurant.id, msg: 'Verification email failed', err: emailErr })
     }
   }
 
@@ -220,5 +196,5 @@ export async function POST(
     }
   }
 
-  return Response.json({ success: true, customer_id: customer.id, appleWalletUrl, referralCode, referralBonus })
+  return Response.json({ success: true, customer_id: customer.id, referralCode, referralBonus })
 }

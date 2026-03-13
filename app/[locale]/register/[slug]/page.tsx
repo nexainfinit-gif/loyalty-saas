@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import AddToAppleWalletButton from '@/components/AddToAppleWalletButton';
 import ReferralShareCard from '@/components/ReferralShareCard';
 import { useTranslation } from '@/lib/i18n';
 import { CompactLocaleSwitcher } from '@/components/LocaleSwitcher';
@@ -33,8 +32,6 @@ export default function RegisterPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [customerName, setCustomerName] = useState('');
-  const [walletUrl, setWalletUrl] = useState<string | null>(null);
-  const [appleWalletUrl, setAppleWalletUrl] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralBonus, setReferralBonus] = useState<number | null>(null);
@@ -126,14 +123,10 @@ export default function RegisterPage() {
     }
 
     setCustomerName(first_name);
-    setAppleWalletUrl(data.appleWalletUrl ?? null);
     if (data.referralCode) setReferralCode(data.referralCode);
     if (data.referralBonus) setReferralBonus(data.referralBonus);
     if (data.programType) setProgramType(data.programType);
     if (data.referralRewardAmount) setReferralRewardAmount(data.referralRewardAmount);
-    const walletRes = await fetch(`/api/wallet/${data.customer_id}`);
-    const walletData = await walletRes.json();
-    if (walletData.walletUrl) setWalletUrl(walletData.walletUrl);
     setStep('success');
   }
 
@@ -378,50 +371,26 @@ export default function RegisterPage() {
               {t('registerSlug.successMessage')}
             </p>
 
-            {/* Email confirmation + spam hint */}
+            {/* Email confirmation — must confirm before getting wallet card */}
             <div style={{
-              background: '#FEF9E7', borderRadius: '12px', padding: '1rem',
-              border: '1.5px solid #F5E6A3', marginBottom: '1.5rem',
-              textAlign: 'left',
+              background: '#FEF9E7', borderRadius: '16px', padding: '1.25rem',
+              marginBottom: '1rem', border: '1.5px solid #F5E6A3',
             }}>
-              <p style={{ fontSize: '0.82rem', color: '#92400E', margin: 0, lineHeight: 1.6, fontWeight: 600 }}>
-                📧 {t('registerSlug.checkEmailTitle')}
+              <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>📧</div>
+              <p style={{ fontSize: '0.9rem', color: '#92400E', margin: '0 0 0.5rem', fontWeight: 700 }}>
+                {t('registerSlug.checkEmailTitle')}
               </p>
-              <p style={{ fontSize: '0.78rem', color: '#A16207', margin: '0.4rem 0 0', lineHeight: 1.6 }}>
+              <p style={{ fontSize: '0.82rem', color: '#A16207', margin: '0 0 0.75rem', lineHeight: 1.6 }}>
                 {t('registerSlug.checkEmailSpam')}
               </p>
-            </div>
-
-            {/* Wallet CTA */}
-            <div style={{
-              background: '#F8F9FA', borderRadius: '16px', padding: '1.25rem',
-              marginBottom: '1rem', border: '1.5px solid #E5E7EB',
-            }}>
-              <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#111827', margin: '0 0 0.75rem' }}>
-                {t('registerSlug.addToWalletTitle')}
-              </p>
-              {walletUrl ? (
-              <a href={walletUrl} target="_blank" rel="noreferrer" style={{
-                display: 'block', background: '#1a73e8', color: 'white',
-                padding: '0.75rem', borderRadius: '10px', textAlign: 'center',
-                fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none',
-                marginBottom: appleWalletUrl ? '0.75rem' : '0',
+              <div style={{
+                background: '#FEF3C7', borderRadius: '10px', padding: '0.75rem',
+                border: '1px solid #F5E6A3',
               }}>
-                {t('registerSlug.addToGoogleWallet')}
-              </a>
-            ) : (
-              <p style={{ color: '#9CA3AF', fontSize: '0.8rem', textAlign: 'center' }}>
-                {t('registerSlug.generatingCard')}
-              </p>
-            )}
-            {appleWalletUrl && (() => {
-              const applePassId = appleWalletUrl.split('/passes/')[1]?.split('/')[0] ?? null;
-              return applePassId ? (
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <AddToAppleWalletButton passId={applePassId} />
-                </div>
-              ) : null;
-            })()}
+                <p style={{ fontSize: '0.78rem', color: '#92400E', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
+                  💡 {t('registerSlug.spamTip')}
+                </p>
+              </div>
             </div>
 
             <div style={{

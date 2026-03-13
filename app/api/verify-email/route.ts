@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { autoIssueApplePass } from '@/lib/wallet-auto-issue';
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
@@ -26,7 +27,9 @@ export async function GET(req: NextRequest) {
   }
 
   if (customer.email_verified) {
-    return new NextResponse(successHtml(customer.first_name, true), {
+    // Already verified — still show wallet buttons
+    const appleWalletUrl = await getAppleWalletUrl(customer.restaurant_id, customer.id);
+    return new NextResponse(successHtml(customer.first_name, true, appleWalletUrl), {
       status: 200,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
@@ -48,17 +51,52 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  return new NextResponse(successHtml(customer.first_name, false), {
+  // Auto-issue Apple Wallet pass now that email is confirmed
+  const appleWalletUrl = await getAppleWalletUrl(customer.restaurant_id, customer.id);
+
+  return new NextResponse(successHtml(customer.first_name, false, appleWalletUrl), {
     status: 200,
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
 }
 
-function successHtml(firstName: string, alreadyVerified: boolean): string {
+async function getAppleWalletUrl(restaurantId: string, customerId: string): Promise<string | null> {
+  // Check for existing Apple pass
+  const { data: existingPass } = await supabaseAdmin
+    .from('wallet_passes')
+    .select('id')
+    .eq('customer_id', customerId)
+    .eq('restaurant_id', restaurantId)
+    .eq('platform', 'apple')
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (existingPass) {
+    return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${existingPass.id}/pkpass`;
+  }
+
+  // Issue new pass
+  const applePassId = await autoIssueApplePass({ restaurantId, customerId });
+  if (applePassId) {
+    return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${applePassId}/pkpass`;
+  }
+  return null;
+}
+
+function successHtml(firstName: string, alreadyVerified: boolean, appleWalletUrl: string | null): string {
   const safeName = firstName.replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const message = alreadyVerified
     ? 'Votre adresse email a déjà été vérifiée.'
     : 'Votre adresse email a été vérifiée avec succès !';
+
+  const walletSection = appleWalletUrl ? `
+    <div style="background: #f8f9fa; border-radius: 16px; padding: 1.25rem; margin-top: 1.5rem; border: 1.5px solid #e5e7eb;">
+      <p style="font-size: 0.85rem; font-weight: 600; color: #111; margin: 0 0 0.75rem;">📱 Ajoutez votre carte à votre Wallet</p>
+      <a href="${appleWalletUrl}" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; background: #000; color: white; text-decoration: none; padding: 0.875rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
+        <svg width="20" height="24" viewBox="0 0 20 24" fill="white"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+        Ajouter à Apple Wallet
+      </a>
+    </div>` : '';
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -79,7 +117,7 @@ function successHtml(firstName: string, alreadyVerified: boolean): string {
     <div class="icon">&#10003;</div>
     <h1>Bonjour ${safeName} !</h1>
     <p>${message}</p>
-    <p style="color: #aaa; font-size: 0.8rem; margin-top: 2rem;">Vous pouvez fermer cette page.</p>
+    ${walletSection}
   </div>
 </body>
 </html>`;
