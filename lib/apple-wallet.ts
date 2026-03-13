@@ -70,7 +70,7 @@ function buildPassJson(
     logoText:            input.restaurantName,
     // Push update registration — only included when authentication_token is available
     ...(input.authenticationToken ? {
-      webServiceURL:       `${process.env.NEXT_PUBLIC_APP_URL}/api/wallet/webservice`,
+      webServiceURL:       `${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL}/api/wallet/webservice`,
       authenticationToken: input.authenticationToken,
     } : {}),
     // QR barcode — dual format for backward compatibility
