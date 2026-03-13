@@ -203,21 +203,19 @@ async function generateStampStrip(opts: {
   const row2Count = total - row1Count;
   const maxPerRow = Math.max(row1Count, row2Count);
 
-  // Size stamps to fit width with gaps
-  const gap = 8;
+  // Size stamps to fill the strip with generous spacing
+  const gap = Math.max(12, Math.floor(width * 0.03));
   const stampSize = Math.min(
-    Math.floor((width * 0.85 - (maxPerRow - 1) * gap) / maxPerRow),
-    Math.floor((height - gap) / 2 - 4),
-    80,
+    Math.floor((width * 0.92 - (maxPerRow - 1) * gap) / maxPerRow),
+    Math.floor((height - gap * 2) / 2 - 2),
+    100,
   );
 
-  // Position grid: horizontally centered, pushed to bottom of strip
-  // (Apple overlays primaryFields text at the top of the strip area)
+  // Position grid: centered both horizontally and vertically
   const gridW = maxPerRow * stampSize + (maxPerRow - 1) * gap;
   const gridH = (row2Count > 0 ? 2 : 1) * stampSize + (row2Count > 0 ? gap : 0);
   const offsetX = Math.floor((width - gridW) / 2);
-  const bottomPad = Math.max(4, Math.floor(height * 0.06));
-  const offsetY = height - gridH - bottomPad;
+  const offsetY = Math.floor((height - gridH) / 2);
 
   // ── Prepare stamp images (custom PNG or default SVG) ────────────────────
   async function fetchAndResize(url: string): Promise<Buffer> {
