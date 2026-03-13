@@ -197,29 +197,25 @@ export async function pushPassUpdate(passId: string): Promise<PushResult[]> {
     return [];
   }
 
-  // ── 2. Increment pass_version ────────────────────────────────────────────
-  const { error: versionError } = await supabaseAdmin
-    .rpc('increment_pass_version', { p_pass_id: passId })
+  // ── 2. Increment pass_version + updated_at ──────────────────────────────
+  // Always update both so the list-passes endpoint can filter by updated_at.
+  const now = new Date().toISOString();
+  const { data: currentPass } = await supabaseAdmin
+    .from('wallet_passes')
+    .select('pass_version')
+    .eq('id', passId)
     .single();
 
-  // If the RPC doesn't exist yet, fall back to a manual update
-  if (versionError) {
-    const { error: updateError } = await supabaseAdmin
-      .from('wallet_passes')
-      .update({
-        pass_version: (await supabaseAdmin
-          .from('wallet_passes')
-          .select('pass_version')
-          .eq('id', passId)
-          .single()
-          .then(r => (r.data?.pass_version ?? 1))) + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', passId);
+  const newVersion = (currentPass?.pass_version ?? 1) + 1;
+  const { error: updateError } = await supabaseAdmin
+    .from('wallet_passes')
+    .update({ pass_version: newVersion, updated_at: now })
+    .eq('id', passId);
 
-    if (updateError) {
-      console.error(`[APNS] Failed to increment pass_version for ${passId}:`, updateError.message);
-    }
+  if (updateError) {
+    console.error(`[APNS] Failed to increment pass_version for ${passId}:`, updateError.message);
+  } else {
+    console.log(`[APNS] pass_version → ${newVersion}, updated_at → ${now} for pass ${passId}`);
   }
 
   // ── 3. Send push to each registered device ───────────────────────────────
