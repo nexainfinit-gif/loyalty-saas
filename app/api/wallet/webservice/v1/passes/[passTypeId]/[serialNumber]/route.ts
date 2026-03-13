@@ -85,7 +85,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   // ── Fetch customer ───────────────────────────────────────────────────────
   const { data: customer } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, last_name, qr_token, stamps_count, total_points')
+    .select('id, first_name, last_name, qr_token, stamps_count, total_points, reward_pending')
     .eq('id', pass.customer_id)
     .single();
 
@@ -142,10 +142,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     lastName:       customer.last_name  ?? '',
     stampsCount:    customer.stamps_count  ?? 0,
     totalPoints:    customer.total_points  ?? 0,
-    qrToken:        customer.qr_token      ?? pass.id,
+    qrToken:        customer.qr_token      ?? customer.id,
     restaurantName:      restaurant.name,
     logoUrl:             restaurant.logo_url,
     authenticationToken: pass.authentication_token,
+    rewardPending:       (customer as { reward_pending?: boolean }).reward_pending ?? false,
   };
 
   try {
