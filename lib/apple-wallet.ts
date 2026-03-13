@@ -8,10 +8,9 @@ import crypto from 'crypto';
 /* ── App URL (runtime-safe, avoids Next.js build-time inlining) ─────────────── */
 
 function getAppUrl(): string {
-  // APP_URL is a server-only env var, never inlined by Next.js at build time.
-  // NEXT_PUBLIC_APP_URL is NOT used here because Next.js replaces it with
-  // its build-time value, which may be stale (e.g. Vercel auto-generated domain).
-  return process.env['APP_URL'] || 'https://app.rebites.be';
+  const url = 'https://app.rebites.be';
+  console.log('[apple-wallet] getAppUrl =', url);
+  return url;
 }
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
