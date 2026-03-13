@@ -708,402 +708,36 @@ function ImageUpload({
   );
 }
 
-/* ── ControlPanel ─────────────────────────────────────────────────────────── */
+/* ── Section — collapsible card ───────────────────────────────────────── */
 
-type TabKey = 'apparence' | 'champs' | 'barcode' | 'tampons';
-
-function ControlPanel({
-  controls,
-  defaults,
-  onChange,
-  onReset,
-  accessToken,
-  restaurantId,
+function Section({
+  title,
+  children,
+  defaultOpen = true,
 }: {
-  controls:     Controls;
-  defaults:     Controls;
-  onChange:     <K extends keyof Controls>(key: K, val: Controls[K]) => void;
-  onReset:      () => void;
-  accessToken:  string;
-  restaurantId: string;
+  title:       string;
+  children:    React.ReactNode;
+  defaultOpen?: boolean;
 }) {
-  const { t } = useTranslation();
-  const [tab, setTab] = useState<TabKey>('apparence');
-
-  const isDirty  = JSON.stringify(controls) !== JSON.stringify(defaults);
-  const inputCls = 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors';
-
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: 'apparence', label: t('walletPreview.tabAppearance') },
-    { key: 'champs',    label: t('walletPreview.tabFields') },
-    { key: 'barcode',   label: t('walletPreview.tabBarcode') },
-    { key: 'tampons',   label: t('walletPreview.tabStamps') },
-  ];
-
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
-
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('walletPreview.controlsTitle')}</span>
-        <button
-          onClick={onReset}
-          disabled={!isDirty}
-          className="text-xs text-gray-400 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50/50 transition-colors"
+      >
+        <span className="text-sm font-semibold text-gray-900">{title}</span>
+        <svg
+          width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          className={`text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         >
-          {t('walletPreview.resetBtn')}
-        </button>
-      </div>
-
-      {/* ── Tabs ──────────────────────────────────────────────────────── */}
-      <div className="flex border-b border-gray-100 overflow-x-auto">
-        {tabs.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={[
-              'flex-1 py-2.5 text-xs font-semibold transition-colors whitespace-nowrap px-2',
-              tab === key
-                ? 'text-primary-700 border-b-2 border-primary-600 -mb-px bg-white'
-                : 'text-gray-400 hover:text-gray-600',
-            ].join(' ')}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Tab: Apparence ─────────────────────────────────────────── */}
-      {tab === 'apparence' && (
-        <div className="p-5 space-y-5">
-
-          <Field label={t('walletPreview.fieldMerchantName')}>
-            <input
-              type="text"
-              value={controls.merchantName}
-              onChange={e => onChange('merchantName', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-
-          <Field label={t('walletPreview.fieldLogoText')}>
-            <input
-              type="text"
-              value={controls.logoText}
-              onChange={e => onChange('logoText', e.target.value)}
-              placeholder={controls.merchantName}
-              className={inputCls}
-            />
-          </Field>
-
-          <div className="border-t border-gray-100 pt-4">
-            <p className="text-xs font-medium text-gray-500 mb-3">{t('walletPreview.colorsTitle')}</p>
-            <div className="space-y-4">
-              <ColorPicker
-                label={t('walletPreview.fieldBgColor')}
-                value={controls.bgColor}
-                onChange={v => onChange('bgColor', v)}
-              />
-              <ColorPicker
-                label={t('walletPreview.fieldFgColor')}
-                value={controls.foregroundColor}
-                onChange={v => onChange('foregroundColor', v)}
-              />
-              <ColorPicker
-                label={t('walletPreview.fieldLabelColor')}
-                value={controls.labelColor}
-                onChange={v => onChange('labelColor', v)}
-              />
-            </div>
-          </div>
-
-          <div className="border-t border-gray-100 pt-4">
-            <ImageUpload
-              label={t('walletPreview.fieldStripImage')}
-              hint={t('walletPreview.stripImageHint')}
-              currentUrl={controls.stripImageUrl}
-              onUpload={url => onChange('stripImageUrl', url)}
-              accessToken={accessToken}
-              restaurantId={restaurantId}
-              uploadType="strip"
-            />
-          </div>
-
-          <div className="border-t border-gray-100 pt-4 space-y-4">
-            <p className="text-xs font-medium text-gray-500">{t('walletPreview.statesTitle')}</p>
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-700">{t('walletPreview.stateVip')}</p>
-                <p className="text-[11px] text-gray-400">{t('walletPreview.stateVipDesc')}</p>
-              </div>
-              <Toggle
-                checked={controls.isVip}
-                onChange={() => onChange('isVip', !controls.isVip)}
-                colorClass="bg-vip-600"
-              />
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-700">{t('walletPreview.statePro')}</p>
-                <p className="text-[11px] text-gray-400">{t('walletPreview.stateProDesc')}</p>
-              </div>
-              <Toggle
-                checked={controls.isPro}
-                onChange={() => onChange('isPro', !controls.isPro)}
-                colorClass="bg-purple-600"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Tab: Champs ────────────────────────────────────────────── */}
-      {tab === 'champs' && (
-        <div className="p-5 space-y-5">
-
-          <Field label={t('walletPreview.fieldStampsGoal')}>
-            <input
-              type="number" min={1} max={20}
-              value={controls.stampsTotal}
-              onChange={e => {
-                const v = clamp(Number(e.target.value), 1, 20);
-                onChange('stampsTotal', v);
-                if (controls.currentStamps > v) onChange('currentStamps', v);
-              }}
-              className={inputCls}
-            />
-          </Field>
-
-          <Field label={t('walletPreview.fieldCurrentStamps', { max: controls.stampsTotal })}>
-            <input
-              type="number" min={0} max={controls.stampsTotal}
-              value={controls.currentStamps}
-              onChange={e =>
-                onChange('currentStamps', clamp(Number(e.target.value), 0, controls.stampsTotal))
-              }
-              className={inputCls}
-            />
-          </Field>
-
-          <Field label={t('walletPreview.fieldReward')}>
-            <input
-              type="text"
-              value={controls.rewardText}
-              onChange={e => onChange('rewardText', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-
-          <div className="border-t border-gray-100 pt-4">
-            <p className="text-xs font-medium text-gray-500 mb-2">{t('walletPreview.headerFieldsLabel')}</p>
-            <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.headerFieldsHint')}</p>
-            <FieldListEditor
-              fields={controls.headerFields}
-              onChange={f => onChange('headerFields', f)}
-              maxFields={3}
-              addLabel={t('walletPreview.addField')}
-            />
-          </div>
-
-          <div className="border-t border-gray-100 pt-4">
-            <p className="text-xs font-medium text-gray-500 mb-2">{t('walletPreview.secondaryFieldsLabel')}</p>
-            <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.secondaryFieldsHint')}</p>
-            <FieldListEditor
-              fields={controls.secondaryFields}
-              onChange={f => onChange('secondaryFields', f)}
-              maxFields={2}
-              addLabel={t('walletPreview.addField')}
-            />
-          </div>
-
-          <div className="border-t border-gray-100 pt-4">
-            <p className="text-xs font-medium text-gray-500 mb-2">{t('walletPreview.backFieldsLabel')}</p>
-            <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.backFieldsHint')}</p>
-            <FieldListEditor
-              fields={controls.backFields}
-              onChange={f => onChange('backFields', f)}
-              maxFields={10}
-              addLabel={t('walletPreview.addField')}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ── Tab: Barcode ───────────────────────────────────────────── */}
-      {tab === 'barcode' && (
-        <div className="p-5 space-y-5">
-
-          <Field label={t('walletPreview.fieldBarcodeFormat')}>
-            <select
-              value={controls.barcodeFormat}
-              onChange={e => onChange('barcodeFormat', e.target.value as BarcodeFormat)}
-              className={inputCls}
-            >
-              <option value="PKBarcodeFormatQR">QR Code</option>
-              <option value="PKBarcodeFormatPDF417">PDF417</option>
-              <option value="PKBarcodeFormatAztec">Aztec</option>
-              <option value="PKBarcodeFormatCode128">Code 128</option>
-            </select>
-          </Field>
-
-          <Field label={t('walletPreview.fieldQrContent')}>
-            <input
-              type="text"
-              value={controls.barcodePayload}
-              onChange={e => onChange('barcodePayload', e.target.value)}
-              placeholder={t('walletPreview.fieldQrPlaceholder')}
-              className={`${inputCls} font-mono text-xs`}
-            />
-          </Field>
-
-          <Field label={t('walletPreview.fieldBarcodeAltText')}>
-            <input
-              type="text"
-              value={controls.barcodeAltText}
-              onChange={e => onChange('barcodeAltText', e.target.value)}
-              placeholder={t('walletPreview.barcodeAltTextPlaceholder')}
-              className={inputCls}
-            />
-          </Field>
-        </div>
-      )}
-
-      {/* ── Tab: Tampons ──────────────────────────────────────────────── */}
-      {tab === 'tampons' && (
-        <div className="p-5 space-y-5">
-
-          {/* Mode selector */}
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-3">{t('walletPreview.stampModeTitle')}</p>
-            <div className="space-y-2">
-              {(['default', 'custom'] as const).map(mode => (
-                <label
-                  key={mode}
-                  className={[
-                    'flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                    controls.stampMode === mode
-                      ? 'border-primary-200 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300',
-                  ].join(' ')}
-                >
-                  <input
-                    type="radio"
-                    name="stampMode"
-                    value={mode}
-                    checked={controls.stampMode === mode}
-                    onChange={() => onChange('stampMode', mode)}
-                    className="mt-0.5 accent-primary-600"
-                  />
-                  <div className="min-w-0">
-                    <p className={[
-                      'text-sm font-medium',
-                      controls.stampMode === mode ? 'text-primary-700' : 'text-gray-700',
-                    ].join(' ')}>
-                      {mode === 'default' ? t('walletPreview.stampModeDefault') : t('walletPreview.stampModeCustom')}
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
-                      {mode === 'default'
-                        ? t('walletPreview.stampModeDefaultDesc')
-                        : t('walletPreview.stampModeCustomDesc')}
-                    </p>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Custom mode controls */}
-          {controls.stampMode === 'custom' && (
-            <>
-              <div className="border-t border-gray-100 pt-4 space-y-4">
-                <p className="text-xs font-medium text-gray-500">{t('walletPreview.stampImages')}</p>
-                {!restaurantId && (
-                  <p className="text-[11px] text-warning-700 bg-warning-50 border border-warning-200 rounded-lg px-3 py-2">
-                    {t('walletPreview.stampLoginRequired')}
-                  </p>
-                )}
-                <StampUpload
-                  label={t('walletPreview.stampEmpty')}
-                  stampType="empty"
-                  currentUrl={controls.stampEmptyUrl}
-                  onUpload={url => onChange('stampEmptyUrl', url)}
-                  accessToken={accessToken}
-                  restaurantId={restaurantId}
-                />
-                <StampUpload
-                  label={t('walletPreview.stampFilled')}
-                  stampType="filled"
-                  currentUrl={controls.stampFilledUrl}
-                  onUpload={url => onChange('stampFilledUrl', url)}
-                  accessToken={accessToken}
-                  restaurantId={restaurantId}
-                />
-              </div>
-
-              <div className="border-t border-gray-100 pt-4 space-y-3">
-                <p className="text-xs font-medium text-gray-500">{t('walletPreview.stampLayout')}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label={t('walletPreview.stampColumns')}>
-                    <input
-                      type="number" min={1} max={10}
-                      value={controls.stampColumns}
-                      onChange={e => onChange('stampColumns', clamp(Number(e.target.value), 1, 10))}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label={t('walletPreview.stampSize')}>
-                    <input
-                      type="number" min={20} max={120}
-                      value={controls.stampSize}
-                      onChange={e => onChange('stampSize', clamp(Number(e.target.value), 20, 120))}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label={t('walletPreview.stampGap')}>
-                    <input
-                      type="number" min={0} max={40}
-                      value={controls.stampGap}
-                      onChange={e => onChange('stampGap', clamp(Number(e.target.value), 0, 40))}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label={t('walletPreview.stampBg')}>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="color"
-                        value={controls.stampBg === 'transparent' ? '#000000' : controls.stampBg}
-                        onChange={e => onChange('stampBg', e.target.value)}
-                        className="w-9 h-9 rounded-lg border border-gray-200 bg-gray-50 cursor-pointer p-0.5 flex-shrink-0"
-                      />
-                      <button
-                        onClick={() => onChange('stampBg', 'transparent')}
-                        className={[
-                          'text-[10px] font-medium px-2 py-1 rounded-lg border transition-colors',
-                          controls.stampBg === 'transparent'
-                            ? 'bg-primary-50 border-primary-200 text-primary-700'
-                            : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100',
-                        ].join(' ')}
-                      >
-                        {t('walletPreview.stampTransp')}
-                      </button>
-                    </div>
-                  </Field>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-700">{t('walletPreview.stampRound')}</p>
-                    <p className="text-[11px] text-gray-400">{t('walletPreview.stampRoundDesc')}</p>
-                  </div>
-                  <Toggle
-                    checked={controls.stampRound}
-                    onChange={() => onChange('stampRound', !controls.stampRound)}
-                    colorClass="bg-primary-600"
-                  />
-                </div>
-              </div>
-            </>
-          )}
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div className="px-5 pb-5 space-y-4 border-t border-gray-100 pt-4">
+          {children}
         </div>
       )}
     </div>
@@ -1515,11 +1149,15 @@ export default function WalletPreviewPage() {
   }
 
   /* ── Render ───────────────────────────────────────────────────────────── */
+  const inputCls = 'w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors';
+  const isDirty  = JSON.stringify(controls) !== JSON.stringify(defaults);
+  const rid      = data.meta.restaurantId ?? '';
+
   return (
     <div className="min-h-screen bg-surface">
 
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-10 bg-white border-b border-gray-100 h-14 flex items-center px-6 gap-4 shadow-[0_1px_0_rgba(17,24,39,0.04)]">
+      <header className="sticky top-0 z-20 bg-white border-b border-gray-100 h-14 flex items-center px-6 gap-4 shadow-[0_1px_0_rgba(17,24,39,0.04)]">
         <button
           onClick={() => router.push('/dashboard')}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
@@ -1531,10 +1169,18 @@ export default function WalletPreviewPage() {
         </button>
         <div className="h-4 w-px bg-gray-200" />
         <h1 className="text-sm font-semibold text-gray-900">{t('walletPreview.pageTitle')}</h1>
+        <div className="flex-1" />
+        <button
+          onClick={handleReset}
+          disabled={!isDirty}
+          className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100"
+        >
+          {t('walletPreview.resetBtn')}
+        </button>
       </header>
 
       {/* ── Content ─────────────────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-6 py-8">
 
         {/* Info banner */}
         <div className="bg-primary-50 border border-primary-100 rounded-xl px-4 py-3 flex items-start gap-3 mb-8">
@@ -1544,11 +1190,11 @@ export default function WalletPreviewPage() {
           </p>
         </div>
 
-        {/* 3-column grid: card preview | pass.json | controls + save */}
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_320px] gap-6 items-start">
+        {/* 2-column layout: preview (left, sticky) | config (right, scroll) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 items-start">
 
-          {/* ── Col 1 — Card + legend ──────────────────────────────────── */}
-          <div className="flex flex-col gap-6">
+          {/* ── Left — Sticky preview ────────────────────────────────────── */}
+          <div className="lg:sticky lg:top-20 space-y-6">
 
             {controls.isPro && (
               <div className="flex items-center gap-2 bg-purple-50 border border-purple-100 rounded-xl px-4 py-2.5">
@@ -1569,30 +1215,21 @@ export default function WalletPreviewPage() {
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-400">backgroundColor</span>
                   <span className="flex items-center gap-1.5">
-                    <span
-                      className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
-                      style={{ backgroundColor: controls.bgColor }}
-                    />
+                    <span className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0" style={{ backgroundColor: controls.bgColor }} />
                     <span className="font-mono text-gray-600">{controls.bgColor}</span>
                   </span>
                 </div>
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-400">foregroundColor</span>
                   <span className="flex items-center gap-1.5">
-                    <span
-                      className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
-                      style={{ backgroundColor: controls.foregroundColor }}
-                    />
+                    <span className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0" style={{ backgroundColor: controls.foregroundColor }} />
                     <span className="font-mono text-gray-600">{controls.foregroundColor}</span>
                   </span>
                 </div>
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-400">labelColor</span>
                   <span className="flex items-center gap-1.5">
-                    <span
-                      className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
-                      style={{ backgroundColor: controls.labelColor }}
-                    />
+                    <span className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0" style={{ backgroundColor: controls.labelColor }} />
                     <span className="font-mono text-gray-600">{controls.labelColor}</span>
                   </span>
                 </div>
@@ -1626,32 +1263,226 @@ export default function WalletPreviewPage() {
                 )}
               </div>
             </div>
-          </div>
 
-          {/* ── Col 2 — pass.json ───────────────────────────────────────── */}
-          <div className="flex flex-col gap-6 min-w-0">
+            {/* pass.json */}
             <PassJsonViewer controls={controls} />
           </div>
 
-          {/* ── Col 3 — Control panel + template saver (sticky) ──────── */}
-          <div className="lg:sticky lg:top-20 space-y-6">
-            <ControlPanel
-              controls={controls}
-              defaults={defaults}
-              onChange={handleChange}
-              onReset={handleReset}
-              accessToken={accessToken}
-              restaurantId={data.meta.restaurantId ?? ''}
-            />
+          {/* ── Right — Configuration sections ───────────────────────────── */}
+          <div className="space-y-5">
+
+            {/* ── Carte ──────────────────────────────────────────────────── */}
+            <Section title={t('walletPreview.sectionCard')}>
+              <Field label={t('walletPreview.fieldMerchantName')}>
+                <input type="text" value={controls.merchantName} onChange={e => handleChange('merchantName', e.target.value)} className={inputCls} />
+              </Field>
+              <Field label={t('walletPreview.fieldLogoText')}>
+                <input type="text" value={controls.logoText} onChange={e => handleChange('logoText', e.target.value)} placeholder={controls.merchantName} className={inputCls} />
+              </Field>
+              <ImageUpload
+                label={t('walletPreview.fieldStripImage')}
+                hint={t('walletPreview.stripImageHint')}
+                currentUrl={controls.stripImageUrl}
+                onUpload={url => handleChange('stripImageUrl', url)}
+                accessToken={accessToken}
+                restaurantId={rid}
+                uploadType="strip"
+              />
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-700">{t('walletPreview.stateVip')}</p>
+                    <p className="text-[11px] text-gray-400">{t('walletPreview.stateVipDesc')}</p>
+                  </div>
+                  <Toggle checked={controls.isVip} onChange={() => handleChange('isVip', !controls.isVip)} colorClass="bg-vip-600" />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-700">{t('walletPreview.statePro')}</p>
+                    <p className="text-[11px] text-gray-400">{t('walletPreview.stateProDesc')}</p>
+                  </div>
+                  <Toggle checked={controls.isPro} onChange={() => handleChange('isPro', !controls.isPro)} colorClass="bg-purple-600" />
+                </div>
+              </div>
+            </Section>
+
+            {/* ── Couleurs ───────────────────────────────────────────────── */}
+            <Section title={t('walletPreview.sectionColors')}>
+              <ColorPicker label={t('walletPreview.fieldBgColor')} value={controls.bgColor} onChange={v => handleChange('bgColor', v)} />
+              <ColorPicker label={t('walletPreview.fieldFgColor')} value={controls.foregroundColor} onChange={v => handleChange('foregroundColor', v)} />
+              <ColorPicker label={t('walletPreview.fieldLabelColor')} value={controls.labelColor} onChange={v => handleChange('labelColor', v)} />
+            </Section>
+
+            {/* ── Progression ────────────────────────────────────────────── */}
+            <Section title={t('walletPreview.sectionProgression')}>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label={t('walletPreview.fieldStampsGoal')}>
+                  <input
+                    type="number" min={1} max={20}
+                    value={controls.stampsTotal}
+                    onChange={e => {
+                      const v = clamp(Number(e.target.value), 1, 20);
+                      handleChange('stampsTotal', v);
+                      if (controls.currentStamps > v) handleChange('currentStamps', v);
+                    }}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label={t('walletPreview.fieldCurrentStamps', { max: controls.stampsTotal })}>
+                  <input
+                    type="number" min={0} max={controls.stampsTotal}
+                    value={controls.currentStamps}
+                    onChange={e => handleChange('currentStamps', clamp(Number(e.target.value), 0, controls.stampsTotal))}
+                    className={inputCls}
+                  />
+                </Field>
+              </div>
+
+              <div className="pt-2">
+                <p className="text-xs font-medium text-gray-500 mb-3">{t('walletPreview.stampModeTitle')}</p>
+                <div className="space-y-2">
+                  {(['default', 'custom'] as const).map(mode => (
+                    <label
+                      key={mode}
+                      className={[
+                        'flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
+                        controls.stampMode === mode
+                          ? 'border-primary-200 bg-primary-50'
+                          : 'border-gray-200 hover:border-gray-300',
+                      ].join(' ')}
+                    >
+                      <input
+                        type="radio" name="stampMode" value={mode}
+                        checked={controls.stampMode === mode}
+                        onChange={() => handleChange('stampMode', mode)}
+                        className="mt-0.5 accent-primary-600"
+                      />
+                      <div className="min-w-0">
+                        <p className={['text-sm font-medium', controls.stampMode === mode ? 'text-primary-700' : 'text-gray-700'].join(' ')}>
+                          {mode === 'default' ? t('walletPreview.stampModeDefault') : t('walletPreview.stampModeCustom')}
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {mode === 'default' ? t('walletPreview.stampModeDefaultDesc') : t('walletPreview.stampModeCustomDesc')}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {controls.stampMode === 'custom' && (
+                <>
+                  <div className="border-t border-gray-100 pt-4 space-y-4">
+                    <p className="text-xs font-medium text-gray-500">{t('walletPreview.stampImages')}</p>
+                    {!rid && (
+                      <p className="text-[11px] text-warning-700 bg-warning-50 border border-warning-200 rounded-lg px-3 py-2">
+                        {t('walletPreview.stampLoginRequired')}
+                      </p>
+                    )}
+                    <StampUpload label={t('walletPreview.stampEmpty')} stampType="empty" currentUrl={controls.stampEmptyUrl} onUpload={url => handleChange('stampEmptyUrl', url)} accessToken={accessToken} restaurantId={rid} />
+                    <StampUpload label={t('walletPreview.stampFilled')} stampType="filled" currentUrl={controls.stampFilledUrl} onUpload={url => handleChange('stampFilledUrl', url)} accessToken={accessToken} restaurantId={rid} />
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-4 space-y-3">
+                    <p className="text-xs font-medium text-gray-500">{t('walletPreview.stampLayout')}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label={t('walletPreview.stampColumns')}>
+                        <input type="number" min={1} max={10} value={controls.stampColumns} onChange={e => handleChange('stampColumns', clamp(Number(e.target.value), 1, 10))} className={inputCls} />
+                      </Field>
+                      <Field label={t('walletPreview.stampSize')}>
+                        <input type="number" min={20} max={120} value={controls.stampSize} onChange={e => handleChange('stampSize', clamp(Number(e.target.value), 20, 120))} className={inputCls} />
+                      </Field>
+                      <Field label={t('walletPreview.stampGap')}>
+                        <input type="number" min={0} max={40} value={controls.stampGap} onChange={e => handleChange('stampGap', clamp(Number(e.target.value), 0, 40))} className={inputCls} />
+                      </Field>
+                      <Field label={t('walletPreview.stampBg')}>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="color"
+                            value={controls.stampBg === 'transparent' ? '#000000' : controls.stampBg}
+                            onChange={e => handleChange('stampBg', e.target.value)}
+                            className="w-9 h-9 rounded-lg border border-gray-200 bg-gray-50 cursor-pointer p-0.5 flex-shrink-0"
+                          />
+                          <button
+                            onClick={() => handleChange('stampBg', 'transparent')}
+                            className={[
+                              'text-[10px] font-medium px-2 py-1 rounded-lg border transition-colors',
+                              controls.stampBg === 'transparent'
+                                ? 'bg-primary-50 border-primary-200 text-primary-700'
+                                : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100',
+                            ].join(' ')}
+                          >
+                            {t('walletPreview.stampTransp')}
+                          </button>
+                        </div>
+                      </Field>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-700">{t('walletPreview.stampRound')}</p>
+                        <p className="text-[11px] text-gray-400">{t('walletPreview.stampRoundDesc')}</p>
+                      </div>
+                      <Toggle checked={controls.stampRound} onChange={() => handleChange('stampRound', !controls.stampRound)} colorClass="bg-primary-600" />
+                    </div>
+                  </div>
+                </>
+              )}
+            </Section>
+
+            {/* ── Récompense ─────────────────────────────────────────────── */}
+            <Section title={t('walletPreview.sectionReward')}>
+              <Field label={t('walletPreview.fieldReward')}>
+                <input type="text" value={controls.rewardText} onChange={e => handleChange('rewardText', e.target.value)} className={inputCls} />
+              </Field>
+            </Section>
+
+            {/* ── Champs ─────────────────────────────────────────────────── */}
+            <Section title={t('walletPreview.sectionFields')} defaultOpen={false}>
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">{t('walletPreview.headerFieldsLabel')}</p>
+                <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.headerFieldsHint')}</p>
+                <FieldListEditor fields={controls.headerFields} onChange={f => handleChange('headerFields', f)} maxFields={3} addLabel={t('walletPreview.addField')} />
+              </div>
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-medium text-gray-500 mb-2">{t('walletPreview.secondaryFieldsLabel')}</p>
+                <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.secondaryFieldsHint')}</p>
+                <FieldListEditor fields={controls.secondaryFields} onChange={f => handleChange('secondaryFields', f)} maxFields={2} addLabel={t('walletPreview.addField')} />
+              </div>
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-medium text-gray-500 mb-2">{t('walletPreview.backFieldsLabel')}</p>
+                <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.backFieldsHint')}</p>
+                <FieldListEditor fields={controls.backFields} onChange={f => handleChange('backFields', f)} maxFields={10} addLabel={t('walletPreview.addField')} />
+              </div>
+            </Section>
+
+            {/* ── QR code ────────────────────────────────────────────────── */}
+            <Section title={t('walletPreview.sectionBarcode')}>
+              <Field label={t('walletPreview.fieldBarcodeFormat')}>
+                <select value={controls.barcodeFormat} onChange={e => handleChange('barcodeFormat', e.target.value as BarcodeFormat)} className={inputCls}>
+                  <option value="PKBarcodeFormatQR">QR Code</option>
+                  <option value="PKBarcodeFormatPDF417">PDF417</option>
+                  <option value="PKBarcodeFormatAztec">Aztec</option>
+                  <option value="PKBarcodeFormatCode128">Code 128</option>
+                </select>
+              </Field>
+              <Field label={t('walletPreview.fieldQrContent')}>
+                <input type="text" value={controls.barcodePayload} onChange={e => handleChange('barcodePayload', e.target.value)} placeholder={t('walletPreview.fieldQrPlaceholder')} className={`${inputCls} font-mono text-xs`} />
+              </Field>
+              <Field label={t('walletPreview.fieldBarcodeAltText')}>
+                <input type="text" value={controls.barcodeAltText} onChange={e => handleChange('barcodeAltText', e.target.value)} placeholder={t('walletPreview.barcodeAltTextPlaceholder')} className={inputCls} />
+              </Field>
+            </Section>
+
+            {/* ── Sauvegarder ────────────────────────────────────────────── */}
             <TemplateSaver
               controls={controls}
               defaults={defaults}
               accessToken={accessToken}
-              restaurantId={data.meta.restaurantId ?? ''}
+              restaurantId={rid}
               onLoadTemplate={handleLoadTemplate}
             />
-          </div>
 
+          </div>
         </div>
       </div>
     </div>
