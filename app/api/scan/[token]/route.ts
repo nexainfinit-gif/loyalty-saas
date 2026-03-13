@@ -2,7 +2,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAuth, requireScannerAuth } from '@/lib/server-auth';
 import { NextResponse } from 'next/server';
-import { after } from 'next/server';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { pushPassUpdate } from '@/lib/apns';
@@ -262,38 +261,37 @@ export async function POST(
     logger.error({ ctx: 'scan', rid: restaurantId, msg: 'scan_events insert failed', err: scanEventErr.message });
   }
 
-  // ── Background work (runs after response is sent, but Vercel keeps the function alive) ──
-  after(async () => {
-    // Enqueue wallet sync
-    const { error: syncErr } = await supabaseAdmin.from('wallet_sync_queue').insert({
-      scan_event_id: scanEvent?.id ?? null,
-      customer_id:   customer.id,
-      restaurant_id: restaurantId,
-    });
-    if (syncErr) logger.error({ ctx: 'scan', rid: restaurantId, msg: 'wallet_sync_queue insert failed', err: syncErr.message });
+  // ── Wallet sync + APNS push (awaited to ensure execution on Vercel) ─────
+  const { error: syncErr } = await supabaseAdmin.from('wallet_sync_queue').insert({
+    scan_event_id: scanEvent?.id ?? null,
+    customer_id:   customer.id,
+    restaurant_id: restaurantId,
+  });
+  if (syncErr) logger.error({ ctx: 'scan', rid: restaurantId, msg: 'wallet_sync_queue insert failed', err: syncErr.message });
 
-    // APNS push for Apple Wallet passes
-    try {
-      const { data: applePasses } = await supabaseAdmin
-        .from('wallet_passes')
-        .select('id')
-        .eq('customer_id', customer.id)
-        .eq('platform', 'apple')
-        .eq('status', 'active');
+  // APNS push for Apple Wallet passes
+  try {
+    const { data: applePasses } = await supabaseAdmin
+      .from('wallet_passes')
+      .select('id')
+      .eq('customer_id', customer.id)
+      .eq('platform', 'apple')
+      .eq('status', 'active');
 
-      if (applePasses?.length) {
-        const results = await Promise.allSettled(applePasses.map(pass => pushPassUpdate(pass.id)));
-        for (let i = 0; i < results.length; i++) {
-          const r = results[i];
-          if (r.status === 'rejected') {
-            logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push failed', passId: applePasses[i].id, err: String(r.reason) });
-          }
+    logger.info({ ctx: 'scan', rid: restaurantId, msg: `Apple passes found: ${applePasses?.length ?? 0}`, customerId: customer.id });
+
+    if (applePasses?.length) {
+      const results = await Promise.allSettled(applePasses.map(pass => pushPassUpdate(pass.id)));
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        if (r.status === 'rejected') {
+          logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push failed', passId: applePasses[i].id, err: String(r.reason) });
         }
       }
-    } catch (err) {
-      logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push lookup failed', err: err instanceof Error ? err.message : String(err) });
     }
-  });
+  } catch (err) {
+    logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push lookup failed', err: err instanceof Error ? err.message : String(err) });
+  }
 
   return Response.json(responsePayload);
 }
