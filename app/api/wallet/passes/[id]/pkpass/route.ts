@@ -186,17 +186,7 @@ export async function GET(
     });
 
     const filename = `${restaurant.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-pass.pkpass`;
-    // DEBUG: wrap pkpassResponse to inject debug headers (remove after diagnosis)
-    return new Response(new Uint8Array(buffer), {
-      headers: {
-        'Content-Type':        'application/vnd.apple.pkpass',
-        'Content-Disposition': `inline; filename="${filename}"`,
-        'Content-Length':      String(buffer.length),
-        'Cache-Control':       'no-store, no-cache',
-        'X-Debug-AppUrl':      process.env['APP_URL'] ?? 'NOT_SET',
-        'X-Debug-Commit':      '5d7e4b5-inline',
-      },
-    });
+    return pkpassResponse(buffer, filename);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
 

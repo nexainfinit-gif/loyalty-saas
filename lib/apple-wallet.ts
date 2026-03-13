@@ -8,9 +8,7 @@ import crypto from 'crypto';
 /* ── App URL (runtime-safe, avoids Next.js build-time inlining) ─────────────── */
 
 function getAppUrl(): string {
-  const url = 'https://app.rebites.be';
-  console.log('[apple-wallet] getAppUrl =', url);
-  return url;
+  return process.env['APP_URL'] || 'https://app.rebites.be';
 }
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
