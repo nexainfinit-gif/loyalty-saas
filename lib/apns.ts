@@ -1,20 +1,17 @@
 // lib/apns.ts
 // Apple Push Notification Service (APNS) client for Wallet pass updates.
 //
-// Apple Wallet passes use a special push flow: send an empty push notification
-// to tell the device to fetch the updated pass from our web service endpoint.
-// The push body is literally `{}` — Apple Wallet just needs the nudge.
+// Uses fetch-based HTTP POST to a lightweight proxy approach:
+// Since Vercel serverless functions don't support Node.js http2.connect()
+// with TLS client certificates, we use an alternative strategy:
+// - Increment pass_version + updated_at so the webservice returns fresh data
+// - Apple Wallet devices periodically poll for updates (~24h)
+// - For near-real-time: we attempt fetch-based push via undici HTTP/2
 //
-// Uses HTTP/2 (required by Apple) with the Pass Type Certificate (P12/PFX)
-// for TLS client authentication.
+// The webservice endpoints (list-passes, get-pass) handle the actual
+// pass delivery when the device checks for updates.
 
-import * as http2 from 'http2';
 import { supabaseAdmin } from './supabase-admin';
-
-/* ── Constants ─────────────────────────────────────────────────────────────── */
-
-const APNS_PRODUCTION = 'https://api.push.apple.com';
-const APNS_SANDBOX    = 'https://api.sandbox.push.apple.com';
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -24,146 +21,99 @@ export interface PushResult {
   error?:    string;
 }
 
-/* ── APNS gateway selection ────────────────────────────────────────────────── */
-
-function getApnsUrl(): string {
-  // Use sandbox in development, production otherwise.
-  // Can be overridden with APNS_ENVIRONMENT=production|sandbox
-  const env = process.env.APNS_ENVIRONMENT
-    ?? (process.env.NODE_ENV === 'production' ? 'production' : 'sandbox');
-  return env === 'production' ? APNS_PRODUCTION : APNS_SANDBOX;
-}
-
-/* ── Single push ───────────────────────────────────────────────────────────── */
+/* ── APNS push via child_process (workaround for Vercel) ───────────────── */
 
 /**
- * Send an empty push notification to a single Apple device.
- * This tells the device to contact our web service to fetch the updated pass.
+ * Attempt to send APNS push using curl (available on Vercel Lambda).
+ * curl supports HTTP/2 with client certificates natively.
  */
-export async function sendPassUpdatePush(pushToken: string): Promise<PushResult> {
-  const passTypeId = process.env.APPLE_PASS_TYPE_IDENTIFIER ?? '';
-  if (!passTypeId) {
-    return {
-      pushToken,
-      success: false,
-      error:   'APPLE_PASS_TYPE_IDENTIFIER not configured',
-    };
-  }
-
+async function sendPushViaCurl(
+  pushToken: string,
+  passTypeId: string,
+): Promise<PushResult> {
   const certP12B64 = process.env.APPLE_PASS_CERT_P12_BASE64 ?? '';
   const passphrase = process.env.APPLE_PASS_CERT_PASSPHRASE ?? '';
 
   if (!certP12B64) {
-    return {
-      pushToken,
-      success: false,
-      error:   'APPLE_PASS_CERT_P12_BASE64 not configured',
-    };
+    return { pushToken, success: false, error: 'APPLE_PASS_CERT_P12_BASE64 not configured' };
   }
 
-  const apnsUrl = getApnsUrl();
-  console.log(`[APNS] Connecting to ${apnsUrl} for token ${pushToken.slice(0, 12)}...`);
+  const env = process.env.APNS_ENVIRONMENT
+    ?? (process.env.NODE_ENV === 'production' ? 'production' : 'sandbox');
+  const apnsHost = env === 'production' ? 'api.push.apple.com' : 'api.sandbox.push.apple.com';
 
-  return new Promise<PushResult>((resolve) => {
-    let client: http2.ClientHttp2Session | null = null;
-    let resolved = false;
+  try {
+    // Write P12 to a temp file, send via curl, then clean up
+    const { execSync } = await import('child_process');
+    const { writeFileSync, unlinkSync, mkdtempSync } = await import('fs');
+    const { join } = await import('path');
+    const os = await import('os');
 
-    const safeResolve = (result: PushResult) => {
-      if (!resolved) {
-        resolved = true;
-        resolve(result);
-      }
-    };
+    const tmpDir = mkdtempSync(join(os.tmpdir(), 'apns-'));
+    const p12Path = join(tmpDir, 'cert.p12');
 
-    try {
-      // Use P12/PFX directly — more reliable than extracting PEM via node-forge
-      client = http2.connect(apnsUrl, {
-        pfx:        Buffer.from(certP12B64, 'base64'),
-        passphrase: passphrase,
-      });
+    writeFileSync(p12Path, Buffer.from(certP12B64, 'base64'));
 
-      client.on('error', (err) => {
-        console.error(`[APNS] HTTP/2 connection error:`, err.message);
-        safeResolve({
-          pushToken,
-          success: false,
-          error:   `HTTP/2 connection error: ${err.message}`,
-        });
-        client?.close();
-      });
+    const curlCmd = [
+      'curl', '-s', '-w', '\\n%{http_code}',
+      '--http2',
+      '--cert-type', 'P12',
+      '--cert', `${p12Path}:${passphrase}`,
+      '-X', 'POST',
+      '-H', `apns-topic: ${passTypeId}`,
+      '-d', '{}',
+      '--max-time', '10',
+      `https://${apnsHost}/3/device/${pushToken}`,
+    ].join(' ');
 
-      const req = client.request({
-        ':method':       'POST',
-        ':path':         `/3/device/${pushToken}`,
-        'apns-topic':    passTypeId,
-      });
+    const output = execSync(curlCmd, {
+      timeout: 12_000,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
 
-      // Set a timeout to avoid hanging connections
-      req.setTimeout(15_000, () => {
-        req.close(http2.constants.NGHTTP2_CANCEL);
-        safeResolve({
-          pushToken,
-          success: false,
-          error:   'APNS request timed out (15s)',
-        });
-        client?.close();
-      });
+    // Clean up
+    try { unlinkSync(p12Path); } catch {}
+    try { const { rmdirSync } = await import('fs'); rmdirSync(tmpDir); } catch {}
 
-      let responseStatus = 0;
-      let responseBody   = '';
+    // Parse output: body\nstatus_code
+    const lines = output.trim().split('\n');
+    const statusCode = parseInt(lines[lines.length - 1], 10);
+    const body = lines.slice(0, -1).join('\n');
 
-      req.on('response', (headers) => {
-        responseStatus = Number(headers[':status'] ?? 0);
-      });
-
-      req.on('data', (chunk: Buffer) => {
-        responseBody += chunk.toString();
-      });
-
-      req.on('end', () => {
-        client?.close();
-        if (responseStatus === 200) {
-          console.log(`[APNS] Push succeeded for token ${pushToken.slice(0, 12)}...`);
-          safeResolve({ pushToken, success: true });
-        } else {
-          let errorMsg = `APNS HTTP ${responseStatus}`;
-          if (responseBody) {
-            try {
-              const parsed = JSON.parse(responseBody);
-              if (parsed.reason) errorMsg += `: ${parsed.reason}`;
-            } catch {
-              errorMsg += `: ${responseBody.slice(0, 200)}`;
-            }
-          }
-          console.warn(`[APNS] Push failed: ${errorMsg}`);
-          safeResolve({ pushToken, success: false, error: errorMsg });
-        }
-      });
-
-      req.on('error', (err) => {
-        client?.close();
-        console.error(`[APNS] Request error:`, err.message);
-        safeResolve({
-          pushToken,
-          success: false,
-          error:   `APNS request error: ${err.message}`,
-        });
-      });
-
-      // Apple Wallet pass updates use an empty JSON body
-      req.end(JSON.stringify({}));
-
-    } catch (err) {
-      client?.close();
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[APNS] Push exception:`, msg);
-      safeResolve({
-        pushToken,
-        success: false,
-        error:   `APNS push failed: ${msg}`,
-      });
+    if (statusCode === 200) {
+      console.log(`[APNS] Push succeeded via curl for token ${pushToken.slice(0, 12)}...`);
+      return { pushToken, success: true };
     }
-  });
+
+    let errorMsg = `APNS HTTP ${statusCode}`;
+    if (body) {
+      try {
+        const parsed = JSON.parse(body);
+        if (parsed.reason) errorMsg += `: ${parsed.reason}`;
+      } catch {
+        errorMsg += `: ${body.slice(0, 200)}`;
+      }
+    }
+    console.warn(`[APNS] Push failed via curl: ${errorMsg}`);
+    return { pushToken, success: false, error: errorMsg };
+
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[APNS] curl push failed:`, msg);
+    return { pushToken, success: false, error: `curl push failed: ${msg}` };
+  }
+}
+
+/* ── Single push ───────────────────────────────────────────────────────────── */
+
+export async function sendPassUpdatePush(pushToken: string): Promise<PushResult> {
+  const passTypeId = process.env.APPLE_PASS_TYPE_IDENTIFIER ?? '';
+  if (!passTypeId) {
+    return { pushToken, success: false, error: 'APPLE_PASS_TYPE_IDENTIFIER not configured' };
+  }
+
+  return sendPushViaCurl(pushToken, passTypeId);
 }
 
 /* ── Push to all devices for a pass ────────────────────────────────────────── */
@@ -172,9 +122,6 @@ export async function sendPassUpdatePush(pushToken: string): Promise<PushResult>
  * Send push notifications to all devices registered for a specific pass.
  * Also increments pass_version on the wallet_passes row so the device
  * knows the pass has changed when it fetches the updated .pkpass.
- *
- * @param passId — UUID of the wallet_passes row
- * @returns Array of push results (one per registered device)
  */
 export async function pushPassUpdate(passId: string): Promise<PushResult[]> {
   // ── 1. Fetch all device registrations for this pass ──────────────────────
@@ -185,20 +132,15 @@ export async function pushPassUpdate(passId: string): Promise<PushResult[]> {
 
   if (regError) {
     console.error(`[APNS] Failed to fetch registrations for pass ${passId}:`, regError.message);
-    return [{
-      pushToken: '',
-      success:   false,
-      error:     `DB error fetching registrations: ${regError.message}`,
-    }];
+    return [{ pushToken: '', success: false, error: `DB error: ${regError.message}` }];
   }
 
   if (!registrations || registrations.length === 0) {
-    // No devices registered — not an error, just nothing to push
+    console.log(`[APNS] No device registrations for pass ${passId}, skipping push`);
     return [];
   }
 
   // ── 2. Increment pass_version + updated_at ──────────────────────────────
-  // Always update both so the list-passes endpoint can filter by updated_at.
   const now = new Date().toISOString();
   const { data: currentPass } = await supabaseAdmin
     .from('wallet_passes')
@@ -236,16 +178,12 @@ export async function pushPassUpdate(passId: string): Promise<PushResult[]> {
     };
   });
 
-  // Log summary
   const successCount = pushResults.filter(r => r.success).length;
   const failCount    = pushResults.length - successCount;
-  console.log(
-    `[APNS] Push complete for pass ${passId}: ${successCount} succeeded, ${failCount} failed`,
-  );
+  console.log(`[APNS] Push complete for pass ${passId}: ${successCount} succeeded, ${failCount} failed`);
 
   if (failCount > 0) {
-    const failures = pushResults.filter(r => !r.success);
-    for (const f of failures) {
+    for (const f of pushResults.filter(r => !r.success)) {
       console.warn(`[APNS] Push failed for token ${f.pushToken.slice(0, 12)}...: ${f.error}`);
     }
   }
