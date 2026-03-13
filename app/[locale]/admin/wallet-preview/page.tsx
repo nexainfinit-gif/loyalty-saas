@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSubscriptionGate } from '@/lib/use-subscription-gate';
 import QRCode from 'react-qr-code';
+import Cropper from 'react-easy-crop';
+import type { Area } from 'react-easy-crop';
 import { supabase } from '@/lib/supabase';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
 
@@ -614,7 +616,146 @@ function StampUpload({
   );
 }
 
-/* ── ImageUpload — generic image upload (strip, logo) ─────────────────── */
+/* ── getCroppedImg — canvas-based crop helper ────────────────────────── */
+
+function createImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.addEventListener('load', () => resolve(img));
+    img.addEventListener('error', reject);
+    img.setAttribute('crossOrigin', 'anonymous');
+    img.src = url;
+  });
+}
+
+async function getCroppedImg(
+  imageSrc: string,
+  crop: Area,
+  targetWidth: number,
+  targetHeight: number,
+): Promise<Blob> {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  canvas.width  = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(
+    image,
+    crop.x, crop.y, crop.width, crop.height,
+    0, 0, targetWidth, targetHeight,
+  );
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      blob => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')),
+      'image/png',
+      1,
+    );
+  });
+}
+
+/* ── CropModal ───────────────────────────────────────────────────────── */
+
+function CropModal({
+  imageSrc,
+  aspect,
+  targetWidth,
+  targetHeight,
+  onConfirm,
+  onCancel,
+}: {
+  imageSrc:     string;
+  aspect:       number;
+  targetWidth:  number;
+  targetHeight: number;
+  onConfirm:    (blob: Blob) => void;
+  onCancel:     () => void;
+}) {
+  const { t } = useTranslation();
+  const [crop, setCrop]   = useState({ x: 0, y: 0 });
+  const [zoom, setZoom]   = useState(1);
+  const [area, setArea]   = useState<Area | null>(null);
+  const [busy, setBusy]   = useState(false);
+
+  const onCropComplete = useCallback((_: Area, croppedArea: Area) => {
+    setArea(croppedArea);
+  }, []);
+
+  async function handleConfirm() {
+    if (!area) return;
+    setBusy(true);
+    try {
+      const blob = await getCroppedImg(imageSrc, area, targetWidth, targetHeight);
+      onConfirm(blob);
+    } catch {
+      onCancel();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-up">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+          <span className="text-sm font-semibold text-gray-900">{t('walletPreview.cropTitle')}</span>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-700 transition-colors text-lg leading-none">&times;</button>
+        </div>
+
+        {/* Crop area */}
+        <div className="relative w-full bg-gray-900" style={{ height: 320 }}>
+          <Cropper
+            image={imageSrc}
+            crop={crop}
+            zoom={zoom}
+            aspect={aspect}
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onCropComplete={onCropComplete}
+            showGrid
+          />
+        </div>
+
+        {/* Zoom slider */}
+        <div className="px-5 py-3 flex items-center gap-3 border-t border-gray-100 bg-gray-50">
+          <span className="text-[11px] text-gray-500 flex-shrink-0">{t('walletPreview.cropZoom')}</span>
+          <input
+            type="range" min={1} max={3} step={0.05}
+            value={zoom}
+            onChange={e => setZoom(Number(e.target.value))}
+            className="flex-1 accent-primary-600"
+          />
+        </div>
+
+        {/* Dimensions info */}
+        <div className="px-5 py-2 bg-gray-50">
+          <p className="text-[11px] text-gray-400">
+            {t('walletPreview.cropTargetSize', { w: targetWidth, h: targetHeight })}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 px-5 py-4 border-t border-gray-100">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            {t('common.cancel')}
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={busy || !area}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {busy ? t('walletPreview.cropProcessing') : t('walletPreview.cropConfirm')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ImageUpload — with crop modal ───────────────────────────────────── */
 
 function ImageUpload({
   label,
@@ -624,6 +765,9 @@ function ImageUpload({
   accessToken,
   restaurantId,
   uploadType,
+  cropAspect,
+  cropWidth,
+  cropHeight,
 }: {
   label:        string;
   hint?:        string;
@@ -632,12 +776,16 @@ function ImageUpload({
   accessToken:  string;
   restaurantId: string;
   uploadType:   string;
+  cropAspect?:  number;
+  cropWidth?:   number;
+  cropHeight?:  number;
 }) {
   const { t } = useTranslation();
-  const [uploading, setUploading] = useState(false);
-  const [uploadErr, setUploadErr] = useState('');
+  const [uploading, setUploading]   = useState(false);
+  const [uploadErr, setUploadErr]   = useState('');
+  const [cropSrc, setCropSrc]       = useState<string | null>(null);
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -647,12 +795,28 @@ function ImageUpload({
       return;
     }
 
+    setUploadErr('');
+    const objectUrl = URL.createObjectURL(file);
+
+    // If crop dimensions specified, always open cropper
+    if (cropAspect && cropWidth && cropHeight) {
+      setCropSrc(objectUrl);
+      e.target.value = '';
+      return;
+    }
+
+    // No crop needed — upload directly
+    doUpload(file);
+    e.target.value = '';
+  }
+
+  async function doUpload(fileOrBlob: Blob) {
     setUploading(true);
     setUploadErr('');
     const form = new FormData();
     form.append('type', uploadType);
     form.append('restaurantId', restaurantId);
-    form.append('file', file);
+    form.append('file', fileOrBlob, 'image.png');
     try {
       const res = await fetch('/api/wallet/stamps/upload', {
         method: 'POST',
@@ -666,8 +830,18 @@ function ImageUpload({
       setUploadErr(t('common.networkError'));
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
+  }
+
+  function handleCropConfirm(blob: Blob) {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+    doUpload(blob);
+  }
+
+  function handleCropCancel() {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
   }
 
   const btnCls =
@@ -688,7 +862,7 @@ function ImageUpload({
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            onChange={handleFile}
+            onChange={handleFileSelect}
             disabled={uploading}
             className="sr-only"
           />
@@ -704,6 +878,18 @@ function ImageUpload({
       </div>
       {hint && <p className="text-[11px] text-gray-400 mt-1">{hint}</p>}
       {uploadErr && <p className="text-[11px] text-danger-600 mt-1">{uploadErr}</p>}
+
+      {/* Crop modal */}
+      {cropSrc && cropAspect && cropWidth && cropHeight && (
+        <CropModal
+          imageSrc={cropSrc}
+          aspect={cropAspect}
+          targetWidth={cropWidth}
+          targetHeight={cropHeight}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+        />
+      )}
     </div>
   );
 }
@@ -1287,6 +1473,9 @@ export default function WalletPreviewPage() {
                 accessToken={accessToken}
                 restaurantId={rid}
                 uploadType="strip"
+                cropAspect={750 / 246}
+                cropWidth={750}
+                cropHeight={246}
               />
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between gap-3">
