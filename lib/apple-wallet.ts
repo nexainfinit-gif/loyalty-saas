@@ -123,10 +123,11 @@ function buildPassJson(
     { key: 'terms',   label: 'Conditions',            value: 'Ce pass est personnel et non transférable.' },
   ];
 
-  // Auto header: VISITES (unless user already has custom headerFields)
+  // Auto header: N° client (short ID from customerId, unless user has custom headerFields)
+  const shortId = input.customerId.replace(/-/g, '').slice(-6).toUpperCase();
   const autoHeaderFields = cfgHeaderFields.length > 0
     ? cfgHeaderFields
-    : [{ key: 'visits', label: 'VISITES', value: String(input.totalPoints > 0 ? input.totalPoints : input.stampsCount), changeMessage: 'Visites mises à jour : %@' }];
+    : [{ key: 'memberNo', label: 'N°', value: shortId }];
 
   if (input.passKind === 'stamps') {
     const stampsTotal = Number(cfg.stamps_total  ?? 10);
