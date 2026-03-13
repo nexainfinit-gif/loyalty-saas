@@ -137,7 +137,7 @@ function buildPassJson(
     const remaining   = Math.max(0, stampsTotal - input.stampsCount);
     const storeCard: Record<string, unknown> = {
       headerFields:    autoHeaderFields,
-      primaryFields:   [{ key: 'stamps',  label: 'TAMPONS',      value: `${input.stampsCount} / ${stampsTotal}`, changeMessage: 'Tampons mis à jour : %@' }],
+      primaryFields:   [],
       secondaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgSecondaryFields],
       auxiliaryFields: [{ key: 'remaining', label: 'RESTANTS', value: `${remaining} tampons` }, ...cfgAuxiliaryFields],
       backFields:      [...defaultBackFields, ...cfgBackFields],
