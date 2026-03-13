@@ -745,7 +745,14 @@
     "closeBtn": "✕ Close",
     "processing": "⏳ Processing...",
     "validateBtn": "Validate scan",
-    "manualPlaceholder": "Customer pass code..."
+    "manualPlaceholder": "Customer pass code...",
+    "chooseAction": "Choose action",
+    "defaultScan": "Default scan",
+    "customerIdentified": "Customer identified",
+    "cancel": "Cancel",
+    "configureActions": "Configure actions",
+    "noActionsTitle": "No actions configured",
+    "noActionsDesc": "Configure action buttons in your dashboard to speed up scanning."
   },
   "publicScanner": {
     "invalidLink": "Invalid link",
@@ -1411,6 +1418,7 @@
     "pkpassGenerationError": "Error generating the Apple Wallet pass.",
     "scanRateLimit": "Too many scans. Please try again in a minute.",
     "invalidIdempotencyKey": "idempotency_key must be a valid UUID.",
+    "invalidScanAction": "Invalid or inactive scan action.",
     "scanError": "Error recording the scan. Please try again.",
     "defaultReward": "Reward unlocked!"
   }

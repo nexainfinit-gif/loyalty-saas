@@ -22,7 +22,7 @@ export async function GET(
 
   const { data: restaurant } = await supabaseAdmin
     .from('restaurants')
-    .select('name, primary_color')
+    .select('id, name, primary_color')
     .eq('scanner_token', token)
     .maybeSingle();
 
@@ -30,10 +30,32 @@ export async function GET(
     return Response.json({ error: 'Token invalide' }, { status: 404 });
   }
 
+  // Fetch active scan actions + loyalty settings for the scanner UI
+  const [{ data: scanActions }, { data: loyaltySettings }] = await Promise.all([
+    supabaseAdmin
+      .from('scan_actions')
+      .select('id, label, icon, points_value, sort_order')
+      .eq('restaurant_id', restaurant.id)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true }),
+    supabaseAdmin
+      .from('loyalty_settings')
+      .select('program_type, points_per_scan, stamps_total')
+      .eq('restaurant_id', restaurant.id)
+      .maybeSingle(),
+  ]);
+
   return Response.json({
     restaurant: {
       name:          restaurant.name,
       primary_color: restaurant.primary_color ?? '#4f6bed',
     },
+    scan_actions: scanActions ?? [],
+    loyalty_settings: loyaltySettings ? {
+      program_type:   loyaltySettings.program_type ?? 'points',
+      points_per_scan: loyaltySettings.points_per_scan ?? 1,
+      stamps_total:   loyaltySettings.stamps_total ?? 10,
+    } : null,
   });
 }

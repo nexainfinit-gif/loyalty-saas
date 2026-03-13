@@ -107,9 +107,10 @@ export async function POST(
 
   const { token: scanToken } = await params;
 
-  // ── Parse optional idempotency key from body ──────────────────────────
+  // ── Parse body ─────────────────────────────────────────────────────────
   const body = await req.json().catch(() => ({}));
   const idempotencyKey: string | null = body.idempotency_key ?? null;
+  const scanActionId: string | null = body.scan_action_id ?? null;
 
   if (idempotencyKey && !UUID_RE.test(idempotencyKey)) {
     return Response.json(
@@ -149,7 +150,29 @@ export async function POST(
 
   const programType     = settings?.program_type ?? 'points';
   const stampsTotal     = settings?.stamps_total ?? 10;
-  const pointsToAdd     = settings?.points_per_scan ?? 1;
+
+  // ── Resolve points to add (scan_action override or default) ─────────
+  let pointsToAdd = settings?.points_per_scan ?? 1;
+  let scanActionLabel: string | null = null;
+
+  if (scanActionId) {
+    const { data: action } = await supabaseAdmin
+      .from('scan_actions')
+      .select('points_value, label')
+      .eq('id', scanActionId)
+      .eq('restaurant_id', restaurantId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!action) {
+      return Response.json(
+        { error: t('api.invalidScanAction') },
+        { status: 400 },
+      );
+    }
+    pointsToAdd = action.points_value;
+    scanActionLabel = action.label;
+  }
 
   // Capture pre-scan balances for audit trail
   const balanceBefore = customer.total_points;
@@ -163,12 +186,13 @@ export async function POST(
     && balanceBefore < rewardThreshold
     && newBalance >= rewardThreshold;
 
-  // Stamps-mode completion
+  // Stamps-mode completion (pointsToAdd acts as stamps count in stamps mode)
   const currentStamps      = customer.stamps_count ?? 0;
-  const stampCardCompleted = programType === 'stamps' && (currentStamps + 1) >= stampsTotal;
+  const stampsToAdd        = programType === 'stamps' ? pointsToAdd : 0;
+  const stampCardCompleted = programType === 'stamps' && (currentStamps + stampsToAdd) >= stampsTotal;
   const stampsDelta    = programType !== 'stamps' ? 0
-    : stampCardCompleted ? (1 - stampsTotal)
-    : 1;
+    : stampCardCompleted ? (stampsToAdd - stampsTotal)
+    : stampsToAdd;
 
   // ── Transaction insert (DB trigger atomically updates customer) ────────
   const { error: insertError } = await supabaseAdmin.from('transactions').insert({
@@ -178,7 +202,10 @@ export async function POST(
     points_delta:  pointsToAdd,
     stamps_delta:  stampsDelta,
     balance_after: newBalance,
-    metadata:      { reason: 'Scan caisse' },
+    metadata:      {
+      reason: scanActionLabel ? `Scan: ${scanActionLabel}` : 'Scan caisse',
+      ...(scanActionId ? { scan_action_id: scanActionId } : {}),
+    },
   });
 
   if (insertError) {
@@ -212,10 +239,11 @@ export async function POST(
     },
     points_added:         pointsToAdd,
     reward_triggered:     rewardTriggered,
-    stamps_added:         stampsDelta > 0 ? stampsDelta : 0,
+    stamps_added:         stampsToAdd,
     stamps_total:         stampsTotal,
     stamp_card_completed: stampCardCompleted,
     reward_message: settings?.reward_message ?? t('api.defaultReward'),
+    scan_action_label: scanActionLabel,
   };
 
   // ── Insert scan_events audit row ──────────────────────────────────────

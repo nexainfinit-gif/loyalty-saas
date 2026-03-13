@@ -745,7 +745,14 @@
     "closeBtn": "✕ Sluiten",
     "processing": "⏳ Verwerken...",
     "validateBtn": "Scan bevestigen",
-    "manualPlaceholder": "Code van de klantpas..."
+    "manualPlaceholder": "Code van de klantpas...",
+    "chooseAction": "Kies actie",
+    "defaultScan": "Standaard scan",
+    "customerIdentified": "Klant geïdentificeerd",
+    "cancel": "Annuleren",
+    "configureActions": "Acties configureren",
+    "noActionsTitle": "Geen acties geconfigureerd",
+    "noActionsDesc": "Configureer actieknoppen in uw dashboard om het scannen te versnellen."
   },
   "publicScanner": {
     "invalidLink": "Ongeldige link",
@@ -1409,6 +1416,7 @@
     "pkpassGenerationError": "Fout bij het genereren van de Apple Wallet-pas.",
     "scanRateLimit": "Te veel scans. Probeer het over een minuut opnieuw.",
     "invalidIdempotencyKey": "idempotency_key moet een geldig UUID zijn.",
+    "invalidScanAction": "Ongeldige of inactieve scanactie.",
     "scanError": "Fout bij het registreren van de scan. Probeer opnieuw.",
     "defaultReward": "Beloning ontgrendeld!"
   }

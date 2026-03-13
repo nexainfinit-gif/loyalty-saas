@@ -745,7 +745,14 @@
     "closeBtn": "✕ Chiudi",
     "processing": "⏳ Elaborazione...",
     "validateBtn": "Valida scansione",
-    "manualPlaceholder": "Codice pass del cliente..."
+    "manualPlaceholder": "Codice pass del cliente...",
+    "chooseAction": "Scegli azione",
+    "defaultScan": "Scansione standard",
+    "customerIdentified": "Cliente identificato",
+    "cancel": "Annulla",
+    "configureActions": "Configura azioni",
+    "noActionsTitle": "Nessuna azione configurata",
+    "noActionsDesc": "Configura i pulsanti azione nella dashboard per velocizzare la scansione."
   },
   "publicScanner": {
     "invalidLink": "Link non valido",
@@ -1411,6 +1418,7 @@
     "pkpassGenerationError": "Errore durante la generazione del pass Apple Wallet.",
     "scanRateLimit": "Troppi scan. Riprova tra un minuto.",
     "invalidIdempotencyKey": "idempotency_key deve essere un UUID valido.",
+    "invalidScanAction": "Azione di scansione non valida o disattivata.",
     "scanError": "Errore durante la registrazione dello scan. Riprova.",
     "defaultReward": "Ricompensa sbloccata!"
   }

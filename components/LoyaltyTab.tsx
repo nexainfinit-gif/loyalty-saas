@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { useTranslation } from '@/lib/i18n';
+import ScanActionsManager from '@/components/ScanActionsManager';
 
 /* ─── Types ─────────────────────────────────────────────── */
 export interface LoyaltySettings {
@@ -409,6 +410,9 @@ export default function LoyaltyTab({
               </button>
             )}
           </div>
+
+          {/* ── Scan action buttons ── */}
+          <ScanActionsManager programType={settings.program_type} />
         </div>
       )}
 
