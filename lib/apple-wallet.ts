@@ -5,6 +5,19 @@ import JSZip from 'jszip';
 import sharp from 'sharp';
 import crypto from 'crypto';
 
+/* ── App URL (runtime-safe, avoids Next.js build-time inlining) ─────────────── */
+
+function getAppUrl(): string {
+  // 1. Runtime env var (never inlined by Next.js)
+  const runtime = process.env['APP_URL'];
+  if (runtime) return runtime;
+  // 2. Fallback to NEXT_PUBLIC_ (may be inlined, but better than nothing)
+  const pub = process.env['NEXT_PUBLIC_APP_URL'];
+  if (pub) return pub;
+  // 3. Production hardcoded fallback
+  return 'https://app.rebites.be';
+}
+
 /* ── Types ──────────────────────────────────────────────────────────────────── */
 
 export interface PassBuildInput {
@@ -70,7 +83,7 @@ function buildPassJson(
     logoText:            input.restaurantName,
     // Push update registration — only included when authentication_token is available
     ...(input.authenticationToken ? {
-      webServiceURL:       `${process.env['APP_URL'] || process.env['NEXT_PUBLIC_APP_URL']}/api/wallet/webservice`,
+      webServiceURL:       `${getAppUrl()}/api/wallet/webservice`,
       authenticationToken: input.authenticationToken,
     } : {}),
     // QR barcode — dual format for backward compatibility
