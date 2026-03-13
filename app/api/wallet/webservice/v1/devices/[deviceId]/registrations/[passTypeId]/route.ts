@@ -26,7 +26,9 @@ type RouteParams = {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { deviceId, passTypeId } = await params;
   const { searchParams } = new URL(request.url);
-  const passesUpdatedSince = searchParams.get('passesUpdatedSince');
+  const rawUpdatedSince = searchParams.get('passesUpdatedSince');
+  // Apple sends "+00:00" but URL decoding turns "+" into " " — fix it
+  const passesUpdatedSince = rawUpdatedSince?.replace(/ /g, '+') ?? null;
 
   // Build query: join registrations with wallet_passes to get updated_at
   let query = supabaseAdmin
