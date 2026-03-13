@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
 import { requireOwner } from '@/lib/server-auth';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 
@@ -30,9 +31,29 @@ function defaultCircleSvg(size: number, filled: boolean): Buffer {
   return Buffer.from(svg);
 }
 
-/** Fetch an image URL and resize + optionally mask to a circle */
+/** Extract Supabase storage path from a signed/public URL */
+function extractSupabasePath(url: string): string | null {
+  const m = url.match(/\/storage\/v1\/object\/(?:sign|public)\/([^?]+)/);
+  return m ? m[1] : null;
+}
+
+/** Fetch an image URL, auto re-signing expired Supabase URLs */
 async function fetchStamp(url: string, size: number, round: boolean): Promise<Buffer> {
-  const res = await fetch(url, { next: { revalidate: 60 } } as RequestInit);
+  let res = await fetch(url, { next: { revalidate: 60 } } as RequestInit);
+  // Re-sign expired Supabase signed URLs
+  if (!res.ok && (res.status === 400 || res.status === 403)) {
+    const fullPath = extractSupabasePath(url);
+    if (fullPath) {
+      const bucket = fullPath.split('/')[0];
+      const filePath = fullPath.split('/').slice(1).join('/');
+      const { data: signed } = await supabaseAdmin.storage
+        .from(bucket)
+        .createSignedUrl(filePath, 315_360_000);
+      if (signed?.signedUrl) {
+        res = await fetch(signed.signedUrl);
+      }
+    }
+  }
   if (!res.ok) throw new Error(`Fetch failed (${res.status}): ${url}`);
   const raw = Buffer.from(await res.arrayBuffer());
 
