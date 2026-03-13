@@ -37,17 +37,20 @@ export async function autoIssueApplePass(params: AutoIssueParams): Promise<strin
     const passId    = randomUUID();
     const shortCode = passId.replace(/-/g, '').slice(0, 8).toUpperCase();
 
+    const authToken = randomUUID().replace(/-/g, ''); // 32 hex chars
+
     const { data: pass, error } = await supabaseAdmin
       .from('wallet_passes')
       .insert({
-        id:            passId,
-        short_code:    shortCode,
-        restaurant_id: restaurantId,
-        customer_id:   customerId,
-        template_id:   template.id,
-        platform:      'apple',
-        status:        'active',
-        expires_at:    template.valid_to ?? null,
+        id:                   passId,
+        short_code:           shortCode,
+        restaurant_id:        restaurantId,
+        customer_id:          customerId,
+        template_id:          template.id,
+        platform:             'apple',
+        status:               'active',
+        expires_at:           template.valid_to ?? null,
+        authentication_token: authToken,
       })
       .select('id')
       .single();

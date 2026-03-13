@@ -374,9 +374,23 @@ export default function RegisterPage() {
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', fontWeight: 700, margin: '0 0 0.75rem', color: '#111827' }}>
               {t('registerSlug.successTitle')}
             </h2>
-            <p style={{ color: '#6B7280', fontSize: '0.875rem', lineHeight: 1.7, margin: '0 0 1.5rem' }}>
+            <p style={{ color: '#6B7280', fontSize: '0.875rem', lineHeight: 1.7, margin: '0 0 1rem' }}>
               {t('registerSlug.successMessage')}
             </p>
+
+            {/* Email confirmation + spam hint */}
+            <div style={{
+              background: '#FEF9E7', borderRadius: '12px', padding: '1rem',
+              border: '1.5px solid #F5E6A3', marginBottom: '1.5rem',
+              textAlign: 'left',
+            }}>
+              <p style={{ fontSize: '0.82rem', color: '#92400E', margin: 0, lineHeight: 1.6, fontWeight: 600 }}>
+                📧 {t('registerSlug.checkEmailTitle')}
+              </p>
+              <p style={{ fontSize: '0.78rem', color: '#A16207', margin: '0.4rem 0 0', lineHeight: 1.6 }}>
+                {t('registerSlug.checkEmailSpam')}
+              </p>
+            </div>
 
             {/* Wallet CTA */}
             <div style={{
