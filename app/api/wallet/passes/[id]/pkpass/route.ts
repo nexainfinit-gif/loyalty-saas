@@ -186,7 +186,11 @@ export async function GET(
     });
 
     const filename = `${restaurant.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-pass.pkpass`;
-    return pkpassResponse(buffer, filename);
+    const resp = pkpassResponse(buffer, filename);
+    // DEBUG: expose resolved APP_URL in response header (remove after diagnosis)
+    resp.headers.set('X-Debug-AppUrl', process.env['APP_URL'] ?? 'NOT_SET');
+    resp.headers.set('X-Debug-Commit', 'debug-60557c1');
+    return resp;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
 
