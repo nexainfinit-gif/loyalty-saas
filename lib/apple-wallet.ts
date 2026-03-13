@@ -143,10 +143,11 @@ function buildPassJson(
 
     if (input.rewardPending) {
       // ── Special reward card: all stamps filled, awaiting collection ────
+      // primaryFields must be empty — Apple renders it ON TOP of the strip image
       storeCard = {
         headerFields:    [{ key: 'status', label: 'STATUT', value: '🎉 Complète !' }],
-        primaryFields:   [{ key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }],
-        secondaryFields: [holderField, ...cfgSecondaryFields],
+        primaryFields:   [],
+        secondaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgSecondaryFields],
         auxiliaryFields: [{ key: 'action', label: 'ACTION', value: 'Présentez au comptoir' }, ...cfgAuxiliaryFields],
         backFields:      [...defaultBackFields, ...cfgBackFields],
       };
