@@ -75,12 +75,17 @@ function buildPassJson(
   // Barcode — format + altText from config_json
   const barcodeFormat = (cfg.barcodeFormat as string) ?? 'PKBarcodeFormatQR';
   const barcodeAltText = cfg.barcodeAltText as string | undefined;
-  const barcodeEntry = {
+  const barcodeEntry: Record<string, string> = {
     message:         input.qrToken,
     format:          barcodeFormat,
-    messageEncoding: 'iso-8859-1' as const,
+    messageEncoding: 'iso-8859-1',
     ...(barcodeAltText ? { altText: barcodeAltText } : {}),
   };
+
+  // Default altText when none specified
+  if (!barcodeAltText) {
+    barcodeEntry.altText = 'Présentez ce code au comptoir';
+  }
 
   const base: Record<string, unknown> = {
     formatVersion:       1,
@@ -88,7 +93,7 @@ function buildPassJson(
     serialNumber:        input.serialNumber || input.passId,
     teamIdentifier:      teamId,
     organizationName:    input.restaurantName,
-    description:         'Carte de fidélité',
+    description:         `Carte de fidélité – ${input.restaurantName}`,
     backgroundColor:     bgColor,
     foregroundColor:     fgColor,
     labelColor:          lblColor,
@@ -115,26 +120,40 @@ function buildPassJson(
     value: `${input.firstName} ${input.lastName}`.trim(),
   };
 
+  // Default back fields (CGU, contact) — merged with custom backFields
+  const defaultBackFields = [
+    { key: 'program', label: 'Programme de fidélité', value: `Carte de fidélité – ${input.restaurantName}` },
+    { key: 'terms',   label: 'Conditions',            value: 'Ce pass est personnel et non transférable.' },
+  ];
+
+  // Auto header: VISITES (unless user already has custom headerFields)
+  const autoHeaderFields = cfgHeaderFields.length > 0
+    ? cfgHeaderFields
+    : [{ key: 'visits', label: 'VISITES', value: String(input.totalPoints > 0 ? input.totalPoints : input.stampsCount), changeMessage: 'Visites mises à jour : %@' }];
+
   if (input.passKind === 'stamps') {
     const stampsTotal = Number(cfg.stamps_total  ?? 10);
     const rewardMsg   = String(cfg.reward_message ?? 'Récompense offerte');
+    const remaining   = Math.max(0, stampsTotal - input.stampsCount);
     const storeCard: Record<string, unknown> = {
+      headerFields:    autoHeaderFields,
       primaryFields:   [{ key: 'stamps',  label: 'TAMPONS',      value: `${input.stampsCount} / ${stampsTotal}`, changeMessage: 'Tampons mis à jour : %@' }],
-      auxiliaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgAuxiliaryFields],
+      secondaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgSecondaryFields],
+      auxiliaryFields: [{ key: 'remaining', label: 'RESTANTS', value: `${remaining} tampons` }, ...cfgAuxiliaryFields],
+      backFields:      [...defaultBackFields, ...cfgBackFields],
     };
-    if (cfgHeaderFields.length > 0)    storeCard.headerFields    = cfgHeaderFields;
-    if (cfgSecondaryFields.length > 0) storeCard.secondaryFields = cfgSecondaryFields;
-    if (cfgBackFields.length > 0)      storeCard.backFields      = cfgBackFields;
     base.storeCard = storeCard;
   } else if (input.passKind === 'points') {
     const threshold = Number(cfg.reward_threshold ?? 100);
+    const remaining = Math.max(0, threshold - input.totalPoints);
+    const rewardMsg = String(cfg.reward_message ?? 'Récompense offerte');
     const storeCard: Record<string, unknown> = {
+      headerFields:    autoHeaderFields,
       primaryFields:   [{ key: 'points',  label: 'POINTS',            value: String(input.totalPoints), changeMessage: 'Votre solde est maintenant de %@ points' }],
-      auxiliaryFields: [holderField, { key: 'reward', label: 'SEUIL RÉCOMPENSE', value: `${threshold} pts` }, ...cfgAuxiliaryFields],
+      secondaryFields: [holderField, { key: 'threshold', label: 'SEUIL RÉCOMPENSE', value: `${threshold} pts` }, ...cfgSecondaryFields],
+      auxiliaryFields: [{ key: 'remaining', label: 'RESTANTS', value: `${remaining} points` }, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgAuxiliaryFields],
+      backFields:      [...defaultBackFields, ...cfgBackFields],
     };
-    if (cfgHeaderFields.length > 0)    storeCard.headerFields    = cfgHeaderFields;
-    if (cfgSecondaryFields.length > 0) storeCard.secondaryFields = cfgSecondaryFields;
-    if (cfgBackFields.length > 0)      storeCard.backFields      = cfgBackFields;
     base.storeCard = storeCard;
   } else {
     // event
@@ -182,7 +201,7 @@ async function fetchOrSolid(
       if (res.ok) {
         const raw = Buffer.from(await res.arrayBuffer());
         return sharp(raw)
-          .resize(width, height, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+          .resize(width, height, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
           .png()
           .toBuffer();
       }

@@ -107,19 +107,35 @@ function contrastColor(hex: string): string {
 
 /** Derives a live pass.json from the current Controls state */
 function buildPassJson(c: Controls): object {
+  const remaining = Math.max(0, c.stampsTotal - c.currentStamps);
+
+  // Auto header: VISITES (unless user has custom headerFields)
+  const autoHeader = c.headerFields.length > 0
+    ? c.headerFields
+    : [{ key: 'visits', label: 'VISITES', value: String(c.currentStamps), changeMessage: 'Visites mises à jour : %@' }];
+
   const card: Record<string, unknown> = {
+    headerFields: autoHeader,
     primaryFields: [
       { key: 'stamps', label: 'TAMPONS', value: `${c.currentStamps} / ${c.stampsTotal}` },
     ],
-    auxiliaryFields: [
+    secondaryFields: [
       { key: 'holder', label: 'CLIENT', value: 'Marie Dupont' },
       { key: 'reward', label: 'RÉCOMPENSE', value: c.rewardText },
+      ...c.secondaryFields,
+    ],
+    auxiliaryFields: [
+      { key: 'remaining', label: 'RESTANTS', value: `${remaining} tampons` },
+      ...c.auxiliaryFields,
+    ],
+    backFields: [
+      { key: 'program', label: 'Programme de fidélité', value: `Carte de fidélité – ${c.merchantName}` },
+      { key: 'terms',   label: 'Conditions',            value: 'Ce pass est personnel et non transférable.' },
+      ...c.backFields,
     ],
   };
-  if (c.headerFields.length > 0)    card.headerFields    = c.headerFields;
-  if (c.secondaryFields.length > 0) card.secondaryFields = c.secondaryFields;
-  if (c.auxiliaryFields.length > 0) card.auxiliaryFields = [...card.auxiliaryFields as PassField[], ...c.auxiliaryFields];
-  if (c.backFields.length > 0)      card.backFields      = c.backFields;
+
+  const altText = c.barcodeAltText || 'Présentez ce code au comptoir';
 
   return {
     formatVersion:      1,
@@ -131,13 +147,13 @@ function buildPassJson(c: Controls): object {
     backgroundColor:    hexToAppleRgb(c.bgColor),
     foregroundColor:    hexToAppleRgb(c.foregroundColor),
     labelColor:         hexToAppleRgb(c.labelColor),
-    logoText:           c.logoText,
+    logoText:           c.showLogoText ? (c.logoText || c.merchantName) : '',
     storeCard:          card,
     barcode: {
       message:         c.barcodePayload || 'CUSTOMER_QR_TOKEN',
       format:          c.barcodeFormat,
       messageEncoding: 'iso-8859-1',
-      ...(c.barcodeAltText ? { altText: c.barcodeAltText } : {}),
+      altText,
     },
   };
 }
@@ -255,7 +271,7 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
               src={c.logoImageUrl}
               alt=""
               className="object-cover flex-shrink-0"
-              style={{ width: Math.min(c.logoSize, 40), height: Math.min(c.logoSize, 40), borderRadius: 8 }}
+              style={{ width: 30, height: 30, borderRadius: 8 }}
             />
           ) : (
             <div className="flex-shrink-0 flex items-center justify-center font-bold"
@@ -275,17 +291,15 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
             </span>
           )}
         </div>
-        {/* headerFields — Apple puts them top-right */}
-        {c.headerFields.length > 0 && (
-          <div className="flex gap-3 flex-shrink-0 ml-2 text-right">
-            {c.headerFields.map((f, i) => (
-              <div key={i}>
-                <p style={labelSty}>{f.label}</p>
-                <p style={valueSty}>{f.value}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* headerFields — Apple puts them top-right (auto VISITES or custom) */}
+        <div className="flex gap-3 flex-shrink-0 ml-2 text-right">
+          {(c.headerFields.length > 0 ? c.headerFields : [{ key: 'visits', label: 'VISITES', value: String(c.currentStamps) }]).map((f, i) => (
+            <div key={i}>
+              <p style={labelSty}>{f.label}</p>
+              <p style={valueSty}>{f.value}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ══ STRIP IMAGE — full width, between logo and primary ════════ */}
@@ -344,20 +358,8 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
         })()}
       </div>
 
-      {/* ══ SECONDARY FIELDS ══════════════════════════════════════════ */}
-      {c.secondaryFields.length > 0 && (
-        <div className="flex" style={{ padding: '4px 14px 6px', gap: 0 }}>
-          {c.secondaryFields.map((f, i) => (
-            <div key={i} style={{ flex: 1, minWidth: 0 }}>
-              <p style={labelSty}>{f.label}</p>
-              <p className="truncate" style={valueSty}>{f.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ══ AUXILIARY FIELDS — CLIENT + REWARD + custom ═══════════════ */}
-      <div className="flex" style={{ padding: '4px 14px 10px', gap: 0 }}>
+      {/* ══ SECONDARY FIELDS — CLIENT + REWARD (auto) + custom ════════ */}
+      <div className="flex" style={{ padding: '4px 14px 6px', gap: 0 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={labelSty}>CLIENT</p>
           <p className="truncate" style={valueSty}>Marie Dupont</p>
@@ -365,6 +367,20 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={labelSty}>RÉCOMPENSE</p>
           <p className="truncate" style={valueSty}>{c.rewardText}</p>
+        </div>
+        {c.secondaryFields.map((f, i) => (
+          <div key={i} style={{ flex: 1, minWidth: 0 }}>
+            <p style={labelSty}>{f.label}</p>
+            <p className="truncate" style={valueSty}>{f.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ══ AUXILIARY FIELDS — RESTANTS (auto) + custom ═══════════════ */}
+      <div className="flex" style={{ padding: '4px 14px 10px', gap: 0 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={labelSty}>RESTANTS</p>
+          <p className="truncate" style={valueSty}>{Math.max(0, c.stampsTotal - filled)} tampons</p>
         </div>
         {c.auxiliaryFields.map((f, i) => (
           <div key={i} style={{ flex: 1, minWidth: 0 }}>
@@ -379,11 +395,9 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
         <div style={{ backgroundColor: '#fff', borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <QRCode value={c.barcodePayload || 'EXAMPLE_QR_TOKEN'} size={140} />
         </div>
-        {c.barcodeAltText && (
-          <p className="text-center" style={{ color: c.foregroundColor, opacity: 0.5, fontSize: 10, marginTop: 6 }}>
-            {c.barcodeAltText}
-          </p>
-        )}
+        <p className="text-center" style={{ color: c.foregroundColor, opacity: 0.5, fontSize: 10, marginTop: 6 }}>
+          {c.barcodeAltText || 'Présentez ce code au comptoir'}
+        </p>
       </div>
     </div>
   );
@@ -1002,7 +1016,6 @@ function controlsToConfigJson(c: Controls): Record<string, unknown> {
     barcodeAltText:  c.barcodeAltText,
     stripImageUrl:   c.stripImageUrl,
     logoImageUrl:    c.logoImageUrl,
-    logoSize:        c.logoSize,
     showLogoText:    c.showLogoText,
     isVip:           c.isVip,
     stampMode:       c.stampMode,
@@ -1474,30 +1487,22 @@ export default function WalletPreviewPage() {
                   <span className="text-gray-400">barcode.format</span>
                   <span className="font-mono text-gray-600 text-[10px]">{controls.barcodeFormat.replace('PKBarcodeFormat', '')}</span>
                 </div>
-                {controls.headerFields.length > 0 && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-gray-400">headerFields</span>
-                    <span className="font-mono text-gray-600">{controls.headerFields.length}</span>
-                  </div>
-                )}
-                {controls.secondaryFields.length > 0 && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-gray-400">secondaryFields</span>
-                    <span className="font-mono text-gray-600">{controls.secondaryFields.length}</span>
-                  </div>
-                )}
-                {controls.auxiliaryFields.length > 0 && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-gray-400">auxiliaryFields</span>
-                    <span className="font-mono text-gray-600">{controls.auxiliaryFields.length + 2}</span>
-                  </div>
-                )}
-                {controls.backFields.length > 0 && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-gray-400">backFields</span>
-                    <span className="font-mono text-gray-600">{controls.backFields.length}</span>
-                  </div>
-                )}
+                <div className="flex justify-between gap-2">
+                  <span className="text-gray-400">headerFields</span>
+                  <span className="font-mono text-gray-600">{controls.headerFields.length > 0 ? controls.headerFields.length : '1 (auto)'}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-gray-400">secondaryFields</span>
+                  <span className="font-mono text-gray-600">{controls.secondaryFields.length + 2}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-gray-400">auxiliaryFields</span>
+                  <span className="font-mono text-gray-600">{controls.auxiliaryFields.length + 1}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-gray-400">backFields</span>
+                  <span className="font-mono text-gray-600">{controls.backFields.length + 2}</span>
+                </div>
                 {controls.stripImageUrl && (
                   <div className="flex justify-between gap-2">
                     <span className="text-gray-400">strip.png</span>
@@ -1535,18 +1540,10 @@ export default function WalletPreviewPage() {
                   cropWidth={200}
                   cropHeight={200}
                 />
-                <Field label={`${t('walletPreview.logoSizeLabel')} — ${controls.logoSize}px`}>
-                  <input
-                    type="range" min={24} max={64} step={2}
-                    value={controls.logoSize}
-                    onChange={e => handleChange('logoSize', Number(e.target.value))}
-                    className="w-full accent-primary-600"
-                  />
-                  <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-                    <span>24px</span>
-                    <span>64px</span>
-                  </div>
-                </Field>
+                <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                  <span className="text-gray-400 text-xs mt-px flex-shrink-0">i</span>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">{t('walletPreview.logoSizeNote')}</p>
+                </div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-700">{t('walletPreview.showLogoTextLabel')}</p>
@@ -1777,10 +1774,10 @@ export default function WalletPreviewPage() {
                     <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
                     <p className="text-xs font-medium text-gray-500">{t('walletPreview.secondaryFieldsLabel')}</p>
                   </div>
-                  <span className="text-[10px] font-mono text-gray-400">{controls.secondaryFields.length}/4</span>
+                  <span className="text-[10px] font-mono text-gray-400">{controls.secondaryFields.length + 2}/4</span>
                 </div>
                 <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.secondaryFieldsHint')}</p>
-                <FieldListEditor fields={controls.secondaryFields} onChange={f => handleChange('secondaryFields', f)} maxFields={4} addLabel={t('walletPreview.addField')} />
+                <FieldListEditor fields={controls.secondaryFields} onChange={f => handleChange('secondaryFields', f)} maxFields={2} addLabel={t('walletPreview.addField')} />
               </div>
 
               {/* auxiliaryFields */}
@@ -1790,10 +1787,10 @@ export default function WalletPreviewPage() {
                     <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />
                     <p className="text-xs font-medium text-gray-500">{t('walletPreview.auxiliaryFieldsLabel')}</p>
                   </div>
-                  <span className="text-[10px] font-mono text-gray-400">{controls.auxiliaryFields.length}/2</span>
+                  <span className="text-[10px] font-mono text-gray-400">{controls.auxiliaryFields.length + 1}/4</span>
                 </div>
                 <p className="text-[11px] text-gray-400 mb-3">{t('walletPreview.auxiliaryFieldsHint')}</p>
-                <FieldListEditor fields={controls.auxiliaryFields} onChange={f => handleChange('auxiliaryFields', f)} maxFields={2} addLabel={t('walletPreview.addField')} />
+                <FieldListEditor fields={controls.auxiliaryFields} onChange={f => handleChange('auxiliaryFields', f)} maxFields={3} addLabel={t('walletPreview.addField')} />
               </div>
 
               {/* backFields */}
