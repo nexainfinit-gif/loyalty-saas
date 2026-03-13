@@ -92,7 +92,24 @@
       "Bash(cd C:/Users/Mehdi/Desktop/loyalty-saas && base64 -w0 certs/wwdr.pem && echo \"\")",
       "WebFetch(domain:app.rebites.be)",
       "mcp__plugin_playwright_playwright__browser_evaluate",
-      "Bash(curl -s \"https://app.rebites.be/api/wallet/passes/6b4b9958-8c61-412c-9746-87e0fbcbf421/pkpass\" -o /tmp/test.pkpass 2>/dev/null && python3 -c \"\nimport zipfile, json\nz = zipfile.ZipFile\\('/tmp/test.pkpass'\\)\np = json.loads\\(z.read\\('pass.json'\\)\\)\nprint\\('webServiceURL:', p.get\\('webServiceURL', 'MISSING'\\)\\)\nprint\\('authenticationToken:', p.get\\('authenticationToken', 'MISSING'\\)\\)\nprint\\('serialNumber:', p.get\\('serialNumber', 'MISSING'\\)\\)\nprint\\('passTypeIdentifier:', p.get\\('passTypeIdentifier', 'MISSING'\\)\\)\n\" 2>/dev/null || echo \"python3 not available, trying node...\" && node -e \"\nconst fs = require\\('fs'\\); const AdmZip = require\\('adm-zip'\\);\nconst z = new AdmZip\\('/tmp/test.pkpass'\\);\nconst p = JSON.parse\\(z.getEntry\\('pass.json'\\).getData\\(\\).toString\\(\\)\\);\nconsole.log\\('webServiceURL:', p.webServiceURL || 'MISSING'\\);\nconsole.log\\('authenticationToken:', p.authenticationToken || 'MISSING'\\);\nconsole.log\\('serialNumber:', p.serialNumber || 'MISSING'\\);\nconsole.log\\('passTypeIdentifier:', p.passTypeIdentifier || 'MISSING'\\);\n\" 2>/dev/null)"
+      "Bash(curl -s \"https://app.rebites.be/api/wallet/passes/6b4b9958-8c61-412c-9746-87e0fbcbf421/pkpass\" -o /tmp/test.pkpass 2>/dev/null && python3 -c \"\nimport zipfile, json\nz = zipfile.ZipFile\\('/tmp/test.pkpass'\\)\np = json.loads\\(z.read\\('pass.json'\\)\\)\nprint\\('webServiceURL:', p.get\\('webServiceURL', 'MISSING'\\)\\)\nprint\\('authenticationToken:', p.get\\('authenticationToken', 'MISSING'\\)\\)\nprint\\('serialNumber:', p.get\\('serialNumber', 'MISSING'\\)\\)\nprint\\('passTypeIdentifier:', p.get\\('passTypeIdentifier', 'MISSING'\\)\\)\n\" 2>/dev/null || echo \"python3 not available, trying node...\" && node -e \"\nconst fs = require\\('fs'\\); const AdmZip = require\\('adm-zip'\\);\nconst z = new AdmZip\\('/tmp/test.pkpass'\\);\nconst p = JSON.parse\\(z.getEntry\\('pass.json'\\).getData\\(\\).toString\\(\\)\\);\nconsole.log\\('webServiceURL:', p.webServiceURL || 'MISSING'\\);\nconsole.log\\('authenticationToken:', p.authenticationToken || 'MISSING'\\);\nconsole.log\\('serialNumber:', p.serialNumber || 'MISSING'\\);\nconsole.log\\('passTypeIdentifier:', p.passTypeIdentifier || 'MISSING'\\);\n\" 2>/dev/null)",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas -name \"*wallet*sync*\" -type f 2>/dev/null | head -20)",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas/app -name \"*verify*\" -o -path \"*api*\" -name \"*verify*\" 2>/dev/null | grep -v node_modules | grep -v .next)",
+      "Bash(ls -la /c/Users/Mehdi/Desktop/loyalty-saas/app/api/register/[slug]/)",
+      "Bash(ls -la /c/Users/Mehdi/Desktop/loyalty-saas/app/\\\\[locale\\\\]/ 2>/dev/null)",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas/app/\\\\[locale\\\\]/dashboard/wallet -type f -name \"*.tsx\" 2>/dev/null)",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas/app/api/wallet -type f -name \"*.ts\" 2>/dev/null | head -15)",
+      "Bash(wc -l /c/Users/Mehdi/Desktop/loyalty-saas/app/\\\\[locale\\\\]/dashboard/wallet/page.tsx)",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas/app/\\\\[locale\\\\] -type d | sort)",
+      "Bash(head -30 /c/Users/Mehdi/Desktop/loyalty-saas/app/api/wallet/passes/\\\\[id\\\\]/route.ts)",
+      "Bash(ls C:/Users/Mehdi/Desktop/loyalty-saas/vitest.config.* 2>/dev/null || ls C:/Users/Mehdi/Desktop/loyalty-saas/vite.config.* 2>/dev/null || echo \"no config\")",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas/app/\\\\[locale\\\\]/dashboard/wallet -type f -name \"*.tsx\" -o -name \"*.ts\" 2>/dev/null)",
+      "Bash(ls -la /c/Users/Mehdi/Desktop/loyalty-saas/app/\\\\[locale\\\\]/dashboard/wallet/ 2>/dev/null)",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas -type f \\\\\\( -name \"*.sql\" -o -name \"*schema*\" -o -name \"*types*\" \\\\\\) 2>/dev/null | head -20)",
+      "Bash(find /c/Users/Mehdi/Desktop/loyalty-saas/docs -type f -name \"*.md\" 2>/dev/null | head -20)",
+      "WebSearch",
+      "WebFetch(domain:medium.com)",
+      "Bash(wc -l C:/Users/Mehdi/Desktop/loyalty-saas/app/*/dashboard/wallet-preview/page.tsx)"
     ]
   },
   "enabledPlugins": {

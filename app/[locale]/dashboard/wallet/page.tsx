@@ -1500,7 +1500,7 @@ export default function WalletStudioPage() {
           )}
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <button onClick={() => router.push('/dashboard/wallet-preview')}
+          <button onClick={() => router.push('/admin/wallet-preview')}
             className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
             {t('wallet.cardEditorLink')}
           </button>

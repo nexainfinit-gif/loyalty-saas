@@ -21,7 +21,7 @@ const IGNORED_PREFIXES = [
 /** Auth-protected paths (checked AFTER locale prefix is stripped). */
 const PROTECTED_PATHS = [
   '/dashboard/wallet',
-  '/dashboard/wallet-preview',
+  '/admin/wallet-preview',
   '/dashboard/wallet-studio',
 ];
 
