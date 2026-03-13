@@ -69,6 +69,7 @@ interface Controls {
   // Images
   stripImageUrl:  string;
   logoImageUrl:   string;
+  logoSize:       number;
   showLogoText:   boolean;
   // Stamp engine
   stampMode:      'default' | 'custom';
@@ -162,6 +163,7 @@ function metaToControls(meta: PassMeta): Controls {
     isPro:           meta.plan === 'pro',
     stripImageUrl:   '',
     logoImageUrl:    '',
+    logoSize:        36,
     showLogoText:    true,
     stampMode:       'default',
     stampColumns:    5,
@@ -192,6 +194,7 @@ function configJsonToControls(base: Controls, cfg: Record<string, unknown>): Con
     barcodeAltText:  (cfg.barcodeAltText as string) ?? base.barcodeAltText,
     stripImageUrl:   (cfg.stripImageUrl as string) ?? base.stripImageUrl,
     logoImageUrl:    (cfg.logoImageUrl as string) ?? base.logoImageUrl,
+    logoSize:        typeof cfg.logoSize === 'number' ? cfg.logoSize : base.logoSize,
     showLogoText:    typeof cfg.showLogoText === 'boolean' ? cfg.showLogoText : base.showLogoText,
     isVip:           typeof cfg.isVip === 'boolean' ? cfg.isVip : base.isVip,
     stampMode:       (cfg.stampMode as 'default' | 'custom') ?? base.stampMode,
@@ -256,11 +259,12 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
             <img
               src={c.logoImageUrl}
               alt=""
-              className="w-9 h-9 rounded-xl object-cover flex-shrink-0"
+              className="rounded-xl object-cover flex-shrink-0"
+              style={{ width: c.logoSize, height: c.logoSize }}
             />
           ) : (
-            <div className="w-9 h-9 rounded-xl bg-white/20 flex-shrink-0 flex items-center justify-center text-base font-bold"
-                 style={{ color: c.foregroundColor }}>
+            <div className="rounded-xl bg-white/20 flex-shrink-0 flex items-center justify-center font-bold"
+                 style={{ color: c.foregroundColor, width: c.logoSize, height: c.logoSize, fontSize: Math.max(12, c.logoSize * 0.45) }}>
               {c.merchantName.charAt(0).toUpperCase()}
             </div>
           )}
@@ -988,6 +992,7 @@ function controlsToConfigJson(c: Controls): Record<string, unknown> {
     barcodeAltText:  c.barcodeAltText,
     stripImageUrl:   c.stripImageUrl,
     logoImageUrl:    c.logoImageUrl,
+    logoSize:        c.logoSize,
     showLogoText:    c.showLogoText,
     isVip:           c.isVip,
     stampMode:       c.stampMode,
@@ -1519,6 +1524,18 @@ export default function WalletPreviewPage() {
                   cropWidth={200}
                   cropHeight={200}
                 />
+                <Field label={`${t('walletPreview.logoSizeLabel')} — ${controls.logoSize}px`}>
+                  <input
+                    type="range" min={24} max={64} step={2}
+                    value={controls.logoSize}
+                    onChange={e => handleChange('logoSize', Number(e.target.value))}
+                    className="w-full accent-primary-600"
+                  />
+                  <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                    <span>24px</span>
+                    <span>64px</span>
+                  </div>
+                </Field>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-700">{t('walletPreview.showLogoTextLabel')}</p>

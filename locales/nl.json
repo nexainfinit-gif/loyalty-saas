@@ -1143,6 +1143,7 @@
     "logoSectionTitle": "Logo",
     "fieldLogoImage": "Logo afbeelding",
     "logoImageHint": "Vierkant logo linksboven op de kaart (200×200 px aanbevolen).",
+    "logoSizeLabel": "Logogrootte",
     "showLogoTextLabel": "Logotekst tonen",
     "showLogoTextDesc": "Tekst naast het logo in de koptekst.",
     "qrPlacementNote": "Apple Wallet plaatst de QR-code altijd onderaan de kaart. U kunt het formaat en de inhoud aanpassen, maar niet de positie.",
