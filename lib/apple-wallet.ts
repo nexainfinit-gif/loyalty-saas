@@ -323,43 +323,73 @@ async function generateStampStrip(opts: {
 /* ── Reward celebration strip ───────────────────────────────────────────────── */
 
 /**
- * Generate a celebration strip for the reward pending state.
- * Shows a trophy/star icon with "RÉCOMPENSE" text on transparent background.
+ * Generate a reward celebration strip.
+ * Shows a large centered filled stamp image as a "coupon" visual.
+ * Falls back to a big golden checkmark circle if no custom image.
  */
 async function generateRewardStrip(opts: {
   width: number;
   height: number;
   fgColor: string;
+  stampFilledUrl?: string;
+  stampRound?: boolean;
 }): Promise<Buffer> {
-  const { width, height, fgColor } = opts;
+  const { width, height, fgColor, stampFilledUrl, stampRound = true } = opts;
   const fg = fgColor.replace('#', '').padEnd(6, 'f');
   const r = parseInt(fg.slice(0, 2), 16);
   const g = parseInt(fg.slice(2, 4), 16);
   const b = parseInt(fg.slice(4, 6), 16);
 
-  const starSize = Math.floor(height * 0.45);
-  const fontSize = Math.floor(height * 0.16);
-  const subFontSize = Math.floor(height * 0.10);
-  const cx = width / 2;
-  const starY = height * 0.35;
-  const textY = height * 0.72;
-  const subTextY = height * 0.88;
+  // Large stamp: 75% of strip height, centered
+  const stampSize = Math.floor(height * 0.75);
+  const cx = Math.floor((width - stampSize) / 2);
+  const cy = Math.floor((height - stampSize) / 2);
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-    <text x="${cx}" y="${starY}" text-anchor="middle" dominant-baseline="central"
-      font-size="${starSize}" fill="rgb(${r},${g},${b})">🎉</text>
-    <text x="${cx}" y="${textY}" text-anchor="middle"
-      font-family="system-ui,sans-serif" font-size="${fontSize}"
-      font-weight="bold" fill="rgb(${r},${g},${b})">RÉCOMPENSE DISPONIBLE</text>
-    <text x="${cx}" y="${subTextY}" text-anchor="middle"
-      font-family="system-ui,sans-serif" font-size="${subFontSize}"
-      fill="rgb(${r},${g},${b})" opacity="0.7">Scannez pour récolter</text>
-  </svg>`;
+  let stampBuf: Buffer;
+  if (stampFilledUrl) {
+    try {
+      const res = await fetchWithAutoResign(stampFilledUrl);
+      const raw = Buffer.from(await res.arrayBuffer());
+      const resized = await sharp(raw)
+        .resize(stampSize, stampSize, { fit: 'cover', position: 'centre' })
+        .png()
+        .toBuffer();
+      if (stampRound) {
+        const mask = Buffer.from(
+          `<svg width="${stampSize}" height="${stampSize}">` +
+          `<circle cx="${stampSize / 2}" cy="${stampSize / 2}" r="${stampSize / 2}" fill="white"/></svg>`,
+        );
+        stampBuf = await sharp(resized).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
+      } else {
+        stampBuf = resized;
+      }
+    } catch {
+      stampBuf = defaultRewardSvg(stampSize, r, g, b);
+    }
+  } else {
+    stampBuf = defaultRewardSvg(stampSize, r, g, b);
+  }
 
-  return sharp(Buffer.from(svg))
-    .resize(width, height)
+  return sharp({
+    create: { width, height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite([{ input: stampBuf, left: cx, top: cy }])
     .png()
     .toBuffer();
+}
+
+/** Default reward stamp: golden circle with large checkmark */
+function defaultRewardSvg(size: number, r: number, g: number, b: number): Buffer {
+  const cx = size / 2;
+  const radius = cx - 3;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+    <circle cx="${cx}" cy="${cx}" r="${radius}" fill="rgb(${r},${g},${b})"/>
+    <circle cx="${cx}" cy="${cx}" r="${radius - 4}" fill="none" stroke="white" stroke-width="2" opacity="0.4"/>
+    <text x="${cx}" y="${cx + size * 0.13}" text-anchor="middle"
+      font-family="system-ui,sans-serif" font-size="${Math.round(size * 0.45)}"
+      font-weight="bold" fill="white">✓</text>
+  </svg>`;
+  return Buffer.from(svg);
 }
 
 /* ── Image helpers ──────────────────────────────────────────────────────────── */
@@ -580,10 +610,11 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
       fetchOrSolid(stripImageUrl, 750, 246, color),   // strip@2x.png
     );
   } else if (autoRewardStrip) {
-    // Reward pending: celebration strip instead of stamp grid
+    // Reward pending: large filled stamp centered as "coupon" visual
+    const rewardOpts = { fgColor: fgHex, stampFilledUrl, stampRound };
     imagePromises.push(
-      generateRewardStrip({ width: 375, height: 123, fgColor: fgHex }),
-      generateRewardStrip({ width: 750, height: 246, fgColor: fgHex }),
+      generateRewardStrip({ ...rewardOpts, width: 375, height: 123 }),
+      generateRewardStrip({ ...rewardOpts, width: 750, height: 246 }),
     );
   } else if (autoStampStrip) {
     const stampOpts = {
