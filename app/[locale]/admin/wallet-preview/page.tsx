@@ -339,24 +339,38 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
             className="rounded-lg"
             style={{ maxWidth: '100%', imageRendering: 'crisp-edges' }}
           />
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {Array.from({ length: c.stampsTotal }, (_, i) => (
-              <div
-                key={i}
-                className="w-7 h-7 rounded-full border-2 flex items-center justify-center"
-                style={{
-                  backgroundColor: i < filled ? c.foregroundColor : 'transparent',
-                  borderColor: i < filled ? c.foregroundColor : `${c.foregroundColor}66`,
-                }}
-              >
-                {i < filled && (
-                  <span className="text-[10px] font-bold" style={{ color: c.bgColor }}>✓</span>
-                )}
+        ) : (() => {
+          const row1 = Math.ceil(c.stampsTotal / 2);
+          const row2 = c.stampsTotal - row1;
+          const renderStamp = (idx: number, total: number) => (
+            <div
+              key={idx}
+              className="rounded-full border-2 flex items-center justify-center aspect-square"
+              style={{
+                flex: `0 0 calc(${100 / total}% - 4px)`,
+                maxWidth: 32,
+                backgroundColor: idx < filled ? c.foregroundColor : 'transparent',
+                borderColor: idx < filled ? c.foregroundColor : `${c.foregroundColor}66`,
+              }}
+            >
+              {idx < filled && (
+                <span className="text-[10px] font-bold" style={{ color: c.bgColor }}>✓</span>
+              )}
+            </div>
+          );
+          return (
+            <div className="space-y-1.5">
+              <div className="flex gap-1 justify-between">
+                {Array.from({ length: row1 }, (_, i) => renderStamp(i, row1))}
               </div>
-            ))}
-          </div>
-        )}
+              {row2 > 0 && (
+                <div className="flex gap-1 justify-between">
+                  {Array.from({ length: row2 }, (_, i) => renderStamp(row1 + i, row2))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Reward ───────────────────────────────────────────────────── */}
