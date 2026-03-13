@@ -204,8 +204,20 @@ export default function ScannerPage() {
     setCameraActive(false);
   }
 
+  /**
+   * Extract the bare token from a QR code value.
+   * QR codes may contain a full URL (e.g. https://…/api/scan/{token})
+   * or a bare UUID / short code.
+   */
+  function extractToken(raw: string): string {
+    const m = raw.match(/\/api\/scan\/([^/?#]+)/);
+    if (m) return decodeURIComponent(m[1]);
+    return raw;
+  }
+
   // ── Step 1: Identify customer (GET) ─────────────────────────────────────
-  async function identifyCustomer(scanToken: string) {
+  async function identifyCustomer(rawScanToken: string) {
+    const scanToken = extractToken(rawScanToken);
     if (!session) return;
     setStatus('identifying');
     setErrorMsg('');

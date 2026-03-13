@@ -75,9 +75,27 @@ async function resolveScanToken(
   return { customer: null, resolvedBy: 'none' };
 }
 
-/* ── Validate UUID format ────────────────────────────────────────────────── */
+/* ── Helpers ────────────────────────────────────────────────────────────── */
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Extract the scan token from a raw QR code value.
+ *
+ * QR codes may contain:
+ *  - A raw UUID token (from Apple/Google Wallet pass barcode)
+ *  - A full URL like https://app.rebites.be/api/scan/{token} (from register success page)
+ *  - A short code (8-char manual entry)
+ *
+ * This function normalises all variants to the bare token.
+ */
+function extractToken(raw: string): string {
+  // Full URL → extract last path segment
+  const scanPathMatch = raw.match(/\/api\/scan\/([^/?#]+)/);
+  if (scanPathMatch) return decodeURIComponent(scanPathMatch[1]);
+  // Already a bare token
+  return raw;
+}
 
 export async function POST(
   req: Request,
@@ -105,7 +123,8 @@ export async function POST(
   if (guard instanceof NextResponse) return guard;
   const { restaurantId, userId: scannerUserId } = guard;
 
-  const { token: scanToken } = await params;
+  const { token: rawToken } = await params;
+  const scanToken = extractToken(rawToken);
 
   // ── Parse body ─────────────────────────────────────────────────────────
   const body = await req.json().catch(() => ({}));
@@ -334,7 +353,8 @@ export async function GET(
     return Response.json({ error: tGet('api.restaurantNotFound') }, { status: 404 });
   }
 
-  const { token: scanToken } = await params;
+  const { token: rawGetToken } = await params;
+  const scanToken = extractToken(rawGetToken);
 
   // For GET, resolve by qr_token or id only (short_code is a pass-level concept, not used for preview)
   const { data: byQrToken } = await supabaseAdmin
