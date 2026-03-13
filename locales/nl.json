@@ -1147,6 +1147,7 @@
     "showLogoTextLabel": "Logotekst tonen",
     "showLogoTextDesc": "Tekst naast het logo in de koptekst.",
     "qrPlacementNote": "Apple Wallet plaatst de QR-code altijd onderaan de kaart. U kunt het formaat en de inhoud aanpassen, maar niet de positie.",
+    "previewDisclaimer": "Voorbeeld gebaseerd op Apple Wallet weergave. Het eindresultaat kan licht variëren per apparaat.",
     "fieldBarcodeFormat": "Barcode-indeling",
     "fieldBarcodeAltText": "Alternatieve tekst (onder de barcode)",
     "barcodeAltTextPlaceholder": "Scan deze code bij de kassa",

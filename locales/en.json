@@ -1149,6 +1149,7 @@
     "showLogoTextLabel": "Show logo text",
     "showLogoTextDesc": "Text displayed next to the logo in the header.",
     "qrPlacementNote": "Apple Wallet fixes the QR code at the bottom of the card. You can customize the format and content, but not the position.",
+    "previewDisclaimer": "Preview based on Apple Wallet rendering. Final result may vary slightly depending on device.",
     "fieldBarcodeFormat": "Barcode format",
     "fieldBarcodeAltText": "Alt text (below the barcode)",
     "barcodeAltTextPlaceholder": "Scan this code at the counter",

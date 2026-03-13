@@ -1149,6 +1149,7 @@
     "showLogoTextLabel": "Afficher le texte du logo",
     "showLogoTextDesc": "Texte affiché à côté du logo dans l'en-tête.",
     "qrPlacementNote": "Apple Wallet impose le QR code en bas de la carte. Le format et le contenu sont personnalisables, mais pas la position.",
+    "previewDisclaimer": "Aperçu fidèle au rendu Apple Wallet. Le rendu final peut légèrement varier selon l'appareil.",
     "fieldBarcodeFormat": "Format du code-barres",
     "fieldBarcodeAltText": "Texte alternatif (sous le code-barres)",
     "barcodeAltTextPlaceholder": "Scannez ce code en caisse",

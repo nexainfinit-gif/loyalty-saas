@@ -1149,6 +1149,7 @@
     "showLogoTextLabel": "Mostra testo logo",
     "showLogoTextDesc": "Testo visualizzato accanto al logo nell'intestazione.",
     "qrPlacementNote": "Apple Wallet posiziona il QR code in fondo alla carta. Puoi personalizzare formato e contenuto, ma non la posizione.",
+    "previewDisclaimer": "Anteprima basata sul rendering Apple Wallet. Il risultato finale può variare leggermente a seconda del dispositivo.",
     "fieldBarcodeFormat": "Formato codice a barre",
     "fieldBarcodeAltText": "Testo alternativo (sotto il codice)",
     "barcodeAltTextPlaceholder": "Scansiona questo codice alla cassa",

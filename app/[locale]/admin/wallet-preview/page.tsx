@@ -236,136 +236,107 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
     ? `linear-gradient(135deg, ${c.bgColor}, #7c3aed)`
     : c.bgColor;
 
+  /* Apple Wallet uses SF Pro. Label style = uppercase, ~8pt, tracking wide.
+     Value style = ~13pt regular. Primary = ~26pt bold. */
+  const labelSty: React.CSSProperties = { color: c.labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500, lineHeight: 1.2 };
+  const valueSty: React.CSSProperties = { color: c.foregroundColor, fontSize: 13, fontWeight: 500, lineHeight: 1.3 };
+  const primaryValSty: React.CSSProperties = { color: c.foregroundColor, fontSize: 26, fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.01em' };
+
   return (
     <div
-      className="w-full max-w-xs mx-auto rounded-[20px] overflow-hidden shadow-2xl select-none"
-      style={{ background: cardBg }}
+      className="w-full mx-auto overflow-hidden shadow-2xl select-none"
+      style={{ background: cardBg, borderRadius: 13, maxWidth: 340 }}
     >
-      {/* ── Strip image ──────────────────────────────────────────────── */}
-      {c.stripImageUrl && (
-        <div className="w-full h-[82px] overflow-hidden">
-          <img
-            src={c.stripImageUrl}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
-
-      {/* ── Header row ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-3">
-        <div className="flex items-center gap-2 min-w-0">
+      {/* ══ LOGO ROW — logo + logoText left, headerFields right ═══════ */}
+      <div className="flex items-center justify-between" style={{ padding: '12px 14px 8px' }}>
+        <div className="flex items-center gap-1.5 min-w-0">
           {c.logoImageUrl ? (
             <img
               src={c.logoImageUrl}
               alt=""
-              className="rounded-xl object-cover flex-shrink-0"
-              style={{ width: c.logoSize, height: c.logoSize }}
+              className="object-cover flex-shrink-0"
+              style={{ width: Math.min(c.logoSize, 40), height: Math.min(c.logoSize, 40), borderRadius: 8 }}
             />
           ) : (
-            <div className="rounded-xl bg-white/20 flex-shrink-0 flex items-center justify-center font-bold"
-                 style={{ color: c.foregroundColor, width: c.logoSize, height: c.logoSize, fontSize: Math.max(12, c.logoSize * 0.45) }}>
+            <div className="flex-shrink-0 flex items-center justify-center font-bold"
+                 style={{ color: c.foregroundColor, width: 30, height: 30, borderRadius: 8, backgroundColor: `${c.foregroundColor}22`, fontSize: 14 }}>
               {c.merchantName.charAt(0).toUpperCase()}
             </div>
           )}
           {c.showLogoText && (
-            <span className="font-semibold text-sm truncate" style={{ color: c.foregroundColor }}>
+            <span className="truncate" style={{ color: c.foregroundColor, fontSize: 15, fontWeight: 600 }}>
               {c.logoText || c.merchantName}
             </span>
           )}
           {c.isVip && (
-            <span className="flex-shrink-0 text-[10px] font-bold bg-white/20 px-1.5 py-0.5 rounded-md"
-                  style={{ color: c.foregroundColor }}>
+            <span className="flex-shrink-0 font-bold px-1 py-0.5 rounded"
+                  style={{ color: c.foregroundColor, backgroundColor: `${c.foregroundColor}22`, fontSize: 8, letterSpacing: '0.05em' }}>
               VIP
             </span>
           )}
         </div>
-        <div className="text-right flex-shrink-0 ml-3">
-          <p className="text-[9px] uppercase tracking-widest font-medium" style={{ color: c.labelColor, opacity: 0.7 }}>TAMPONS</p>
-          <p className="font-bold text-base tabular-nums" style={{ color: c.foregroundColor }}>{filled} / {c.stampsTotal}</p>
-        </div>
+        {/* headerFields — Apple puts them top-right */}
+        {c.headerFields.length > 0 && (
+          <div className="flex gap-3 flex-shrink-0 ml-2 text-right">
+            {c.headerFields.map((f, i) => (
+              <div key={i}>
+                <p style={labelSty}>{f.label}</p>
+                <p style={valueSty}>{f.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Header fields (custom) ────────────────────────────────── */}
-      {c.headerFields.length > 0 && (
-        <div className="px-5 pb-2 flex gap-4">
-          {c.headerFields.map((f, i) => (
-            <div key={i}>
-              <p className="text-[9px] uppercase tracking-widest font-medium" style={{ color: c.labelColor, opacity: 0.7 }}>{f.label}</p>
-              <p className="text-sm font-medium" style={{ color: c.foregroundColor }}>{f.value}</p>
-            </div>
-          ))}
+      {/* ══ STRIP IMAGE — full width, between logo and primary ════════ */}
+      {c.stripImageUrl && (
+        <div className="w-full overflow-hidden" style={{ height: 98 }}>
+          <img src={c.stripImageUrl} alt="" className="w-full h-full object-cover" />
         </div>
       )}
 
-      {/* ── Primary field ────────────────────────────────────────────── */}
-      <div className="px-5 pb-3">
-        <p className="text-[9px] uppercase tracking-widest font-medium mb-0.5" style={{ color: c.labelColor, opacity: 0.7 }}>CLIENT</p>
-        <p className="font-semibold text-xl" style={{ color: c.foregroundColor }}>Marie Dupont</p>
+      {/* ══ PRIMARY FIELDS — stamps/points counter, large ═════════════ */}
+      <div style={{ padding: '10px 14px 6px' }}>
+        <p style={labelSty}>TAMPONS</p>
+        <p style={primaryValSty}>{filled} / {c.stampsTotal}</p>
       </div>
 
-      {/* ── Secondary fields (custom) ─────────────────────────────── */}
-      {c.secondaryFields.length > 0 && (
-        <div className="px-5 pb-3 flex gap-4 flex-wrap">
-          {c.secondaryFields.map((f, i) => (
-            <div key={i} className="min-w-0">
-              <p className="text-[9px] uppercase tracking-widest font-medium" style={{ color: c.labelColor, opacity: 0.7 }}>{f.label}</p>
-              <p className="text-sm font-medium" style={{ color: c.foregroundColor }}>{f.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Auxiliary fields (custom) ──────────────────────────────── */}
-      {c.auxiliaryFields.length > 0 && (
-        <div className="px-5 pb-3 flex gap-4 flex-wrap">
-          {c.auxiliaryFields.map((f, i) => (
-            <div key={i} className="min-w-0">
-              <p className="text-[9px] uppercase tracking-widest font-medium" style={{ color: c.labelColor, opacity: 0.7 }}>{f.label}</p>
-              <p className="text-sm font-medium" style={{ color: c.foregroundColor }}>{f.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Stamp grid ───────────────────────────────────────────────── */}
-      <div className="px-5 pb-4">
-        <p className="text-[9px] uppercase tracking-widest font-medium mb-2" style={{ color: c.labelColor, opacity: 0.7 }}>PROGRESSION</p>
+      {/* ══ STAMP GRID — visual progression (via strip in real pass) ══ */}
+      <div style={{ padding: '4px 14px 8px' }}>
         {c.stampMode === 'custom' && stampUrl && !stampErr ? (
           <img
             src={stampUrl}
-            alt={`${filled} / ${c.stampsTotal} tampons`}
+            alt={`${filled} / ${c.stampsTotal}`}
             onError={() => setStampErr(true)}
-            className="rounded-lg"
-            style={{ maxWidth: '100%', imageRendering: 'crisp-edges' }}
+            style={{ maxWidth: '100%', imageRendering: 'crisp-edges', borderRadius: 6 }}
           />
         ) : (() => {
           const row1 = Math.ceil(c.stampsTotal / 2);
           const row2 = c.stampsTotal - row1;
-          const renderStamp = (idx: number, total: number) => (
+          const sz = Math.min(26, Math.floor((312 - (Math.max(row1, row2) - 1) * 4) / Math.max(row1, row2)));
+          const renderStamp = (idx: number) => (
             <div
               key={idx}
-              className="rounded-full border-2 flex items-center justify-center aspect-square"
+              className="flex items-center justify-center"
               style={{
-                flex: `0 0 calc(${100 / total}% - 4px)`,
-                maxWidth: 32,
+                width: sz, height: sz, borderRadius: '50%',
+                border: `1.5px solid ${idx < filled ? c.foregroundColor : `${c.foregroundColor}55`}`,
                 backgroundColor: idx < filled ? c.foregroundColor : 'transparent',
-                borderColor: idx < filled ? c.foregroundColor : `${c.foregroundColor}66`,
               }}
             >
               {idx < filled && (
-                <span className="text-[10px] font-bold" style={{ color: c.bgColor }}>✓</span>
+                <span style={{ fontSize: sz * 0.4, fontWeight: 700, color: c.bgColor, lineHeight: 1 }}>✓</span>
               )}
             </div>
           );
           return (
-            <div className="space-y-1.5">
-              <div className="flex gap-1 justify-between">
-                {Array.from({ length: row1 }, (_, i) => renderStamp(i, row1))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
+                {Array.from({ length: row1 }, (_, i) => renderStamp(i))}
               </div>
               {row2 > 0 && (
-                <div className="flex gap-1 justify-between">
-                  {Array.from({ length: row2 }, (_, i) => renderStamp(row1 + i, row2))}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
+                  {Array.from({ length: row2 }, (_, i) => renderStamp(row1 + i))}
                 </div>
               )}
             </div>
@@ -373,21 +344,46 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
         })()}
       </div>
 
-      {/* ── Reward ───────────────────────────────────────────────────── */}
-      <div className="px-5 pb-3 pt-3" style={{ borderTop: `1px solid ${c.foregroundColor}1a` }}>
-        <p className="text-[9px] uppercase tracking-widest font-medium mb-0.5" style={{ color: c.labelColor, opacity: 0.7 }}>RÉCOMPENSE</p>
-        <p className="text-sm font-medium" style={{ color: c.foregroundColor }}>{c.rewardText}</p>
+      {/* ══ SECONDARY FIELDS ══════════════════════════════════════════ */}
+      {c.secondaryFields.length > 0 && (
+        <div className="flex" style={{ padding: '4px 14px 6px', gap: 0 }}>
+          {c.secondaryFields.map((f, i) => (
+            <div key={i} style={{ flex: 1, minWidth: 0 }}>
+              <p style={labelSty}>{f.label}</p>
+              <p className="truncate" style={valueSty}>{f.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ══ AUXILIARY FIELDS — CLIENT + REWARD + custom ═══════════════ */}
+      <div className="flex" style={{ padding: '4px 14px 10px', gap: 0 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={labelSty}>CLIENT</p>
+          <p className="truncate" style={valueSty}>Marie Dupont</p>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={labelSty}>RÉCOMPENSE</p>
+          <p className="truncate" style={valueSty}>{c.rewardText}</p>
+        </div>
+        {c.auxiliaryFields.map((f, i) => (
+          <div key={i} style={{ flex: 1, minWidth: 0 }}>
+            <p style={labelSty}>{f.label}</p>
+            <p className="truncate" style={valueSty}>{f.value}</p>
+          </div>
+        ))}
       </div>
 
-      {/* ── QR strip ─────────────────────────────────────────────────── */}
-      <div className="px-5 py-4 flex items-center justify-between gap-4"
-           style={{ borderTop: `1px solid ${c.foregroundColor}1a`, background: `${c.foregroundColor}0d` }}>
-        <p className="text-xs leading-relaxed" style={{ color: c.foregroundColor, opacity: 0.7 }}>
-          {c.barcodeAltText || t('walletPreview.scanQrInstructions')}
-        </p>
-        <div className="bg-white p-2 rounded-xl flex-shrink-0">
-          <QRCode value={c.barcodePayload || 'EXAMPLE_QR_TOKEN'} size={64} />
+      {/* ══ BARCODE — centered, white bg, like real Apple Wallet ══════ */}
+      <div className="flex flex-col items-center" style={{ padding: '10px 14px 14px', borderTop: `1px solid ${c.foregroundColor}15` }}>
+        <div style={{ backgroundColor: '#fff', borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <QRCode value={c.barcodePayload || 'EXAMPLE_QR_TOKEN'} size={140} />
         </div>
+        {c.barcodeAltText && (
+          <p className="text-center" style={{ color: c.foregroundColor, opacity: 0.5, fontSize: 10, marginTop: 6 }}>
+            {c.barcodeAltText}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -1446,6 +1442,7 @@ export default function WalletPreviewPage() {
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{t('walletPreview.cardPreview')}</p>
               <WalletCard c={controls} stampUrl={stampUrl} />
+              <p className="text-[10px] text-gray-400 mt-2 text-center leading-relaxed">{t('walletPreview.previewDisclaimer')}</p>
             </div>
 
             {/* Field legend */}
