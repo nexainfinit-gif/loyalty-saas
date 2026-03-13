@@ -60,6 +60,8 @@ interface LoyaltySettings {
   reward_message: string;
   program_type: 'points' | 'stamps';
   stamps_total: number;
+  vip_threshold_points: number;
+  vip_threshold_stamps: number;
 }
 
 interface Props {
@@ -78,12 +80,20 @@ type Period = '7d' | '30d' | '90d';
 const NOW = Date.now();
 const MS_DAY = 86400000;
 
-function getCustomerStatus(c: Customer): 'vip' | 'active' | 'inactive' | 'new' {
+function getCustomerStatus(
+  c: Customer,
+  programType: 'points' | 'stamps',
+  vipThreshold: number,
+): 'vip' | 'active' | 'inactive' | 'new' {
   if ((NOW - new Date(c.created_at).getTime()) < 30 * MS_DAY) return 'new';
   if (!c.last_visit_at) return 'inactive';
   const days = (NOW - new Date(c.last_visit_at).getTime()) / MS_DAY;
   if (days > 30) return 'inactive';
-  if (c.total_visits >= 10 || c.total_points >= 100) return 'vip';
+  if (programType === 'stamps') {
+    if ((c.stamps_count ?? 0) >= vipThreshold) return 'vip';
+  } else {
+    if (c.total_points >= vipThreshold) return 'vip';
+  }
   return 'active';
 }
 
@@ -123,10 +133,14 @@ export default function AnalyticsTab({
     const rewardsEarned = transactions.filter(t => t.type === 'reward_redeem' && (NOW - new Date(t.created_at).getTime()) < periodMs).length;
     const completedCards = customers.reduce((sum, c) => sum + (c.completed_cards ?? 0), 0);
 
-    const vipCustomers = customers.filter(c => getCustomerStatus(c) === 'vip').length;
+    const vipThreshold = loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points;
+    const vipCustomers = customers.filter(c => getCustomerStatus(c, loyaltySettings.program_type, vipThreshold) === 'vip').length;
+    const nearThreshold = loyaltySettings.program_type === 'stamps'
+      ? Math.max(1, loyaltySettings.stamps_total - 2)
+      : loyaltySettings.reward_threshold * 0.8;
     const nearReward = loyaltySettings.program_type === 'stamps'
-      ? customers.filter(c => (c.stamps_count ?? 0) >= loyaltySettings.stamps_total - 2 && (c.stamps_count ?? 0) < loyaltySettings.stamps_total).length
-      : customers.filter(c => c.total_points >= loyaltySettings.reward_threshold * 0.8 && c.total_points < loyaltySettings.reward_threshold).length;
+      ? customers.filter(c => (c.stamps_count ?? 0) >= nearThreshold && (c.stamps_count ?? 0) < loyaltySettings.stamps_total).length
+      : customers.filter(c => c.total_points >= nearThreshold && c.total_points < loyaltySettings.reward_threshold).length;
 
     // Average ticket
     const avgTicket = parseFloat(restaurantSettings['average_ticket'] || '0');
@@ -144,7 +158,8 @@ export default function AnalyticsTab({
         const lastVisit = c.last_visit_at ? new Date(c.last_visit_at).getTime() : NOW;
         return sum + (lastVisit - firstVisit) / MS_DAY;
       }, 0);
-      avgCardDays = Math.round(totalDaysActive / completedCustomers.reduce((s, c) => s + (c.completed_cards ?? 0), 0));
+      const totalCards = completedCustomers.reduce((s, c) => s + (c.completed_cards ?? 0), 0);
+      avgCardDays = totalCards > 0 ? Math.round(totalDaysActive / totalCards) : null;
     }
 
     // Reward utilization rate
@@ -171,9 +186,10 @@ export default function AnalyticsTab({
 
   /* ── Distribution data ── */
   const distribution = useMemo(() => {
+    const vipThreshold = loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points;
     const statusCounts = { active: 0, inactive: 0, vip: 0, new: 0, nearReward: 0 };
     customers.forEach(c => {
-      const s = getCustomerStatus(c);
+      const s = getCustomerStatus(c, loyaltySettings.program_type, vipThreshold);
       statusCounts[s]++;
     });
     statusCounts.nearReward = kpis.nearReward;

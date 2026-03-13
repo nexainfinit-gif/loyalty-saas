@@ -56,6 +56,8 @@ interface LoyaltySettings {
   reward_message: string;
   program_type: 'points' | 'stamps';
   stamps_total: number;
+  vip_threshold_points: number;
+  vip_threshold_stamps: number;
 }
 
 interface Props {
@@ -167,17 +169,24 @@ export default function OverviewTab({
       return t.type === 'reward_redeem' && age >= periodMs && age < 2 * periodMs;
     }).length;
 
+    const vipThreshold = loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points;
     const vipCustomers = customers.filter(c => {
       if (!c.last_visit_at) return false;
       const days = (NOW - new Date(c.last_visit_at).getTime()) / MS_DAY;
-      return days <= 30 && c.total_points >= 100;
+      if (days > 30) return false;
+      return loyaltySettings.program_type === 'stamps'
+        ? (c.stamps_count ?? 0) >= vipThreshold
+        : c.total_points >= vipThreshold;
     }).length;
 
     const inactiveCustomers = customers.filter(c => !c.last_visit_at || (NOW - new Date(c.last_visit_at).getTime()) > 45 * MS_DAY).length;
 
+    const nearThreshold = loyaltySettings.program_type === 'stamps'
+      ? Math.max(1, loyaltySettings.stamps_total - 2)
+      : loyaltySettings.reward_threshold * 0.8;
     const nearReward = loyaltySettings.program_type === 'stamps'
-      ? customers.filter(c => (c.stamps_count ?? 0) >= loyaltySettings.stamps_total - 2 && (c.stamps_count ?? 0) < loyaltySettings.stamps_total).length
-      : customers.filter(c => c.total_points >= loyaltySettings.reward_threshold * 0.8 && c.total_points < loyaltySettings.reward_threshold).length;
+      ? customers.filter(c => (c.stamps_count ?? 0) >= nearThreshold && (c.stamps_count ?? 0) < loyaltySettings.stamps_total).length
+      : customers.filter(c => c.total_points >= nearThreshold && c.total_points < loyaltySettings.reward_threshold).length;
 
     const in7days = new Date(); in7days.setDate(today.getDate() + 7);
     const birthdaysSoon = customers.filter(c => {
