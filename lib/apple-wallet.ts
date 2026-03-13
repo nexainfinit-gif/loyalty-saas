@@ -273,12 +273,14 @@ async function generateStampStrip(opts: {
   let emptyBuf: Buffer;
   try {
     filledBuf = stampFilledUrl ? await fetchAndResize(stampFilledUrl) : defaultSvg(true);
-  } catch {
+  } catch (err) {
+    console.warn('[stamp-strip] Failed to fetch filled stamp image:', stampFilledUrl, err instanceof Error ? err.message : err);
     filledBuf = defaultSvg(true);
   }
   try {
     emptyBuf = stampEmptyUrl ? await fetchAndResize(stampEmptyUrl) : defaultSvg(false);
-  } catch {
+  } catch (err) {
+    console.warn('[stamp-strip] Failed to fetch empty stamp image:', stampEmptyUrl, err instanceof Error ? err.message : err);
     emptyBuf = defaultSvg(false);
   }
 
