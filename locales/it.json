@@ -1144,7 +1144,7 @@
     "cropConfirm": "Applica ritaglio",
     "logoSectionTitle": "Logo",
     "fieldLogoImage": "Immagine logo",
-    "logoImageHint": "Logo in alto a sinistra della carta (160×50 px consigliato).",
+    "logoImageHint": "Logo quadrato in alto a sinistra della carta (200×200 px consigliato).",
     "showLogoTextLabel": "Mostra testo logo",
     "showLogoTextDesc": "Testo visualizzato accanto al logo nell'intestazione.",
     "qrPlacementNote": "Apple Wallet posiziona il QR code in fondo alla carta. Puoi personalizzare formato e contenuto, ma non la posizione.",

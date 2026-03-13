@@ -1144,7 +1144,7 @@
     "cropConfirm": "Apply crop",
     "logoSectionTitle": "Logo",
     "fieldLogoImage": "Logo image",
-    "logoImageHint": "Logo displayed at the top left of the card (160×50 px recommended).",
+    "logoImageHint": "Square logo displayed at the top left of the card (200×200 px recommended).",
     "showLogoTextLabel": "Show logo text",
     "showLogoTextDesc": "Text displayed next to the logo in the header.",
     "qrPlacementNote": "Apple Wallet fixes the QR code at the bottom of the card. You can customize the format and content, but not the position.",

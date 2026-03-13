@@ -1143,7 +1143,7 @@
     "cropConfirm": "Aplicar recorte",
     "logoSectionTitle": "Logo",
     "fieldLogoImage": "Imagen del logo",
-    "logoImageHint": "Logo en la esquina superior izquierda (160×50 px recomendado).",
+    "logoImageHint": "Logo cuadrado en la esquina superior izquierda (200×200 px recomendado).",
     "showLogoTextLabel": "Mostrar texto del logo",
     "showLogoTextDesc": "Texto junto al logo en el encabezado.",
     "qrPlacementNote": "Apple Wallet fija el código QR en la parte inferior de la tarjeta. Puedes personalizar el formato y contenido, pero no la posición.",

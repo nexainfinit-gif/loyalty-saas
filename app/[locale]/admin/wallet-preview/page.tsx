@@ -256,7 +256,7 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
             <img
               src={c.logoImageUrl}
               alt=""
-              className="h-9 max-w-[80px] object-contain flex-shrink-0"
+              className="w-9 h-9 rounded-xl object-cover flex-shrink-0"
             />
           ) : (
             <div className="w-9 h-9 rounded-xl bg-white/20 flex-shrink-0 flex items-center justify-center text-base font-bold"
@@ -1515,9 +1515,9 @@ export default function WalletPreviewPage() {
                   accessToken={accessToken}
                   restaurantId={rid}
                   uploadType="logo"
-                  cropAspect={160 / 50}
-                  cropWidth={320}
-                  cropHeight={100}
+                  cropAspect={1}
+                  cropWidth={200}
+                  cropHeight={200}
                 />
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
