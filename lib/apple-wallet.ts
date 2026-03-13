@@ -8,14 +8,10 @@ import crypto from 'crypto';
 /* ── App URL (runtime-safe, avoids Next.js build-time inlining) ─────────────── */
 
 function getAppUrl(): string {
-  // 1. Runtime env var (never inlined by Next.js)
-  const runtime = process.env['APP_URL'];
-  if (runtime) return runtime;
-  // 2. Fallback to NEXT_PUBLIC_ (may be inlined, but better than nothing)
-  const pub = process.env['NEXT_PUBLIC_APP_URL'];
-  if (pub) return pub;
-  // 3. Production hardcoded fallback
-  return 'https://app.rebites.be';
+  // APP_URL is a server-only env var, never inlined by Next.js at build time.
+  // NEXT_PUBLIC_APP_URL is NOT used here because Next.js replaces it with
+  // its build-time value, which may be stale (e.g. Vercel auto-generated domain).
+  return process.env['APP_URL'] || 'https://app.rebites.be';
 }
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
