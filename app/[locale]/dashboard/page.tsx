@@ -417,11 +417,17 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!restaurant) return;
     const onFocus = async () => {
-      const { data: clients } = await supabase
-        .from('customers').select('*')
-        .eq('restaurant_id', restaurant.id)
-        .order('created_at', { ascending: false });
+      const [{ data: clients }, { data: txs }] = await Promise.all([
+        supabase.from('customers').select('*')
+          .eq('restaurant_id', restaurant.id)
+          .order('created_at', { ascending: false }),
+        supabase.from('transactions').select('*')
+          .eq('restaurant_id', restaurant.id)
+          .order('created_at', { ascending: false })
+          .limit(500),
+      ]);
       if (clients) setCustomers(clients);
+      if (txs) setTransactions(txs);
     };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
@@ -484,13 +490,14 @@ export default function DashboardPage() {
       const confirmed = window.confirm(t('dashboard.confirmRemovePoints', { delta: Math.abs(delta), firstName: customer.first_name, lastName: customer.last_name }));
       if (!confirmed) return;
     }
-    await supabase.from('transactions').insert({
+    const { data: newTx } = await supabase.from('transactions').insert({
       customer_id: customerId, restaurant_id: restaurant.id,
-      type: 'points_add', points_delta: delta,
+      type: 'manual', points_delta: delta,
       balance_after: customer.total_points + delta,
       metadata: { reason: t('dashboard.manualAddLabel') },
-    });
+    }).select('*').single();
     setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, total_points: Math.max(0, c.total_points + delta) } : c));
+    if (newTx) setTransactions(prev => [newTx, ...prev].slice(0, 500));
     toast.success(delta > 0 ? t('dashboard.toastPointsAdded', { delta }) : t('dashboard.toastPointsRemoved', { delta }));
 
     // Fire-and-forget: trigger Apple Wallet push notification for updated pass

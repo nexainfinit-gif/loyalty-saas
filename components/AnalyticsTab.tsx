@@ -206,7 +206,7 @@ export default function AnalyticsTab({
       { name: 'VIP', value: statusCounts.vip, color: PIE_COLORS[2] },
       { name: t('analytics.newClients'), value: statusCounts.new, color: PIE_COLORS[0] },
     ].filter(d => d.value > 0);
-  }, [customers, kpis.nearReward, t]);
+  }, [customers, kpis.nearReward, loyaltySettings, t]);
 
   /* ── Monthly growth chart ── */
   const monthlyGrowth = useMemo(() => {
@@ -224,16 +224,16 @@ export default function AnalyticsTab({
       }).length;
 
       const recurring = new Set(
-        transactions.filter(t => {
-          const td = new Date(t.created_at);
-          return td >= monthStart && td <= monthEnd && t.type === 'visit';
-        }).map(t => t.customer_id)
+        transactions.filter(tx => {
+          const td = new Date(tx.created_at);
+          return td >= monthStart && td <= monthEnd && tx.type === 'visit';
+        }).map(tx => tx.customer_id)
       ).size;
 
       months.push({ month: label, [t('analytics.newLabel')]: newCount, [t('analytics.recurringLabel')]: recurring });
     }
     return months;
-  }, [customers, transactions, t]);
+  }, [customers, transactions, locale, t]);
 
   /* ── Daily activity ── */
   const dailyActivity = useMemo(() => {
@@ -243,11 +243,11 @@ export default function AnalyticsTab({
       const dayStr = d.toISOString().split('T')[0];
       return {
         date: d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }),
-        [t('analytics.visitsLabel')]: transactions.filter(t => t.created_at.startsWith(dayStr) && t.type === 'visit').length,
+        [t('analytics.visitsLabel')]: transactions.filter(tx => tx.created_at.startsWith(dayStr) && tx.type === 'visit').length,
         [t('analytics.registrationsLabel')]: customers.filter(c => c.created_at.startsWith(dayStr)).length,
       };
     });
-  }, [customers, transactions, periodDays, t]);
+  }, [customers, transactions, periodDays, locale, t]);
 
   /* ── Auto insights ── */
   const insights = useMemo(() => {
@@ -303,9 +303,9 @@ export default function AnalyticsTab({
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
           { label: t('analytics.totalClients'), value: totalCustomers.toLocaleString(locale), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', bg: 'bg-primary-50', iconColor: 'text-primary-600' },
-          { label: t('analytics.activeClients'), value: (restaurantMetrics?.active_customers_30d ?? kpis.activeCustomers).toString(), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', bg: 'bg-success-50', iconColor: 'text-success-600' },
-          { label: t('analytics.newClients'), value: (restaurantMetrics?.new_customers_30d ?? kpis.newCustomers).toString(), icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z', bg: 'bg-purple-50', iconColor: 'text-purple-600' },
-          { label: t('analytics.returnRate'), value: restaurantMetrics?.repeat_rate != null ? `${Number(restaurantMetrics.repeat_rate).toFixed(0)}%` : `${kpis.returnRate}%`, icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15', bg: 'bg-warning-50', iconColor: 'text-warning-600' },
+          { label: t('analytics.activeClients'), value: kpis.activeCustomers.toString(), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', bg: 'bg-success-50', iconColor: 'text-success-600' },
+          { label: t('analytics.newClients'), value: kpis.newCustomers.toString(), icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z', bg: 'bg-purple-50', iconColor: 'text-purple-600' },
+          { label: t('analytics.returnRate'), value: `${kpis.returnRate}%`, icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15', bg: 'bg-warning-50', iconColor: 'text-warning-600' },
           { label: t('analytics.visitsScans'), value: kpis.visitsThisPeriod.toLocaleString(locale), icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z', bg: 'bg-gray-50', iconColor: 'text-gray-600' },
         ].map((kpi, i) => (
           <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">

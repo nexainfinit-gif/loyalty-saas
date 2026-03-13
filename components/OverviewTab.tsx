@@ -220,7 +220,7 @@ export default function OverviewTab({
       trendActive: trendPct(activeThisPeriod, activePrevPeriod),
       trendRewards: trendPct(rewardsThisPeriod, rewardsPrevPeriod),
     };
-  }, [customers, transactions, totalCustomers, periodMs, loyaltySettings, today]);
+  }, [customers, transactions, totalCustomers, periodMs, loyaltySettings, NOW]);
 
   /* ── Chart data ── */
   const chartData = useMemo(() => {
@@ -230,10 +230,10 @@ export default function OverviewTab({
       const dayStr = d.toISOString().split('T')[0];
       return {
         date: d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }),
-        [t('overview.visitsLabel')]: transactions.filter(t => t.created_at.startsWith(dayStr) && t.type === 'visit').length,
+        [t('overview.visitsLabel')]: transactions.filter(tx => tx.created_at.startsWith(dayStr) && tx.type === 'visit').length,
       };
     });
-  }, [transactions, periodDays, t]);
+  }, [transactions, periodDays, locale, t]);
 
   /* ══════════════════════════════════════════════════════════
      FEATURE 1: PROGRAM SCORE (0–100)
