@@ -81,7 +81,6 @@ interface Props {
 type Period = '7d' | '30d' | '90d';
 
 /* ─── Helpers ───────────────────────────────────────────── */
-const NOW = Date.now();
 const MS_DAY = 86400000;
 
 function trendPct(a: number, b: number): number | null {
@@ -142,6 +141,7 @@ export default function OverviewTab({
   const { t, locale } = useTranslation();
   const [period, setPeriod] = useState<Period>('30d');
   const today = new Date();
+  const NOW = today.getTime();
 
   const periodMs = period === '7d' ? 7 * MS_DAY : period === '30d' ? 30 * MS_DAY : 90 * MS_DAY;
   const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
@@ -162,7 +162,14 @@ export default function OverviewTab({
       transactions.filter(t => { const age = NOW - new Date(t.created_at).getTime(); return age >= periodMs && age < 2 * periodMs; }).map(t => t.customer_id)
     ).size;
 
-    const returnRate = totalCustomers > 0 ? Math.round((customers.filter(c => c.total_visits > 1).length / totalCustomers) * 100) : 0;
+    // Return rate: customers who visited more than once within the period
+    const visitsByCustomer = new Map<string, number>();
+    transactions.filter(tx => tx.type === 'visit' && (NOW - new Date(tx.created_at).getTime()) < periodMs)
+      .forEach(tx => visitsByCustomer.set(tx.customer_id, (visitsByCustomer.get(tx.customer_id) ?? 0) + 1));
+    const customersWithVisits = visitsByCustomer.size;
+    const returningCustomers = [...visitsByCustomer.values()].filter(v => v > 1).length;
+    const returnRate = customersWithVisits > 0 ? Math.round((returningCustomers / customersWithVisits) * 100) : 0;
+
     const rewardsThisPeriod = transactions.filter(t => t.type === 'reward_redeem' && (NOW - new Date(t.created_at).getTime()) < periodMs).length;
     const rewardsPrevPeriod = transactions.filter(t => {
       const age = NOW - new Date(t.created_at).getTime();

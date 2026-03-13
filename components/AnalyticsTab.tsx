@@ -77,17 +77,17 @@ interface Props {
 type Period = '7d' | '30d' | '90d';
 
 /* ─── Helpers ─────────────────────────────────────────── */
-const NOW = Date.now();
 const MS_DAY = 86400000;
 
 function getCustomerStatus(
   c: Customer,
   programType: 'points' | 'stamps',
   vipThreshold: number,
+  now: number,
 ): 'vip' | 'active' | 'inactive' | 'new' {
-  if ((NOW - new Date(c.created_at).getTime()) < 30 * MS_DAY) return 'new';
+  if ((now - new Date(c.created_at).getTime()) < 30 * MS_DAY) return 'new';
   if (!c.last_visit_at) return 'inactive';
-  const days = (NOW - new Date(c.last_visit_at).getTime()) / MS_DAY;
+  const days = (now - new Date(c.last_visit_at).getTime()) / MS_DAY;
   if (days > 30) return 'inactive';
   if (programType === 'stamps') {
     if ((c.stamps_count ?? 0) >= vipThreshold) return 'vip';
@@ -117,6 +117,7 @@ export default function AnalyticsTab({
 }: Props) {
   const { t, locale } = useTranslation();
   const [period, setPeriod] = useState<Period>('30d');
+  const NOW = Date.now();
   const totalCustomers = customers.length;
   const periodMs = period === '7d' ? 7 * MS_DAY : period === '30d' ? 30 * MS_DAY : 90 * MS_DAY;
   const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
@@ -127,14 +128,20 @@ export default function AnalyticsTab({
     const activeCustomers = customers.filter(c => c.last_visit_at && (NOW - new Date(c.last_visit_at).getTime()) < periodMs).length;
     const inactiveCustomers = customers.filter(c => !c.last_visit_at || (NOW - new Date(c.last_visit_at).getTime()) > 45 * MS_DAY).length;
     const newCustomers = customers.filter(c => (NOW - new Date(c.created_at).getTime()) < periodMs).length;
-    const returnRate = totalCustomers > 0 ? Math.round((customers.filter(c => c.total_visits > 1).length / totalCustomers) * 100) : 0;
+    // Return rate: customers who visited more than once within the period
+    const visitsByCustomer = new Map<string, number>();
+    transactions.filter(tx => tx.type === 'visit' && (NOW - new Date(tx.created_at).getTime()) < periodMs)
+      .forEach(tx => visitsByCustomer.set(tx.customer_id, (visitsByCustomer.get(tx.customer_id) ?? 0) + 1));
+    const customersWithVisits = visitsByCustomer.size;
+    const returningCustomers = [...visitsByCustomer.values()].filter(v => v > 1).length;
+    const returnRate = customersWithVisits > 0 ? Math.round((returningCustomers / customersWithVisits) * 100) : 0;
 
     const visitsThisPeriod = transactions.filter(t => t.type === 'visit' && (NOW - new Date(t.created_at).getTime()) < periodMs).length;
     const rewardsEarned = transactions.filter(t => t.type === 'reward_redeem' && (NOW - new Date(t.created_at).getTime()) < periodMs).length;
     const completedCards = customers.reduce((sum, c) => sum + (c.completed_cards ?? 0), 0);
 
     const vipThreshold = loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points;
-    const vipCustomers = customers.filter(c => getCustomerStatus(c, loyaltySettings.program_type, vipThreshold) === 'vip').length;
+    const vipCustomers = customers.filter(c => getCustomerStatus(c, loyaltySettings.program_type, vipThreshold, NOW) === 'vip').length;
     const nearThreshold = loyaltySettings.program_type === 'stamps'
       ? Math.max(1, loyaltySettings.stamps_total - 2)
       : loyaltySettings.reward_threshold * 0.8;
@@ -189,7 +196,7 @@ export default function AnalyticsTab({
     const vipThreshold = loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points;
     const statusCounts = { active: 0, inactive: 0, vip: 0, new: 0, nearReward: 0 };
     customers.forEach(c => {
-      const s = getCustomerStatus(c, loyaltySettings.program_type, vipThreshold);
+      const s = getCustomerStatus(c, loyaltySettings.program_type, vipThreshold, NOW);
       statusCounts[s]++;
     });
     statusCounts.nearReward = kpis.nearReward;
