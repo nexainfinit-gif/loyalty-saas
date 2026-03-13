@@ -169,6 +169,104 @@ function buildPassJson(
   return Buffer.from(JSON.stringify(base, null, 2), 'utf8');
 }
 
+/* ── Stamp strip generator ──────────────────────────────────────────────────── */
+
+/**
+ * Generate a stamp grid as a PNG strip image for Apple Wallet.
+ *
+ * Renders filled/empty circles in a 2-row centered layout on a transparent
+ * background, sized to fit the Apple Wallet strip area.
+ *
+ * @param filled   Number of stamps earned
+ * @param total    Total stamps needed
+ * @param width    Strip width in pixels (750 for @2x)
+ * @param height   Strip height in pixels (246 for @2x)
+ * @param fgColor  Foreground hex color for stamp outlines/fills
+ */
+async function generateStampStrip(
+  filled:  number,
+  total:   number,
+  width:   number,
+  height:  number,
+  fgColor: string,
+): Promise<Buffer> {
+  const fg = fgColor.replace('#', '');
+  const r = parseInt(fg.slice(0, 2) || 'ff', 16);
+  const g = parseInt(fg.slice(2, 4) || 'ff', 16);
+  const b = parseInt(fg.slice(4, 6) || 'ff', 16);
+
+  // 2-row layout: ceil/floor split
+  const row1Count = Math.ceil(total / 2);
+  const row2Count = total - row1Count;
+  const maxPerRow = Math.max(row1Count, row2Count);
+
+  // Size stamps to fit width with gaps
+  const gap = 8;
+  const stampSize = Math.min(
+    Math.floor((width * 0.85 - (maxPerRow - 1) * gap) / maxPerRow),
+    Math.floor((height - gap) / 2 - 4),
+    80,
+  );
+
+  // Center the grid vertically and horizontally
+  const gridW = maxPerRow * stampSize + (maxPerRow - 1) * gap;
+  const gridH = (row2Count > 0 ? 2 : 1) * stampSize + (row2Count > 0 ? gap : 0);
+  const offsetX = Math.floor((width - gridW) / 2);
+  const offsetY = Math.floor((height - gridH) / 2);
+
+  function stampSvg(idx: number, isFilled: boolean): Buffer {
+    const cx = stampSize / 2;
+    const radius = cx - 2;
+    const svg = isFilled
+      ? `<svg xmlns="http://www.w3.org/2000/svg" width="${stampSize}" height="${stampSize}">
+           <circle cx="${cx}" cy="${cx}" r="${radius}" fill="rgb(${r},${g},${b})"/>
+           <text x="${cx}" y="${cx + stampSize * 0.15}" text-anchor="middle"
+             font-family="system-ui,sans-serif" font-size="${Math.round(stampSize * 0.4)}"
+             font-weight="bold" fill="white">✓</text>
+         </svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" width="${stampSize}" height="${stampSize}">
+           <circle cx="${cx}" cy="${cx}" r="${radius}" fill="none"
+             stroke="rgb(${r},${g},${b})" stroke-width="2.5" opacity="0.4"/>
+         </svg>`;
+    return Buffer.from(svg);
+  }
+
+  const composites: { input: Buffer; left: number; top: number }[] = [];
+
+  // Row 1 (centered)
+  const row1OffsetX = offsetX + Math.floor((gridW - (row1Count * stampSize + (row1Count - 1) * gap)) / 2);
+  for (let i = 0; i < row1Count; i++) {
+    composites.push({
+      input: stampSvg(i, i < filled),
+      left:  row1OffsetX + i * (stampSize + gap),
+      top:   offsetY,
+    });
+  }
+
+  // Row 2 (centered)
+  if (row2Count > 0) {
+    const row2OffsetX = offsetX + Math.floor((gridW - (row2Count * stampSize + (row2Count - 1) * gap)) / 2);
+    for (let i = 0; i < row2Count; i++) {
+      const idx = row1Count + i;
+      composites.push({
+        input: stampSvg(idx, idx < filled),
+        left:  row2OffsetX + i * (stampSize + gap),
+        top:   offsetY + stampSize + gap,
+      });
+    }
+  }
+
+  return sharp({
+    create: {
+      width, height, channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite(composites)
+    .png()
+    .toBuffer();
+}
+
 /* ── Image helpers ──────────────────────────────────────────────────────────── */
 
 async function solidSquare(
@@ -328,8 +426,14 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
   }
 
   const color = input.primaryColor ?? '#4f6bed';
-  const stripImageUrl = input.configJson?.stripImageUrl as string | undefined;
-  const logoImageUrl  = (input.configJson?.logoImageUrl as string | undefined) || input.logoUrl;
+  const cfg = input.configJson ?? {};
+  const stripImageUrl = cfg.stripImageUrl as string | undefined;
+  const logoImageUrl  = (cfg.logoImageUrl as string | undefined) || input.logoUrl;
+  const fgHex = (cfg.foregroundColor as string) ?? '#ffffff';
+
+  // Auto-generate stamp grid strip for stamps mode (unless custom strip is set)
+  const autoStampStrip = input.passKind === 'stamps' && !stripImageUrl;
+  const stampsTotal = Number(cfg.stamps_total ?? 10);
 
   // ── 1. Generate all pass files ─────────────────────────────────────────────
   const imagePromises: Promise<Buffer>[] = [
@@ -340,11 +444,17 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     fetchOrSolid(logoImageUrl, 160,  50, color),  // logo.png
     fetchOrSolid(logoImageUrl, 320, 100, color),  // logo@2x.png
   ];
-  // Strip image — optional banner behind primary fields (375×123 @1x, 750×246 @2x)
+
+  // Strip image — custom banner OR auto-generated stamp grid
   if (stripImageUrl) {
     imagePromises.push(
       fetchOrSolid(stripImageUrl, 375, 123, color),   // strip.png
       fetchOrSolid(stripImageUrl, 750, 246, color),   // strip@2x.png
+    );
+  } else if (autoStampStrip) {
+    imagePromises.push(
+      generateStampStrip(input.stampsCount, stampsTotal, 375, 123, fgHex),  // strip.png
+      generateStampStrip(input.stampsCount, stampsTotal, 750, 246, fgHex),  // strip@2x.png
     );
   }
 
@@ -359,7 +469,7 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     'logo.png':    logo1x,
     'logo@2x.png': logo2x,
   };
-  if (stripImageUrl && results.length > 6) {
+  if (results.length > 6) {
     files['strip.png']    = results[6];
     files['strip@2x.png'] = results[7];
   }
