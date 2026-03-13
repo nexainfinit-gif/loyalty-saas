@@ -140,8 +140,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     stampsCount:    customer.stamps_count  ?? 0,
     totalPoints:    customer.total_points  ?? 0,
     qrToken:        customer.qr_token      ?? pass.id,
-    restaurantName: restaurant.name,
-    logoUrl:        restaurant.logo_url,
+    restaurantName:      restaurant.name,
+    logoUrl:             restaurant.logo_url,
+    authenticationToken: pass.authentication_token,
   };
 
   try {
