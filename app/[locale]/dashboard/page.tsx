@@ -13,6 +13,7 @@ import OverviewTab from '@/components/OverviewTab';
 import AnalyticsTab from '@/components/AnalyticsTab';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileHeader from '@/components/MobileHeader';
+import CustomerDetailModal from '@/components/CustomerDetailModal';
 import LocaleSwitcher from '@/components/LocaleSwitcher';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
 
@@ -194,6 +195,7 @@ export default function DashboardPage() {
   const [filter, setFilter]             = useState('all');
   const [clientsPage, setClientsPage]   = useState(1);
   const CLIENTS_PER_PAGE = 50;
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [sidebarOpen, setSidebarOpen]   = useState(true);
   const [session, setSession]           = useState<Session | null>(null);
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings>({
@@ -740,6 +742,18 @@ export default function DashboardPage() {
         />
       )}
 
+      {/* ── CUSTOMER DETAIL MODAL ────────────────────────── */}
+      {selectedCustomer && (
+        <CustomerDetailModal
+          customer={selectedCustomer}
+          transactions={transactions}
+          loyaltySettings={loyaltySettings}
+          locale={locale}
+          t={t}
+          onClose={() => setSelectedCustomer(null)}
+        />
+      )}
+
       {/* ── SIDEBAR (hidden on mobile) ───────────────── */}
       <aside
         className={[
@@ -1058,7 +1072,7 @@ export default function DashboardPage() {
                   </div>
                 )}
                 {paginatedCustomers.map(c => (
-                  <div key={c.id} className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
+                  <div key={c.id} className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4 cursor-pointer active:bg-gray-50 transition-colors" onClick={() => setSelectedCustomer(c)}>
                     <div className="flex items-start justify-between mb-3">
                       <div className="min-w-0">
                         <p className="font-semibold text-gray-900 truncate">{c.first_name} {c.last_name}</p>
@@ -1106,7 +1120,7 @@ export default function DashboardPage() {
                       </p>
                     )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => addPoint(c.id, 1)}
                         className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-700 transition-colors tap-target"
@@ -1156,7 +1170,7 @@ export default function DashboardPage() {
                       </tr>
                     )}
                     {paginatedCustomers.map(c => (
-                      <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setSelectedCustomer(c)}>
                         <td className="px-4 py-3.5 font-semibold text-gray-900 whitespace-nowrap">
                           {c.first_name} {c.last_name}
                         </td>
@@ -1191,7 +1205,7 @@ export default function DashboardPage() {
                         </td>
                         <td className="px-4 py-3.5"><StatusBadge status={getCustomerStatus(c, loyaltySettings.program_type, loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points)} t={t} /></td>
                         {enabledKpiKeys.includes('wallet_pass_rate') && (
-                          <td className="px-4 py-3.5">
+                          <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                             {walletPassCustomerIds.has(c.id)
                               ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-success-700 bg-success-50 px-2 py-1 rounded-full">{t('clients.walletActive')}</span>
                               : <button
@@ -1202,7 +1216,7 @@ export default function DashboardPage() {
                             }
                           </td>
                         )}
-                        <td className="px-4 py-3.5">
+                        <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                           <div className="flex gap-1.5">
                             <button
                               onClick={() => addPoint(c.id, 1)}
