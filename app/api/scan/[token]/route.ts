@@ -152,11 +152,14 @@ export async function POST(
   }
 
   // ── Resolve token to customer ─────────────────────────────────────────
+  logger.info({ ctx: 'scan', rid: restaurantId, msg: `raw="${rawToken}" extracted="${scanToken}"` });
+
   const { customer, resolvedBy } = await resolveScanToken(scanToken, restaurantId);
 
   logger.info({ ctx: 'scan', rid: restaurantId, msg: `token="${scanToken}" resolvedBy="${resolvedBy}"` });
 
   if (!customer) {
+    logger.warn({ ctx: 'scan', rid: restaurantId, msg: `NOT FOUND — token="${scanToken}" len=${scanToken.length}` });
     return Response.json({ error: t('api.customerNotFound') }, { status: 404 });
   }
 
@@ -356,24 +359,17 @@ export async function GET(
   const { token: rawGetToken } = await params;
   const scanToken = extractToken(rawGetToken);
 
-  // For GET, resolve by qr_token or id only (short_code is a pass-level concept, not used for preview)
-  const { data: byQrToken } = await supabaseAdmin
-    .from('customers')
-    .select('id, first_name, last_name, total_points, last_visit_at')
-    .eq('qr_token', scanToken)
-    .eq('restaurant_id', guard.restaurantId)
-    .maybeSingle();
+  logger.info({ ctx: 'scan-get', rid: guard.restaurantId, msg: `raw="${rawGetToken}" extracted="${scanToken}"` });
 
-  if (byQrToken) return Response.json({ customer: byQrToken });
+  // Use the same 3-tier resolution as POST (qr_token → id → short_code)
+  const { customer, resolvedBy } = await resolveScanToken(scanToken, guard.restaurantId);
 
-  const { data: byId } = await supabaseAdmin
-    .from('customers')
-    .select('id, first_name, last_name, total_points, last_visit_at')
-    .eq('id', scanToken)
-    .eq('restaurant_id', guard.restaurantId)
-    .maybeSingle();
+  logger.info({ ctx: 'scan-get', rid: guard.restaurantId, msg: `token="${scanToken}" resolvedBy="${resolvedBy}"` });
 
-  if (byId) return Response.json({ customer: byId });
+  if (!customer) {
+    logger.warn({ ctx: 'scan-get', rid: guard.restaurantId, msg: `NOT FOUND — token="${scanToken}" len=${scanToken.length}` });
+    return Response.json({ error: tGet('api.customerNotFound') }, { status: 404 });
+  }
 
-  return Response.json({ error: tGet('api.customerNotFound') }, { status: 404 });
+  return Response.json({ customer });
 }
