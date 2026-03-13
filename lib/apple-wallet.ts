@@ -102,13 +102,13 @@ function buildPassJson(
     const stampsTotal = Number(input.configJson?.stamps_total  ?? 10);
     const rewardMsg   = String(input.configJson?.reward_message ?? 'Récompense offerte');
     base.storeCard = {
-      primaryFields:   [{ key: 'stamps',  label: 'TAMPONS',      value: `${input.stampsCount} / ${stampsTotal}` }],
+      primaryFields:   [{ key: 'stamps',  label: 'TAMPONS',      value: `${input.stampsCount} / ${stampsTotal}`, changeMessage: 'Tampons mis à jour : %@' }],
       auxiliaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }],
     };
   } else if (input.passKind === 'points') {
     const threshold = Number(input.configJson?.reward_threshold ?? 100);
     base.storeCard = {
-      primaryFields:   [{ key: 'points',  label: 'POINTS',            value: String(input.totalPoints) }],
+      primaryFields:   [{ key: 'points',  label: 'POINTS',            value: String(input.totalPoints), changeMessage: 'Votre solde est maintenant de %@ points' }],
       auxiliaryFields: [holderField, { key: 'reward', label: 'SEUIL RÉCOMPENSE', value: `${threshold} pts` }],
     };
   } else {
