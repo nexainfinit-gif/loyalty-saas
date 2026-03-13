@@ -66,8 +66,10 @@ interface Controls {
   // States
   isVip:          boolean;
   isPro:          boolean;
-  // Strip image
+  // Images
   stripImageUrl:  string;
+  logoImageUrl:   string;
+  showLogoText:   boolean;
   // Stamp engine
   stampMode:      'default' | 'custom';
   stampColumns:   number;
@@ -159,6 +161,8 @@ function metaToControls(meta: PassMeta): Controls {
     isVip:           false,
     isPro:           meta.plan === 'pro',
     stripImageUrl:   '',
+    logoImageUrl:    '',
+    showLogoText:    true,
     stampMode:       'default',
     stampColumns:    5,
     stampSize:       40,
@@ -187,6 +191,8 @@ function configJsonToControls(base: Controls, cfg: Record<string, unknown>): Con
     barcodeFormat:   (cfg.barcodeFormat as BarcodeFormat) ?? base.barcodeFormat,
     barcodeAltText:  (cfg.barcodeAltText as string) ?? base.barcodeAltText,
     stripImageUrl:   (cfg.stripImageUrl as string) ?? base.stripImageUrl,
+    logoImageUrl:    (cfg.logoImageUrl as string) ?? base.logoImageUrl,
+    showLogoText:    typeof cfg.showLogoText === 'boolean' ? cfg.showLogoText : base.showLogoText,
     isVip:           typeof cfg.isVip === 'boolean' ? cfg.isVip : base.isVip,
     stampMode:       (cfg.stampMode as 'default' | 'custom') ?? base.stampMode,
     stampColumns:    typeof cfg.stampColumns === 'number' ? cfg.stampColumns : base.stampColumns,
@@ -246,13 +252,23 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
       {/* ── Header row ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-5 pt-5 pb-3">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-white/20 flex-shrink-0 flex items-center justify-center text-base font-bold"
-               style={{ color: c.foregroundColor }}>
-            {c.merchantName.charAt(0).toUpperCase()}
-          </div>
-          <span className="font-semibold text-sm truncate" style={{ color: c.foregroundColor }}>
-            {c.logoText || c.merchantName}
-          </span>
+          {c.logoImageUrl ? (
+            <img
+              src={c.logoImageUrl}
+              alt=""
+              className="h-9 max-w-[80px] object-contain flex-shrink-0"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex-shrink-0 flex items-center justify-center text-base font-bold"
+                 style={{ color: c.foregroundColor }}>
+              {c.merchantName.charAt(0).toUpperCase()}
+            </div>
+          )}
+          {c.showLogoText && (
+            <span className="font-semibold text-sm truncate" style={{ color: c.foregroundColor }}>
+              {c.logoText || c.merchantName}
+            </span>
+          )}
           {c.isVip && (
             <span className="flex-shrink-0 text-[10px] font-bold bg-white/20 px-1.5 py-0.5 rounded-md"
                   style={{ color: c.foregroundColor }}>
@@ -971,6 +987,8 @@ function controlsToConfigJson(c: Controls): Record<string, unknown> {
     barcodeFormat:   c.barcodeFormat,
     barcodeAltText:  c.barcodeAltText,
     stripImageUrl:   c.stripImageUrl,
+    logoImageUrl:    c.logoImageUrl,
+    showLogoText:    c.showLogoText,
     isVip:           c.isVip,
     stampMode:       c.stampMode,
     stampColumns:    c.stampColumns,
@@ -1485,21 +1503,51 @@ export default function WalletPreviewPage() {
               <Field label={t('walletPreview.fieldMerchantName')}>
                 <input type="text" value={controls.merchantName} onChange={e => handleChange('merchantName', e.target.value)} className={inputCls} />
               </Field>
-              <Field label={t('walletPreview.fieldLogoText')}>
-                <input type="text" value={controls.logoText} onChange={e => handleChange('logoText', e.target.value)} placeholder={controls.merchantName} className={inputCls} />
-              </Field>
-              <ImageUpload
-                label={t('walletPreview.fieldStripImage')}
-                hint={t('walletPreview.stripImageHint')}
-                currentUrl={controls.stripImageUrl}
-                onUpload={url => handleChange('stripImageUrl', url)}
-                accessToken={accessToken}
-                restaurantId={rid}
-                uploadType="strip"
-                cropAspect={750 / 246}
-                cropWidth={750}
-                cropHeight={246}
-              />
+
+              {/* Logo */}
+              <div className="border-t border-gray-100 pt-4 space-y-4">
+                <p className="text-xs font-medium text-gray-500">{t('walletPreview.logoSectionTitle')}</p>
+                <ImageUpload
+                  label={t('walletPreview.fieldLogoImage')}
+                  hint={t('walletPreview.logoImageHint')}
+                  currentUrl={controls.logoImageUrl}
+                  onUpload={url => handleChange('logoImageUrl', url)}
+                  accessToken={accessToken}
+                  restaurantId={rid}
+                  uploadType="logo"
+                  cropAspect={160 / 50}
+                  cropWidth={320}
+                  cropHeight={100}
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-700">{t('walletPreview.showLogoTextLabel')}</p>
+                    <p className="text-[11px] text-gray-400">{t('walletPreview.showLogoTextDesc')}</p>
+                  </div>
+                  <Toggle checked={controls.showLogoText} onChange={() => handleChange('showLogoText', !controls.showLogoText)} colorClass="bg-primary-600" />
+                </div>
+                {controls.showLogoText && (
+                  <Field label={t('walletPreview.fieldLogoText')}>
+                    <input type="text" value={controls.logoText} onChange={e => handleChange('logoText', e.target.value)} placeholder={controls.merchantName} className={inputCls} />
+                  </Field>
+                )}
+              </div>
+
+              {/* Strip image */}
+              <div className="border-t border-gray-100 pt-4">
+                <ImageUpload
+                  label={t('walletPreview.fieldStripImage')}
+                  hint={t('walletPreview.stripImageHint')}
+                  currentUrl={controls.stripImageUrl}
+                  onUpload={url => handleChange('stripImageUrl', url)}
+                  accessToken={accessToken}
+                  restaurantId={rid}
+                  uploadType="strip"
+                  cropAspect={750 / 246}
+                  cropWidth={750}
+                  cropHeight={246}
+                />
+              </div>
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -1736,6 +1784,11 @@ export default function WalletPreviewPage() {
 
             {/* ── QR code ────────────────────────────────────────────────── */}
             <Section title={t('walletPreview.sectionBarcode')}>
+              {/* Apple placement note */}
+              <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                <span className="text-gray-400 text-xs mt-px flex-shrink-0">i</span>
+                <p className="text-[11px] text-gray-500 leading-relaxed">{t('walletPreview.qrPlacementNote')}</p>
+              </div>
               <Field label={t('walletPreview.fieldBarcodeFormat')}>
                 <select value={controls.barcodeFormat} onChange={e => handleChange('barcodeFormat', e.target.value as BarcodeFormat)} className={inputCls}>
                   <option value="PKBarcodeFormatQR">QR Code</option>

@@ -68,8 +68,9 @@ function buildPassJson(
   const fgColor = cfg.foregroundColor ? hexToRgb(cfg.foregroundColor as string) : 'rgb(255, 255, 255)';
   const lblColor = cfg.labelColor ? hexToRgb(cfg.labelColor as string) : 'rgb(255, 255, 255)';
 
-  // LogoText — config_json override or restaurant name
-  const logoText = (cfg.logoText as string) ?? input.restaurantName;
+  // LogoText — config_json override or restaurant name (hidden if showLogoText === false)
+  const showLogoText = cfg.showLogoText !== false;
+  const logoText = showLogoText ? ((cfg.logoText as string) ?? input.restaurantName) : '';
 
   // Barcode — format + altText from config_json
   const barcodeFormat = (cfg.barcodeFormat as string) ?? 'PKBarcodeFormatQR';
@@ -309,6 +310,7 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
 
   const color = input.primaryColor ?? '#4f6bed';
   const stripImageUrl = input.configJson?.stripImageUrl as string | undefined;
+  const logoImageUrl  = (input.configJson?.logoImageUrl as string | undefined) || input.logoUrl;
 
   // ── 1. Generate all pass files ─────────────────────────────────────────────
   const imagePromises: Promise<Buffer>[] = [
@@ -316,8 +318,8 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     solidSquare(color,  29,  29),   // icon.png       (required)
     solidSquare(color,  58,  58),   // icon@2x.png    (required)
     solidSquare(color,  87,  87),   // icon@3x.png    (recommended)
-    fetchOrSolid(input.logoUrl, 160,  50, color),  // logo.png
-    fetchOrSolid(input.logoUrl, 320, 100, color),  // logo@2x.png
+    fetchOrSolid(logoImageUrl, 160,  50, color),  // logo.png
+    fetchOrSolid(logoImageUrl, 320, 100, color),  // logo@2x.png
   ];
   // Strip image — optional banner behind primary fields (375×123 @1x, 750×246 @2x)
   if (stripImageUrl) {
