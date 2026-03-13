@@ -39,6 +39,8 @@ export interface PassBuildInput {
   authenticationToken?: string | null;
   /** When true, shows a special reward celebration card instead of stamp grid */
   rewardPending?: boolean;
+  /** Customer referral code (e.g. "A1B2C3") */
+  referralCode?: string | null;
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -123,11 +125,11 @@ function buildPassJson(
     { key: 'terms',   label: 'Conditions',            value: 'Ce pass est personnel et non transférable.' },
   ];
 
-  // Auto header: N° client (short ID from customerId, unless user has custom headerFields)
-  const shortId = input.customerId.replace(/-/g, '').slice(-6).toUpperCase();
+  // Auto header: N° parrainage (referral code, or short ID fallback)
+  const memberCode = input.referralCode || input.customerId.replace(/-/g, '').slice(-6).toUpperCase();
   const autoHeaderFields = cfgHeaderFields.length > 0
     ? cfgHeaderFields
-    : [{ key: 'memberNo', label: 'N°', value: shortId }];
+    : [{ key: 'memberNo', label: 'N°', value: memberCode }];
 
   if (input.passKind === 'stamps') {
     const stampsTotal = Number(cfg.stamps_total  ?? 10);

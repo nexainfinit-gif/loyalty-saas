@@ -91,7 +91,7 @@ export async function GET(
   // ── Fetch customer ───────────────────────────────────────────────────────
   const { data: customer, error: custErr } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, last_name, qr_token, stamps_count, total_points, reward_pending')
+    .select('id, first_name, last_name, qr_token, stamps_count, total_points, reward_pending, referral_code')
     .eq('id', pass.customer_id)
     .single();
 
@@ -165,6 +165,7 @@ export async function GET(
     logoUrl:             restaurant.logo_url,
     authenticationToken: authToken,
     rewardPending:       (customer as { reward_pending?: boolean }).reward_pending ?? false,
+    referralCode:        (customer as { referral_code?: string | null }).referral_code ?? null,
   };
 
   try {
