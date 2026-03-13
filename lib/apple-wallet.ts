@@ -236,39 +236,8 @@ async function generateStampStrip(opts: {
   const offsetY = Math.floor((height - gridH) / 2);
 
   // ── Prepare stamp images (custom PNG or default SVG) ────────────────────
-
-  /** Extract Supabase storage path from a signed or public URL, or return null */
-  function extractSupabasePath(url: string): string | null {
-    // Signed: /storage/v1/object/sign/bucket/path?token=...
-    const signMatch = url.match(/\/storage\/v1\/object\/sign\/([^?]+)/);
-    if (signMatch) return signMatch[1];
-    // Public: /storage/v1/object/public/bucket/path
-    const pubMatch = url.match(/\/storage\/v1\/object\/public\/([^?]+)/);
-    if (pubMatch) return pubMatch[1];
-    return null;
-  }
-
-  async function fetchWithResign(url: string): Promise<Response> {
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) } as RequestInit);
-    if (res.ok) return res;
-    // If signed URL expired (400/403), try to re-sign from Supabase path
-    const fullPath = extractSupabasePath(url);
-    if (fullPath && (res.status === 400 || res.status === 403)) {
-      const bucket = fullPath.split('/')[0];
-      const filePath = fullPath.split('/').slice(1).join('/');
-      const { data: signed } = await supabaseAdmin.storage
-        .from(bucket)
-        .createSignedUrl(filePath, 315_360_000);
-      if (signed?.signedUrl) {
-        const retry = await fetch(signed.signedUrl, { signal: AbortSignal.timeout(5000) } as RequestInit);
-        if (retry.ok) return retry;
-      }
-    }
-    throw new Error(`fetch ${res.status}`);
-  }
-
   async function fetchAndResize(url: string): Promise<Buffer> {
-    const res = await fetchWithResign(url);
+    const res = await fetchWithAutoResign(url);
     const raw = Buffer.from(await res.arrayBuffer());
     const resized = await sharp(raw)
       .resize(stampSize, stampSize, { fit: 'cover', position: 'centre' })
@@ -413,6 +382,35 @@ async function solidSquare(
   }).png().toBuffer();
 }
 
+/** Extract Supabase storage path from a signed or public URL */
+function extractSupabaseStoragePath(url: string): string | null {
+  const signMatch = url.match(/\/storage\/v1\/object\/sign\/([^?]+)/);
+  if (signMatch) return signMatch[1];
+  const pubMatch = url.match(/\/storage\/v1\/object\/public\/([^?]+)/);
+  if (pubMatch) return pubMatch[1];
+  return null;
+}
+
+/** Fetch URL, auto re-signing expired Supabase signed URLs */
+async function fetchWithAutoResign(url: string): Promise<Response> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(5000) } as RequestInit);
+  if (res.ok) return res;
+  // If Supabase signed URL expired (400/403), re-sign it
+  const fullPath = extractSupabaseStoragePath(url);
+  if (fullPath && (res.status === 400 || res.status === 403)) {
+    const bucket = fullPath.split('/')[0];
+    const filePath = fullPath.split('/').slice(1).join('/');
+    const { data: signed } = await supabaseAdmin.storage
+      .from(bucket)
+      .createSignedUrl(filePath, 315_360_000);
+    if (signed?.signedUrl) {
+      const retry = await fetch(signed.signedUrl, { signal: AbortSignal.timeout(5000) } as RequestInit);
+      if (retry.ok) return retry;
+    }
+  }
+  throw new Error(`fetch ${res.status}`);
+}
+
 async function fetchOrSolid(
   url:      string | null | undefined,
   width:    number,
@@ -421,15 +419,15 @@ async function fetchOrSolid(
 ): Promise<Buffer> {
   if (url) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) } as RequestInit);
-      if (res.ok) {
-        const raw = Buffer.from(await res.arrayBuffer());
-        return sharp(raw)
-          .resize(width, height, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-          .png()
-          .toBuffer();
-      }
-    } catch { /* fall through to solid colour */ }
+      const res = await fetchWithAutoResign(url);
+      const raw = Buffer.from(await res.arrayBuffer());
+      return sharp(raw)
+        .resize(width, height, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .png()
+        .toBuffer();
+    } catch (err) {
+      console.warn('[pkpass] Failed to fetch image:', url, err instanceof Error ? err.message : err);
+    }
   }
   return solidSquare(fallback, width, height);
 }
