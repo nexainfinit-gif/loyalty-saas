@@ -174,22 +174,25 @@ function buildPassJson(
 /**
  * Generate a stamp grid as a PNG strip image for Apple Wallet.
  *
- * Renders filled/empty circles in a 2-row centered layout on a transparent
+ * Renders filled/empty stamps in a 2-row centered layout on a transparent
  * background, sized to fit the Apple Wallet strip area.
  *
- * @param filled   Number of stamps earned
- * @param total    Total stamps needed
- * @param width    Strip width in pixels (750 for @2x)
- * @param height   Strip height in pixels (246 for @2x)
- * @param fgColor  Foreground hex color for stamp outlines/fills
+ * Uses custom PNG images when provided (stampFilledUrl / stampEmptyUrl),
+ * otherwise falls back to default SVG circles with checkmarks.
  */
-async function generateStampStrip(
-  filled:  number,
-  total:   number,
-  width:   number,
-  height:  number,
-  fgColor: string,
-): Promise<Buffer> {
+async function generateStampStrip(opts: {
+  filled:         number;
+  total:          number;
+  width:          number;
+  height:         number;
+  fgColor:        string;
+  stampFilledUrl?: string;
+  stampEmptyUrl?:  string;
+  stampRound?:     boolean;
+}): Promise<Buffer> {
+  const { filled, total, width, height, fgColor,
+          stampFilledUrl, stampEmptyUrl, stampRound = true } = opts;
+
   const fg = fgColor.replace('#', '');
   const r = parseInt(fg.slice(0, 2) || 'ff', 16);
   const g = parseInt(fg.slice(2, 4) || 'ff', 16);
@@ -214,7 +217,24 @@ async function generateStampStrip(
   const offsetX = Math.floor((width - gridW) / 2);
   const offsetY = Math.floor((height - gridH) / 2);
 
-  function stampSvg(idx: number, isFilled: boolean): Buffer {
+  // ── Prepare stamp images (custom PNG or default SVG) ────────────────────
+  async function fetchAndResize(url: string): Promise<Buffer> {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) } as RequestInit);
+    if (!res.ok) throw new Error(`fetch ${res.status}`);
+    const raw = Buffer.from(await res.arrayBuffer());
+    const resized = await sharp(raw)
+      .resize(stampSize, stampSize, { fit: 'cover', position: 'centre' })
+      .png()
+      .toBuffer();
+    if (!stampRound) return resized;
+    const mask = Buffer.from(
+      `<svg width="${stampSize}" height="${stampSize}">` +
+      `<circle cx="${stampSize / 2}" cy="${stampSize / 2}" r="${stampSize / 2}" fill="white"/></svg>`,
+    );
+    return sharp(resized).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
+  }
+
+  function defaultSvg(isFilled: boolean): Buffer {
     const cx = stampSize / 2;
     const radius = cx - 2;
     const svg = isFilled
@@ -231,13 +251,27 @@ async function generateStampStrip(
     return Buffer.from(svg);
   }
 
+  // Pre-fetch custom images once (reuse for all stamps)
+  let filledBuf: Buffer;
+  let emptyBuf: Buffer;
+  try {
+    filledBuf = stampFilledUrl ? await fetchAndResize(stampFilledUrl) : defaultSvg(true);
+  } catch {
+    filledBuf = defaultSvg(true);
+  }
+  try {
+    emptyBuf = stampEmptyUrl ? await fetchAndResize(stampEmptyUrl) : defaultSvg(false);
+  } catch {
+    emptyBuf = defaultSvg(false);
+  }
+
   const composites: { input: Buffer; left: number; top: number }[] = [];
 
   // Row 1 (centered)
   const row1OffsetX = offsetX + Math.floor((gridW - (row1Count * stampSize + (row1Count - 1) * gap)) / 2);
   for (let i = 0; i < row1Count; i++) {
     composites.push({
-      input: stampSvg(i, i < filled),
+      input: i < filled ? filledBuf : emptyBuf,
       left:  row1OffsetX + i * (stampSize + gap),
       top:   offsetY,
     });
@@ -249,7 +283,7 @@ async function generateStampStrip(
     for (let i = 0; i < row2Count; i++) {
       const idx = row1Count + i;
       composites.push({
-        input: stampSvg(idx, idx < filled),
+        input: idx < filled ? filledBuf : emptyBuf,
         left:  row2OffsetX + i * (stampSize + gap),
         top:   offsetY + stampSize + gap,
       });
@@ -434,6 +468,9 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
   // Auto-generate stamp grid strip for stamps mode (unless custom strip is set)
   const autoStampStrip = input.passKind === 'stamps' && !stripImageUrl;
   const stampsTotal = Number(cfg.stamps_total ?? 10);
+  const stampFilledUrl = (cfg.stampFilledUrl as string) || undefined;
+  const stampEmptyUrl  = (cfg.stampEmptyUrl  as string) || undefined;
+  const stampRound     = cfg.stampRound !== false;
 
   // ── 1. Generate all pass files ─────────────────────────────────────────────
   const imagePromises: Promise<Buffer>[] = [
@@ -452,9 +489,13 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
       fetchOrSolid(stripImageUrl, 750, 246, color),   // strip@2x.png
     );
   } else if (autoStampStrip) {
+    const stampOpts = {
+      filled: input.stampsCount, total: stampsTotal, fgColor: fgHex,
+      stampFilledUrl, stampEmptyUrl, stampRound,
+    };
     imagePromises.push(
-      generateStampStrip(input.stampsCount, stampsTotal, 375, 123, fgHex),  // strip.png
-      generateStampStrip(input.stampsCount, stampsTotal, 750, 246, fgHex),  // strip@2x.png
+      generateStampStrip({ ...stampOpts, width: 375, height: 123 }),  // strip.png
+      generateStampStrip({ ...stampOpts, width: 750, height: 246 }),  // strip@2x.png
     );
   }
 
