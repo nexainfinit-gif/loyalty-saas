@@ -61,6 +61,7 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
       .from('restaurants')
       .select('id, plan, plan_id, wallet_studio_enabled')
       .eq('owner_id', userId)
+      .neq('is_demo', true)
       .maybeSingle(),
     supabaseAdmin
       .from('profiles')

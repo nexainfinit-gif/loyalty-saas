@@ -321,7 +321,7 @@ export default function DashboardPage() {
 
       const { data: resto } = await supabase
         .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
-        .eq('owner_id', session.user.id).maybeSingle();
+        .eq('owner_id', session.user.id).eq('is_demo', false).maybeSingle();
       if (!resto) { router.replace('/onboarding'); return; }
 
       // Gate: require active subscription

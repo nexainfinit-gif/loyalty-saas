@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const headers = new Headers(response.headers);
   headers.append(
     'Set-Cookie',
-    `x-admin-impersonate=${restaurantId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600`,
+    `x-admin-impersonate=${restaurantId}; Path=/; SameSite=Strict; Max-Age=3600`,
   );
 
   return new Response(response.body, {
@@ -52,7 +52,7 @@ export async function DELETE(req: Request) {
   const headers = new Headers(response.headers);
   headers.append(
     'Set-Cookie',
-    'x-admin-impersonate=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0',
+    'x-admin-impersonate=; Path=/; SameSite=Strict; Max-Age=0',
   );
 
   return new Response(response.body, {
