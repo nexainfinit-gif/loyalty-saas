@@ -544,6 +544,20 @@ export default function AdminRestaurantDetailPage() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-4">Actions rapides</h2>
           <div className="flex flex-wrap gap-3">
+            <button
+              onClick={async () => {
+                await fetch('/api/admin/impersonate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ restaurant_id: restaurant.id }),
+                });
+                window.location.href = `/${locale}/dashboard`;
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              {t('demo.impersonateBtn')}
+            </button>
             <a
               href={`/register/${restaurant.slug}`}
               target="_blank" rel="noopener noreferrer"

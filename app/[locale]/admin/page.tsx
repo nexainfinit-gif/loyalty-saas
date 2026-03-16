@@ -139,6 +139,27 @@ export default function AdminPage() {
   const [pendingActions, setPendingActions] = useState<GrowthAction[]>([]);
   const [actionsLoading, setActionsLoading] = useState(false);
   const [dismissingId, setDismissingId]   = useState<string | null>(null);
+  const [seeding, setSeeding]             = useState(false);
+
+  async function handleSeedDemo() {
+    setSeeding(true);
+    try {
+      const res = await fetch('/api/admin/seed-demo', { method: 'POST' });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch {}
+    setSeeding(false);
+  }
+
+  async function handleImpersonate(restaurantId: string) {
+    await fetch('/api/admin/impersonate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurant_id: restaurantId }),
+    });
+    window.location.href = `/${locale}/dashboard`;
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -292,6 +313,13 @@ export default function AdminPage() {
             >
               {t('admin.walletStudio')}
             </a>
+            <button
+              onClick={handleSeedDemo}
+              disabled={seeding}
+              className="text-sm bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg font-medium hover:bg-amber-200 transition-colors disabled:opacity-50"
+            >
+              {seeding ? t('demo.seeding') : t('demo.seedBtn')}
+            </button>
             <a
               href={`/${locale}/dashboard`}
               className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
@@ -580,7 +608,16 @@ export default function AdminPage() {
                           {r.active_30d}
                         </td>
                         <td className="px-4 py-3.5 text-right">
-                          <span className="text-primary-600 text-xs font-medium">{t('admin.viewBtn')}</span>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleImpersonate(r.id); }}
+                              className="text-amber-600 hover:text-amber-800 text-xs font-medium px-2 py-1 rounded-lg hover:bg-amber-50 transition-colors"
+                              title={t('demo.impersonateBtn')}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                            <span className="text-primary-600 text-xs font-medium">{t('admin.viewBtn')}</span>
+                          </div>
                         </td>
                       </tr>
                     ))}

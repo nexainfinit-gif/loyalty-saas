@@ -1527,5 +1527,17 @@
     "invalidScanAction": "Action de scan invalide ou désactivée.",
     "scanError": "Erreur lors de l'enregistrement du scan. Réessayez.",
     "defaultReward": "Récompense offerte !"
+  },
+  "demo": {
+    "bannerLabel": "Mode demo",
+    "exitBtn": "Quitter",
+    "seedBtn": "Seed Demo",
+    "seedSuccess": "5 restaurants démo créés avec succès",
+    "seedError": "Erreur lors du seed",
+    "seeding": "Création en cours...",
+    "cleanupBtn": "Supprimer les démos",
+    "cleanupSuccess": "Restaurants démo supprimés",
+    "impersonateBtn": "Voir comme ce restaurant",
+    "impersonateIcon": "Demo"
   }
 }

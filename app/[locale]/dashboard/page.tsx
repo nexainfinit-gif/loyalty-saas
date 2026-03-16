@@ -227,6 +227,10 @@ export default function DashboardPage() {
   const [walletPushPreview, setWalletPushPreview] = useState(false);
   const [sendingWalletPush, setSendingWalletPush] = useState(false);
   const [walletPush, setWalletPush] = useState({ name: '', message: '', segment: 'all' });
+  // Impersonation state (admin demo mode)
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [impersonatedId, setImpersonatedId] = useState<string | null>(null);
+  const [demoPlans, setDemoPlans] = useState<{ id: string; key: string; name: string }[]>([]);
   const [restaurantSettings, setRestaurantSettings] = useState<Record<string, string>>({});
   const [savingRestaurantSettings, setSavingRestaurantSettings] = useState(false);
   const [restaurantSettingsMsg, setRestaurantSettingsMsg] = useState('');
@@ -279,6 +283,41 @@ export default function DashboardPage() {
 
       if (!session) { router.replace('/dashboard/login'); return; }
       setSession(session);
+
+      // ── Check for admin impersonation cookie ──────────────────────────────
+      const impersonateCookie = document.cookie
+        .split(';')
+        .find(c => c.trim().startsWith('x-admin-impersonate='));
+      const impersonateId = impersonateCookie?.split('=')[1]?.trim() || null;
+
+      if (impersonateId) {
+        // Load all data from server proxy (bypasses RLS)
+        const proxyRes = await fetch('/api/admin/impersonate/dashboard-data', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (proxyRes.ok) {
+          const data = await proxyRes.json();
+          setIsImpersonating(true);
+          setImpersonatedId(impersonateId);
+          // Load available plans for the plan switcher
+          fetch('/api/admin/plans', { headers: { Authorization: `Bearer ${session.access_token}` } })
+            .then(r => r.json())
+            .then(d => setDemoPlans(d.plans ?? []))
+            .catch(() => {});
+          setRestaurant(data.restaurant as unknown as Restaurant);
+          setEditName(data.restaurant.name ?? '');
+          setEditSlug(data.restaurant.slug ?? '');
+          setCustomers(data.customers ?? []);
+          setTransactions(data.transactions ?? []);
+          if (data.loyaltySettings) setLoyaltySettings(data.loyaltySettings);
+          setSentCampaigns(data.campaigns ?? []);
+          setRestaurantSettings(data.restaurantSettings ?? {});
+          if (data.templateCount === 0) setHasTemplates(false);
+          setLoading(false);
+          return;
+        }
+        // If proxy fails, fall through to normal loading
+      }
 
       const { data: resto } = await supabase
         .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
@@ -753,7 +792,51 @@ export default function DashboardPage() {
      RENDER
   ════════════════════════════════════════════════════════ */
   return (
-    <div className="flex min-h-screen bg-surface no-overscroll">
+    <div className={`flex min-h-screen bg-surface no-overscroll ${isImpersonating ? 'pt-[44px]' : ''}`}>
+
+      {/* ── IMPERSONATION BANNER (admin demo mode) ───── */}
+      {isImpersonating && restaurant && (
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between gap-3" style={{ minHeight: 44 }}>
+          <div className="flex items-center gap-2.5 text-sm">
+            <span className="text-amber-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+            <span className="font-semibold text-amber-900">{t('demo.bannerLabel')}</span>
+            <span className="text-amber-700">{restaurant.name}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-200 text-amber-800 font-medium">{restaurant.plan}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={restaurant.plan_id ?? ''}
+              onChange={async (e) => {
+                if (!session || !impersonatedId) return;
+                const planId = e.target.value;
+                if (!planId) return;
+                await fetch(`/api/admin/restaurants/${impersonatedId}`, {
+                  method: 'PATCH',
+                  headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ plan_id: planId }),
+                });
+                window.location.reload();
+              }}
+              className="text-xs bg-white border border-amber-300 rounded-lg px-2 py-1.5 text-amber-900"
+            >
+              {demoPlans.map(p => (
+                <option key={p.id} value={p.id}>{p.name} ({p.key})</option>
+              ))}
+            </select>
+            <button
+              onClick={async () => {
+                await fetch('/api/admin/impersonate', { method: 'DELETE', headers: { Authorization: `Bearer ${session?.access_token ?? ''}` } });
+                window.location.href = `/${locale}/admin`;
+              }}
+              className="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-amber-700 transition-colors"
+            >
+              {t('demo.exitBtn')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── TUTORIAL (first visit) ───────────────────── */}
       {showTutorial && (

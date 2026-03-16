@@ -24,6 +24,8 @@ export interface AuthContext {
    * Also granted by per-restaurant wallet_studio_enabled manual override.
    */
   walletEnabled: boolean;
+  /** true when platform owner is impersonating another restaurant via demo mode */
+  impersonating?: boolean;
 }
 
 /* ── Internal: resolve user ID from Bearer header or cookie session ────────── */
@@ -67,9 +69,31 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
       .maybeSingle(),
   ]);
 
-  const plan        = restaurant?.plan ?? 'free';
-  const planId      = restaurant?.plan_id ?? null;
-  const manualGrant = restaurant?.wallet_studio_enabled ?? false;
+  const role = (profile?.platform_role ?? 'restaurant_admin') as PlatformRole;
+
+  // ── Impersonation: platform owner can override restaurant context via cookie ──
+  const cookieHeader = request.headers.get('cookie') ?? '';
+  const impersonateMatch = cookieHeader.match(/(?:^|;\s*)x-admin-impersonate=([^;]+)/);
+  const impersonateId = impersonateMatch?.[1]?.trim() || null;
+
+  let targetRestaurant = restaurant;
+  let impersonating = false;
+
+  if (impersonateId && role === 'owner') {
+    const { data: impersonated } = await supabaseAdmin
+      .from('restaurants')
+      .select('id, plan, plan_id, wallet_studio_enabled')
+      .eq('id', impersonateId)
+      .maybeSingle();
+    if (impersonated) {
+      targetRestaurant = impersonated;
+      impersonating = true;
+    }
+  }
+
+  const plan        = targetRestaurant?.plan ?? 'free';
+  const planId      = targetRestaurant?.plan_id ?? null;
+  const manualGrant = targetRestaurant?.wallet_studio_enabled ?? false;
 
   // Load feature flags from plan_features when plan_id is available
   let features: Record<string, boolean> = {};
@@ -88,12 +112,13 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
 
   return {
     userId,
-    platformRole: (profile?.platform_role ?? 'restaurant_admin') as PlatformRole,
-    restaurantId: restaurant?.id ?? null,
+    platformRole: role,
+    restaurantId: targetRestaurant?.id ?? null,
     plan,
     planId,
     features,
     walletEnabled,
+    impersonating,
   };
 }
 
