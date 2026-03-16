@@ -37,14 +37,13 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Customer not found' }, { status: 404 });
   }
 
-  // Find active Apple passes with push tokens for this customer
+  // Find active Apple passes for this customer
   const { data: applePasses } = await supabaseAdmin
     .from('wallet_passes')
-    .select('id, push_token')
+    .select('id')
     .eq('customer_id', customerId)
     .eq('platform', 'apple')
-    .eq('status', 'active')
-    .not('push_token', 'is', null);
+    .eq('status', 'active');
 
   if (!applePasses?.length) {
     return Response.json({ pushed: 0 });
@@ -55,8 +54,10 @@ export async function POST(req: Request) {
 
   await Promise.allSettled(applePasses.map(async (pass) => {
     try {
-      await pushPassUpdate(pass.push_token!);
-      pushed++;
+      const results = await pushPassUpdate(pass.id);
+      const anySuccess = results.some(r => r.success);
+      if (anySuccess) pushed++;
+      else if (results.length > 0) failed++;
     } catch (err) {
       failed++;
       logger.error({

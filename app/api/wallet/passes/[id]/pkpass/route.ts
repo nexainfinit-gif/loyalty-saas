@@ -58,6 +58,7 @@ export async function GET(
       status,
       serial_number,
       authentication_token,
+      promo_message,
       customer_id,
       restaurant_id,
       pass_version,
@@ -166,6 +167,7 @@ export async function GET(
     authenticationToken: authToken,
     rewardPending:       (customer as { reward_pending?: boolean }).reward_pending ?? false,
     referralCode:        (customer as { referral_code?: string | null }).referral_code ?? null,
+    promoMessage:        (pass as { promo_message?: string | null }).promo_message ?? null,
   };
 
   try {

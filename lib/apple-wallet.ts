@@ -41,6 +41,8 @@ export interface PassBuildInput {
   rewardPending?: boolean;
   /** Customer referral code (e.g. "A1B2C3") */
   referralCode?: string | null;
+  /** Current promo/marketing message — shown on pass back, triggers lock-screen notification via changeMessage */
+  promoMessage?: string | null;
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -120,10 +122,20 @@ function buildPassJson(
   };
 
   // Default back fields (CGU, contact) — merged with custom backFields
-  const defaultBackFields = [
+  const defaultBackFields: Record<string, unknown>[] = [
     { key: 'program', label: 'Programme de fidélité', value: `Carte de fidélité – ${input.restaurantName}` },
     { key: 'terms',   label: 'Conditions',            value: 'Ce pass est personnel et non transférable.' },
   ];
+
+  // Promo / marketing message — triggers iOS lock-screen notification via changeMessage
+  if (input.promoMessage) {
+    defaultBackFields.unshift({
+      key:           'promo',
+      label:         'Offre du moment',
+      value:         input.promoMessage,
+      changeMessage: '%@',
+    });
+  }
 
   // Auto header: N° parrainage (referral code, or short ID fallback)
   const memberCode = input.referralCode || input.customerId.replace(/-/g, '').slice(-6).toUpperCase();

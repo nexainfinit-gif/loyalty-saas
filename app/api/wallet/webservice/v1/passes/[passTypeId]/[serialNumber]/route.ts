@@ -52,6 +52,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       restaurant_id,
       pass_version,
       authentication_token,
+      promo_message,
       updated_at,
       template:wallet_pass_templates (
         pass_kind,
@@ -148,6 +149,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     authenticationToken: pass.authentication_token,
     rewardPending:       (customer as { reward_pending?: boolean }).reward_pending ?? false,
     referralCode:        (customer as { referral_code?: string | null }).referral_code ?? null,
+    promoMessage:        (pass as { promo_message?: string | null }).promo_message ?? null,
   };
 
   try {

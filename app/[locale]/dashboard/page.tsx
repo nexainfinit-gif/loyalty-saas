@@ -222,6 +222,11 @@ export default function DashboardPage() {
   const [newCampaign, setNewCampaign] = useState({
     name: '', type: 'custom', subject: '', body: '', segment: 'all', scheduled_at: '',
   });
+  // Wallet push campaign state
+  const [walletPushModal, setWalletPushModal] = useState(false);
+  const [walletPushPreview, setWalletPushPreview] = useState(false);
+  const [sendingWalletPush, setSendingWalletPush] = useState(false);
+  const [walletPush, setWalletPush] = useState({ name: '', message: '', segment: 'all' });
   const [restaurantSettings, setRestaurantSettings] = useState<Record<string, string>>({});
   const [savingRestaurantSettings, setSavingRestaurantSettings] = useState(false);
   const [restaurantSettingsMsg, setRestaurantSettingsMsg] = useState('');
@@ -637,6 +642,39 @@ export default function DashboardPage() {
       toast.error(t('dashboard.toastNetworkError'));
     }
     setSendingCampaign(false);
+  }
+
+  async function sendWalletPush() {
+    if (!session) return;
+    setSendingWalletPush(true);
+    try {
+      const res = await fetch('/api/compaigns/wallet-push', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(walletPush),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWalletPushModal(false);
+        setWalletPushPreview(false);
+        const newEntry: Campaign = {
+          id: data.campaign_id ?? crypto.randomUUID(),
+          name: walletPush.name,
+          type: 'wallet_push',
+          recipients_count: data.pushed ?? data.passes,
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          scheduled_at: null,
+        };
+        setSentCampaigns(prev => [newEntry, ...prev]);
+        toast.success(t('dashboard.toastCampaignSent', { count: data.pushed }));
+      } else {
+        toast.error(t('dashboard.toastCampaignError', { error: data.error ?? 'Inconnu' }));
+      }
+    } catch {
+      toast.error(t('dashboard.toastNetworkError'));
+    }
+    setSendingWalletPush(false);
   }
 
   async function handleSignOut() {
@@ -1318,16 +1356,28 @@ export default function DashboardPage() {
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('campaigns.title')}</h2>
                   <p className="text-sm text-gray-500 mt-0.5">{t('campaigns.subtitle')}</p>
                 </div>
-                <button
-                  onClick={() => {
-                    setCampaignModal(true);
-                    setCampaignPreview(false);
-                    setNewCampaign({ name: '', type: 'custom', subject: '', body: '', segment: 'all', scheduled_at: '' });
-                  }}
-                  className="self-start sm:self-auto flex-shrink-0 bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors tap-target"
-                >
-                  {t('campaigns.newCampaign')}
-                </button>
+                <div className="flex gap-2 self-start sm:self-auto">
+                  <button
+                    onClick={() => {
+                      setWalletPushModal(true);
+                      setWalletPushPreview(false);
+                      setWalletPush({ name: '', message: '', segment: 'all' });
+                    }}
+                    className="flex-shrink-0 bg-white text-gray-900 border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors tap-target"
+                  >
+                    {t('campaigns.walletPushBtn')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCampaignModal(true);
+                      setCampaignPreview(false);
+                      setNewCampaign({ name: '', type: 'custom', subject: '', body: '', segment: 'all', scheduled_at: '' });
+                    }}
+                    className="flex-shrink-0 bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors tap-target"
+                  >
+                    {t('campaigns.newCampaign')}
+                  </button>
+                </div>
               </div>
 
               {/* Templates */}
@@ -1382,7 +1432,7 @@ export default function DashboardPage() {
                             </Badge>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-gray-400">
-                            <span>{c.type}</span>
+                            <span>{c.type === 'wallet_push' ? 'Wallet' : c.type}</span>
                             <span>·</span>
                             <span className="tabular-nums">{t('campaigns.recipientCount', { count: c.recipients_count })}</span>
                             <span>·</span>
@@ -1408,7 +1458,7 @@ export default function DashboardPage() {
                         {sentCampaigns.map(c => (
                           <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                             <td className="px-4 py-3.5 font-semibold text-gray-900">{c.name}</td>
-                            <td className="px-4 py-3.5 text-gray-500">{c.type}</td>
+                            <td className="px-4 py-3.5 text-gray-500">{c.type === 'wallet_push' ? 'Wallet' : c.type}</td>
                             <td className="px-4 py-3.5 text-gray-500 tabular-nums">{c.recipients_count}</td>
                             <td className="px-4 py-3.5">
                               <Badge
@@ -1577,6 +1627,125 @@ export default function DashboardPage() {
                         <button
                           onClick={() => setCampaignPreview(true)}
                           disabled={!newCampaign.name || !newCampaign.subject || !newCampaign.body}
+                          className="w-full mt-6 py-3 rounded-xl text-sm font-semibold transition-all bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+                        >
+                          {t('campaigns.createPreviewBtn')}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Wallet Push Modal */}
+              {walletPushModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setWalletPushModal(false)}>
+                  <div className="bg-white rounded-2xl px-4 sm:px-6 py-5 sm:py-6 w-full max-w-[560px] max-h-[90vh] overflow-y-auto shadow-[0_20px_60px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+                    {walletPushPreview ? (
+                      <>
+                        <div className="flex items-center justify-between mb-6">
+                          <h2 className="text-lg font-bold text-gray-900">{t('campaigns.walletPushPreviewTitle')}</h2>
+                          <button onClick={() => setWalletPushModal(false)} className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">✕</button>
+                        </div>
+
+                        {/* iOS notification preview */}
+                        <div className="mb-4">
+                          <p className="text-xs text-gray-500 mb-2">{t('campaigns.walletPushPreviewNotif')}</p>
+                          <div className="bg-gray-50 rounded-xl p-4 flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{ background: restaurant?.primary_color ?? '#4F6BED' }}>
+                              <span className="text-white text-sm font-bold">{restaurant?.name?.charAt(0) ?? 'R'}</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">{restaurant?.name}</p>
+                              <p className="text-sm text-gray-600">{t('campaigns.walletPushPreviewNotifText')}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Back of pass preview */}
+                        <div className="mb-4">
+                          <p className="text-xs text-gray-500 mb-2">{t('campaigns.walletPushPreviewBack')}</p>
+                          <div className="border border-gray-200 rounded-xl p-4">
+                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{t('campaigns.walletPushMessageLabel')}</p>
+                            <p className="text-sm text-gray-900">{walletPush.message}</p>
+                          </div>
+                        </div>
+
+                        {/* Recipient info */}
+                        <div className="bg-primary-50 rounded-xl p-3.5 mb-5 text-sm text-primary-700">
+                          {t('campaigns.walletPushRecipientInfo', { count: getSegmentCount(walletPush.segment) })}
+                        </div>
+
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setWalletPushPreview(false)}
+                            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors"
+                          >
+                            {t('campaigns.previewEditBtn')}
+                          </button>
+                          <button
+                            onClick={sendWalletPush}
+                            disabled={sendingWalletPush}
+                            className="flex-[2] bg-gray-900 text-white py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                          >
+                            {sendingWalletPush
+                              ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-ds-spin" />{t('campaigns.walletPushSending')}</>
+                              : t('campaigns.walletPushSendBtn')}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between mb-6">
+                          <h2 className="text-lg font-bold text-gray-900">{t('campaigns.walletPushTitle')}</h2>
+                          <button onClick={() => setWalletPushModal(false)} className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">✕</button>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('campaigns.walletPushNameLabel')}</label>
+                            <input
+                              value={walletPush.name}
+                              onChange={e => setWalletPush(s => ({ ...s, name: e.target.value }))}
+                              placeholder={t('campaigns.walletPushNamePlaceholder')}
+                              className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl transition-colors"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('campaigns.walletPushSegmentLabel')}</label>
+                            <select
+                              value={walletPush.segment}
+                              onChange={e => setWalletPush(s => ({ ...s, segment: e.target.value }))}
+                              className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl transition-colors"
+                            >
+                              <option value="all">{t('campaigns.segmentAll', { count: totalCustomers })}</option>
+                              <option value="active">{t('campaigns.segmentActive', { count: activeCustomers })}</option>
+                              <option value="inactive_45">{t('campaigns.segmentInactive45', { count: inactives45.length })}</option>
+                              <option value="birthday">{t('campaigns.segmentBirthday', { count: birthdaysSoon.length })}</option>
+                              <option value="near_reward">{t('campaigns.segmentNearReward', { count: nearReward.length })}</option>
+                              <option value="vip">{t('campaigns.segmentVip', { count: customers.filter(c => getCustomerStatus(c, loyaltySettings.program_type, loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points) === 'vip').length })}</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('campaigns.walletPushMessageLabel')}</label>
+                            <textarea
+                              value={walletPush.message}
+                              onChange={e => setWalletPush(s => ({ ...s, message: e.target.value }))}
+                              placeholder={t('campaigns.walletPushMessagePlaceholder')}
+                              rows={3}
+                              maxLength={300}
+                              className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl resize-y transition-colors"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">{t('campaigns.walletPushMessageHint')}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{walletPush.message.length}/300</p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => setWalletPushPreview(true)}
+                          disabled={!walletPush.name || !walletPush.message}
                           className="w-full mt-6 py-3 rounded-xl text-sm font-semibold transition-all bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
                         >
                           {t('campaigns.createPreviewBtn')}
