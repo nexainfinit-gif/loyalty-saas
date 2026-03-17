@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
-import { sendBookingConfirmationEmail } from '@/lib/email';
+import { sendBookingConfirmationEmail, sendStaffNotificationEmail } from '@/lib/email';
 
 const limiter = rateLimit({ prefix: 'book-create', limit: 5, windowMs: 60_000 });
 
@@ -78,7 +78,7 @@ export async function POST(
   // 3. Validate staff
   const { data: staff } = await supabaseAdmin
     .from('staff_members')
-    .select('id, name, service_ids')
+    .select('id, name, email, service_ids')
     .eq('id', staffId)
     .eq('restaurant_id', restaurant.id)
     .eq('active', true)
@@ -125,18 +125,28 @@ export async function POST(
     .select('no_show_count')
     .eq('restaurant_id', restaurant.id)
     .eq('client_email', clientEmail.toLowerCase().trim())
-    .single();
+    .maybeSingle();
 
   const noShowCount = noShowStats?.no_show_count ?? 0;
 
-  // Future rule: block clients with excessive no-shows
-  // Uncomment when deposit system is ready:
-  // if (noShowCount >= 3) {
-  //   return NextResponse.json(
-  //     { error: 'Veuillez contacter l\'établissement pour réserver.', requiresDeposit: true },
-  //     { status: 403 },
-  //   );
-  // }
+  // Fetch no-show blocking threshold from appointment settings
+  const { data: aptBlockSettings } = await supabaseAdmin
+    .from('appointment_settings')
+    .select('no_show_block_threshold')
+    .eq('restaurant_id', restaurant.id)
+    .maybeSingle();
+
+  const blockThreshold = aptBlockSettings?.no_show_block_threshold ?? 3;
+
+  if (blockThreshold > 0 && noShowCount >= blockThreshold) {
+    return NextResponse.json(
+      {
+        error: 'Votre compte a trop de rendez-vous manqués. Veuillez contacter directement l\'établissement.',
+        blocked: true,
+      },
+      { status: 403 },
+    );
+  }
 
   // 7. Create appointment
   const { data: appointment, error: insertErr } = await supabaseAdmin
@@ -154,7 +164,7 @@ export async function POST(
       client_phone:  clientPhone,
       notes:         notes ?? null,
     })
-    .select('id')
+    .select('id, cancel_token')
     .single();
 
   if (insertErr || !appointment) {
@@ -171,7 +181,12 @@ export async function POST(
 
   const confirmationMessage = appSettings?.confirmation_message ?? null;
 
-  // 8. Send confirmation email (fire-and-forget — don't block the response)
+  // 8. Construct cancel/reschedule URLs
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://rebites.be';
+  const cancelUrl = appointment.cancel_token ? `${APP_URL}/book/cancel/${appointment.cancel_token}` : null;
+  const rescheduleUrl = appointment.cancel_token ? `${APP_URL}/book/reschedule/${appointment.cancel_token}` : null;
+
+  // 9. Send confirmation email (fire-and-forget — don't block the response)
   sendBookingConfirmationEmail({
     to: clientEmail,
     clientName,
@@ -186,7 +201,27 @@ export async function POST(
     businessColor: restaurant.primary_color ?? '#111827',
     businessSlug: restaurant.slug,
     confirmationMessage,
+    cancelUrl,
+    rescheduleUrl,
   }).catch((err) => console.error('[book] Email send error:', err));
+
+  // 10. Send staff notification (fire-and-forget)
+  if (staff.email) {
+    sendStaffNotificationEmail({
+      to: staff.email,
+      staffName: staff.name,
+      clientName,
+      clientPhone,
+      clientEmail,
+      serviceName: service.name,
+      date,
+      startTime: time,
+      endTime,
+      notes: notes ?? null,
+      businessName: restaurant.name,
+      businessColor: restaurant.primary_color ?? '#111827',
+    }).catch((err) => console.error('[book] Staff notification error:', err));
+  }
 
   return NextResponse.json({
     success: true,

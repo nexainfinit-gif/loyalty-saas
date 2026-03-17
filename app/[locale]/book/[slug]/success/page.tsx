@@ -13,6 +13,7 @@ function SuccessContent() {
   const slug = params.slug as string
   const sp = useSearchParams()
 
+  const isEmbed = sp.get('embed') === '1'
   const serviceName = sp.get('service') ?? ''
   const staffName = sp.get('staff') ?? ''
   const date = sp.get('date') ?? ''
@@ -48,7 +49,7 @@ function SuccessContent() {
   // If no data in search params, show a fallback
   if (!serviceName) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center px-4">
+      <div className={`${isEmbed ? 'min-h-[200px]' : 'min-h-screen'} bg-surface flex items-center justify-center px-4`}>
         <div className="text-center">
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-5">
             <Check size={28} className="text-green-600" />
@@ -58,7 +59,7 @@ function SuccessContent() {
             {t('bookingSuccess.subtitle')}
           </p>
           <Link
-            href={`/${locale}/book/${slug}`}
+            href={`/${locale}/book/${slug}${isEmbed ? '?embed=1' : ''}`}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
           >
             {t('bookingSuccess.bookAnother')}
@@ -70,19 +71,21 @@ function SuccessContent() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
-          <p className="text-sm font-semibold">{businessName}</p>
-          <div className="flex items-center gap-3">
-            <CompactLocaleSwitcher />
-            <p className="text-xs text-gray-400">
-              {t('common.poweredBy')}
-            </p>
+    <div className={isEmbed ? 'bg-transparent' : 'min-h-screen bg-surface'}>
+      {/* Header — hidden in embed mode */}
+      {!isEmbed && (
+        <header className="bg-white border-b border-gray-200 px-4 py-4">
+          <div className="max-w-lg mx-auto flex items-center justify-between">
+            <p className="text-sm font-semibold">{businessName}</p>
+            <div className="flex items-center gap-3">
+              <CompactLocaleSwitcher />
+              <p className="text-xs text-gray-400">
+                {t('common.poweredBy')}
+              </p>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <div className="max-w-lg mx-auto px-4 py-10">
         {/* Success icon */}
@@ -176,7 +179,7 @@ function SuccessContent() {
         {/* Book another */}
         <div className="text-center">
           <Link
-            href={`/${locale}/book/${slug}`}
+            href={`/${locale}/book/${slug}${isEmbed ? '?embed=1' : ''}`}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors"
           >
             {t('bookingSuccess.bookAnother')}

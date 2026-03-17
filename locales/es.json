@@ -828,6 +828,7 @@
     "agenda": "Agenda",
     "services": "Servicios",
     "staff": "Personal",
+    "analytics": "Estadísticas",
     "settings": "Ajustes"
   },
   "appointmentServices": {
@@ -932,6 +933,35 @@
     "modifyCancel": "¿Necesitas modificar o cancelar?",
     "contactBusiness": "Contacta directamente con {business} por teléfono o respondiendo al email de confirmación.",
     "addToCalendar": "Añadir a Google Calendar"
+  },
+  "bookingCancel": {
+    "title": "Cancelar tu cita",
+    "subtitle": "Revisa los detalles a continuación antes de confirmar la cancelación.",
+    "notFound": "Cita no encontrada.",
+    "errorTitle": "No se puede procesar la solicitud",
+    "cancelError": "Error al cancelar.",
+    "cancelledTitle": "Cita cancelada",
+    "cancelledSubtitle": "Tu cita ha sido cancelada con éxito.",
+    "confirmCancelBtn": "Confirmar cancelación",
+    "rescheduleBtn": "Modificar mi cita",
+    "rebookBtn": "Reservar una nueva cita",
+    "backToBooking": "Volver a la reserva",
+    "policyNotice": "La cancelación es posible hasta {hours}h antes de la cita.",
+    "cancellationDisabled": "La cancelación en línea no está disponible para este establecimiento."
+  },
+  "bookingReschedule": {
+    "title": "Modificar tu cita",
+    "subtitle": "Elige un nuevo horario para tu cita.",
+    "pageTitle": "Modificar cita",
+    "notFound": "Cita no encontrada.",
+    "cannotModify": "Esta cita ya no puede ser modificada.",
+    "errorTitle": "No se puede procesar la solicitud",
+    "rescheduleError": "Error al modificar.",
+    "successTitle": "¡Cita modificada!",
+    "successSubtitle": "Tu cita ha sido actualizada. Se ha enviado un email de confirmación.",
+    "currentAppointment": "Cita actual",
+    "confirmBtn": "Confirmar modificación",
+    "backToBooking": "Volver a la reserva"
   },
   "demo": {
     "welcome": "¡Bienvenido/a!",

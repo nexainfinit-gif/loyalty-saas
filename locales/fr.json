@@ -78,6 +78,8 @@
     "toastCustomerDeleted": "Client supprimé (RGPD)",
     "toastDeleteError": "Erreur lors de la suppression.",
     "toastLoyaltySaved": "Paramètres de fidélité enregistrés",
+    "toastSaveError": "Erreur lors de la sauvegarde",
+    "toastWalletPushFailed": "La mise à jour du pass Wallet a échoué",
     "toastLogoUpdated": "Logo mis à jour",
     "toastCampaignScheduled": "Campagne planifiée !",
     "toastCampaignSent": "{count} email(s) envoyé(s) avec succès !",
@@ -839,13 +841,15 @@
     "completed": "Terminé",
     "noShow": "Absent marqué",
     "canceled": "Annulé",
-    "statusUpdated": "Statut mis à jour"
+    "statusUpdated": "Statut mis à jour",
+    "pointsAwarded": "points fidélité attribués"
   },
   "appointmentNav": {
     "agenda": "Agenda",
     "services": "Services",
     "staff": "Équipe",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "analytics": "Statistiques"
   },
   "appointmentServices": {
     "title": "Services",
@@ -886,6 +890,8 @@
     "autoPoints": "Points automatiques",
     "autoPointsDesc": "Attribuer des points fidélité quand un rendez-vous est terminé",
     "pointsPerVisit": "Points par visite",
+    "noShowThreshold": "Seuil de blocage no-show",
+    "noShowThresholdDesc": "Nombre de no-shows avant blocage de la réservation en ligne. 0 = désactivé.",
     "saveError": "Erreur lors de l'enregistrement",
     "settingsSaved": "Paramètres enregistrés"
   },
@@ -932,6 +938,7 @@
     "phoneLabel": "Téléphone *",
     "confirmBtn": "Confirmer le rendez-vous",
     "bookError": "Erreur lors de la réservation.",
+    "blockedNoShow": "Votre compte a trop de rendez-vous manqués. Veuillez contacter directement l'établissement.",
     "bookTitle": "Réservation en ligne",
     "pageNotFound": "Page introuvable",
     "businessNotFound": "Cet établissement n'existe pas."
@@ -949,6 +956,35 @@
     "modifyCancel": "Besoin de modifier ou annuler ?",
     "contactBusiness": "Contactez directement {business} par téléphone ou en répondant à l'email de confirmation.",
     "addToCalendar": "Ajouter à Google Calendar"
+  },
+  "bookingCancel": {
+    "title": "Annuler votre rendez-vous",
+    "subtitle": "Vérifiez les détails ci-dessous avant de confirmer l'annulation.",
+    "notFound": "Rendez-vous introuvable.",
+    "errorTitle": "Impossible de traiter la demande",
+    "cancelError": "Erreur lors de l'annulation.",
+    "cancelledTitle": "Rendez-vous annulé",
+    "cancelledSubtitle": "Votre rendez-vous a bien été annulé.",
+    "confirmCancelBtn": "Confirmer l'annulation",
+    "rescheduleBtn": "Modifier mon rendez-vous",
+    "rebookBtn": "Prendre un nouveau rendez-vous",
+    "backToBooking": "Retour à la réservation",
+    "policyNotice": "L'annulation est possible jusqu'à {hours}h avant le rendez-vous.",
+    "cancellationDisabled": "L'annulation en ligne n'est pas activée pour cet établissement."
+  },
+  "bookingReschedule": {
+    "title": "Modifier votre rendez-vous",
+    "subtitle": "Choisissez un nouveau créneau pour votre rendez-vous.",
+    "pageTitle": "Modification de rendez-vous",
+    "notFound": "Rendez-vous introuvable.",
+    "cannotModify": "Ce rendez-vous ne peut plus être modifié.",
+    "errorTitle": "Impossible de traiter la demande",
+    "rescheduleError": "Erreur lors de la modification.",
+    "successTitle": "Rendez-vous modifié !",
+    "successSubtitle": "Votre rendez-vous a été mis à jour avec succès. Un email de confirmation a été envoyé.",
+    "currentAppointment": "Rendez-vous actuel",
+    "confirmBtn": "Confirmer la modification",
+    "backToBooking": "Retour à la réservation"
   },
   "demo": {
     "welcome": "Bienvenue !",
@@ -1538,6 +1574,8 @@
     "cleanupBtn": "Supprimer les démos",
     "cleanupSuccess": "Restaurants démo supprimés",
     "impersonateBtn": "Voir comme ce restaurant",
-    "impersonateIcon": "Demo"
+    "impersonateIcon": "Demo",
+    "planSwitchError": "Erreur lors du changement de plan",
+    "planSwitchSuccess": "Plan mis à jour"
   }
 }

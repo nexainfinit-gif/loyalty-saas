@@ -12,6 +12,7 @@ export default function AppointmentsLayout({ children }: { children: React.React
     { href: `/${locale}/dashboard/appointments`, label: t('appointmentNav.agenda') },
     { href: `/${locale}/dashboard/appointments/services`, label: t('appointmentNav.services') },
     { href: `/${locale}/dashboard/appointments/staff`, label: t('appointmentNav.staff') },
+    { href: `/${locale}/dashboard/appointments/analytics`, label: t('appointmentNav.analytics') },
     { href: `/${locale}/dashboard/appointments/settings`, label: t('appointmentNav.settings') },
   ]
 

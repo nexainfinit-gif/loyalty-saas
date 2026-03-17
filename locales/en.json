@@ -78,6 +78,8 @@
     "toastCustomerDeleted": "Customer deleted (GDPR)",
     "toastDeleteError": "Error deleting customer.",
     "toastLoyaltySaved": "Loyalty settings saved",
+    "toastSaveError": "Error saving settings",
+    "toastWalletPushFailed": "Wallet pass update failed",
     "toastLogoUpdated": "Logo updated",
     "toastCampaignScheduled": "Campaign scheduled!",
     "toastCampaignSent": "{count} email(s) sent successfully!",
@@ -839,12 +841,14 @@
     "completed": "Completed",
     "noShow": "No-show marked",
     "canceled": "Canceled",
-    "statusUpdated": "Status updated"
+    "statusUpdated": "Status updated",
+    "pointsAwarded": "loyalty points awarded"
   },
   "appointmentNav": {
     "agenda": "Agenda",
     "services": "Services",
     "staff": "Staff",
+    "analytics": "Analytics",
     "settings": "Settings"
   },
   "appointmentServices": {
@@ -886,6 +890,8 @@
     "autoPoints": "Automatic points",
     "autoPointsDesc": "Award loyalty points when an appointment is completed",
     "pointsPerVisit": "Points per visit",
+    "noShowThreshold": "No-show blocking threshold",
+    "noShowThresholdDesc": "Number of no-shows before online booking is blocked. 0 = disabled.",
     "saveError": "Error saving",
     "settingsSaved": "Settings saved"
   },
@@ -932,6 +938,7 @@
     "phoneLabel": "Phone *",
     "confirmBtn": "Confirm appointment",
     "bookError": "Booking error.",
+    "blockedNoShow": "Your account has too many missed appointments. Please contact the business directly.",
     "bookTitle": "Online booking",
     "pageNotFound": "Page not found",
     "businessNotFound": "This business does not exist."
@@ -949,6 +956,35 @@
     "modifyCancel": "Need to modify or cancel?",
     "contactBusiness": "Contact {business} directly by phone or by replying to the confirmation email.",
     "addToCalendar": "Add to Google Calendar"
+  },
+  "bookingCancel": {
+    "title": "Cancel your appointment",
+    "subtitle": "Review the details below before confirming the cancellation.",
+    "notFound": "Appointment not found.",
+    "errorTitle": "Unable to process the request",
+    "cancelError": "Error while cancelling.",
+    "cancelledTitle": "Appointment cancelled",
+    "cancelledSubtitle": "Your appointment has been successfully cancelled.",
+    "confirmCancelBtn": "Confirm cancellation",
+    "rescheduleBtn": "Reschedule my appointment",
+    "rebookBtn": "Book a new appointment",
+    "backToBooking": "Back to booking",
+    "policyNotice": "Cancellation is possible up to {hours}h before the appointment.",
+    "cancellationDisabled": "Online cancellation is not available for this business."
+  },
+  "bookingReschedule": {
+    "title": "Reschedule your appointment",
+    "subtitle": "Choose a new time slot for your appointment.",
+    "pageTitle": "Reschedule appointment",
+    "notFound": "Appointment not found.",
+    "cannotModify": "This appointment can no longer be modified.",
+    "errorTitle": "Unable to process the request",
+    "rescheduleError": "Error while rescheduling.",
+    "successTitle": "Appointment rescheduled!",
+    "successSubtitle": "Your appointment has been updated. A confirmation email has been sent.",
+    "currentAppointment": "Current appointment",
+    "confirmBtn": "Confirm changes",
+    "backToBooking": "Back to booking"
   },
   "demo": {
     "welcome": "Welcome!",
@@ -1538,6 +1574,8 @@
     "cleanupBtn": "Delete demos",
     "cleanupSuccess": "Demo restaurants deleted",
     "impersonateBtn": "View as this restaurant",
-    "impersonateIcon": "Demo"
+    "impersonateIcon": "Demo",
+    "planSwitchError": "Error switching plan",
+    "planSwitchSuccess": "Plan updated"
   }
 }

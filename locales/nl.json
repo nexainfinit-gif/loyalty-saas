@@ -78,6 +78,8 @@
     "toastCustomerDeleted": "Klant verwijderd (AVG)",
     "toastDeleteError": "Fout bij het verwijderen.",
     "toastLoyaltySaved": "Loyaliteitsinstellingen opgeslagen",
+    "toastSaveError": "Fout bij het opslaan",
+    "toastWalletPushFailed": "Wallet-pass update mislukt",
     "toastLogoUpdated": "Logo bijgewerkt",
     "toastCampaignScheduled": "Campagne ingepland!",
     "toastCampaignSent": "{count} e-mail(s) succesvol verzonden!",
@@ -822,12 +824,14 @@
     "completed": "Voltooid",
     "noShow": "Afwezig gemarkeerd",
     "canceled": "Geannuleerd",
-    "statusUpdated": "Status bijgewerkt"
+    "statusUpdated": "Status bijgewerkt",
+    "pointsAwarded": "loyaliteitspunten toegekend"
   },
   "appointmentNav": {
     "agenda": "Agenda",
     "services": "Diensten",
     "staff": "Personeel",
+    "analytics": "Statistieken",
     "settings": "Instellingen"
   },
   "appointmentServices": {
@@ -869,6 +873,8 @@
     "autoPoints": "Automatische punten",
     "autoPointsDesc": "Loyaliteitspunten toekennen wanneer een afspraak is voltooid",
     "pointsPerVisit": "Punten per bezoek",
+    "noShowThreshold": "Blokkeerdrempel no-show",
+    "noShowThresholdDesc": "Aantal no-shows voordat online reserveren wordt geblokkeerd. 0 = uitgeschakeld.",
     "saveError": "Fout bij het opslaan",
     "settingsSaved": "Instellingen opgeslagen"
   },
@@ -915,6 +921,7 @@
     "phoneLabel": "Telefoon *",
     "confirmBtn": "Afspraak bevestigen",
     "bookError": "Fout bij het reserveren.",
+    "blockedNoShow": "Uw account heeft te veel gemiste afspraken. Neem rechtstreeks contact op met de zaak.",
     "bookTitle": "Online reservering",
     "pageNotFound": "Pagina niet gevonden",
     "businessNotFound": "Deze zaak bestaat niet."
@@ -932,6 +939,35 @@
     "modifyCancel": "Wilt u wijzigen of annuleren?",
     "contactBusiness": "Neem rechtstreeks contact op met {business} per telefoon of door te antwoorden op de bevestigingsmail.",
     "addToCalendar": "Toevoegen aan Google Calendar"
+  },
+  "bookingCancel": {
+    "title": "Afspraak annuleren",
+    "subtitle": "Controleer de gegevens hieronder voordat u de annulering bevestigt.",
+    "notFound": "Afspraak niet gevonden.",
+    "errorTitle": "Kan het verzoek niet verwerken",
+    "cancelError": "Fout bij het annuleren.",
+    "cancelledTitle": "Afspraak geannuleerd",
+    "cancelledSubtitle": "Uw afspraak is succesvol geannuleerd.",
+    "confirmCancelBtn": "Annulering bevestigen",
+    "rescheduleBtn": "Afspraak wijzigen",
+    "rebookBtn": "Nieuwe afspraak maken",
+    "backToBooking": "Terug naar reservering",
+    "policyNotice": "Annulering is mogelijk tot {hours} uur voor de afspraak.",
+    "cancellationDisabled": "Online annulering is niet beschikbaar voor dit bedrijf."
+  },
+  "bookingReschedule": {
+    "title": "Afspraak wijzigen",
+    "subtitle": "Kies een nieuw tijdslot voor uw afspraak.",
+    "pageTitle": "Afspraak wijzigen",
+    "notFound": "Afspraak niet gevonden.",
+    "cannotModify": "Deze afspraak kan niet meer worden gewijzigd.",
+    "errorTitle": "Kan het verzoek niet verwerken",
+    "rescheduleError": "Fout bij het wijzigen.",
+    "successTitle": "Afspraak gewijzigd!",
+    "successSubtitle": "Uw afspraak is bijgewerkt. Een bevestigingsmail is verzonden.",
+    "currentAppointment": "Huidige afspraak",
+    "confirmBtn": "Wijziging bevestigen",
+    "backToBooking": "Terug naar reservering"
   },
   "demo": {
     "welcome": "Welkom!",

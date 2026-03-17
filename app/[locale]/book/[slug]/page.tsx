@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { format, addDays, isSameDay, isBefore, startOfDay } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { ArrowLeft, Check, Clock, Euro, User, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useTranslation, useLocaleRouter } from '@/lib/i18n'
 import { CompactLocaleSwitcher } from '@/components/LocaleSwitcher'
 import type { Service, StaffMember } from '@/types/appointments'
@@ -40,9 +40,11 @@ type Step = 1 | 2 | 3 | 4
 
 export default function BookingPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const router = useLocaleRouter()
   const { t, locale } = useTranslation()
   const slug = params.slug as string
+  const isEmbed = searchParams.get('embed') === '1'
 
   // ── Data state ──────────────────────────────────────────────────────────
   const [business, setBusiness] = useState<BusinessData | null>(null)
@@ -67,6 +69,9 @@ export default function BookingPage() {
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [bookingLoading, setBookingLoading] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
+  const [waitlistForm, setWaitlistForm] = useState({ name: '', email: '', phone: '' })
+  const [waitlistLoading, setWaitlistLoading] = useState(false)
+  const [waitlistJoined, setWaitlistJoined] = useState(false)
 
   // ── Fetch business data on mount ────────────────────────────────────────
   useEffect(() => {
@@ -166,7 +171,11 @@ export default function BookingPage() {
 
       if (!res.ok) {
         const data = await res.json()
-        setBookingError(data.error || t('booking.bookError'))
+        if (data.blocked) {
+          setBookingError(t('booking.blockedNoShow'))
+        } else {
+          setBookingError(data.error || t('booking.bookError'))
+        }
         return
       }
 
@@ -182,7 +191,8 @@ export default function BookingPage() {
         business: data.businessName ?? business?.name ?? '',
         ...(data.confirmationMessage ? { message: data.confirmationMessage } : {}),
       })
-      router.push(`/book/${slug}/success?${successParams.toString()}`)
+      const embedParam = isEmbed ? '&embed=1' : ''
+      router.push(`/book/${slug}/success?${successParams.toString()}${embedParam}`)
     } catch {
       setBookingError(t('common.networkErrorRetry'))
     } finally {
@@ -220,7 +230,7 @@ export default function BookingPage() {
   // ── Loading state ───────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className={`${isEmbed ? 'min-h-[200px]' : 'min-h-screen'} bg-surface flex items-center justify-center`}>
         <Loader2 size={32} className="animate-spin text-gray-400" />
       </div>
     )
@@ -228,7 +238,7 @@ export default function BookingPage() {
 
   if (error || !business) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className={`${isEmbed ? 'min-h-[200px]' : 'min-h-screen'} bg-surface flex items-center justify-center`}>
         <div className="text-center">
           <p className="text-lg font-semibold text-gray-900 mb-2">{t('booking.pageNotFound')}</p>
           <p className="text-sm text-gray-500">{error || t('booking.businessNotFound')}</p>
@@ -238,40 +248,42 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {business.logoUrl ? (
-              <img
-                src={business.logoUrl}
-                alt={business.name}
-                className="w-9 h-9 rounded-lg object-cover"
-              />
-            ) : (
-              <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <span className="text-white text-sm font-bold">
-                  {business.name[0]}
-                </span>
+    <div className={isEmbed ? 'bg-transparent' : 'min-h-screen bg-surface'}>
+      {/* Header — hidden in embed mode */}
+      {!isEmbed && (
+        <header className="bg-white border-b border-gray-200 px-4 py-4">
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {business.logoUrl ? (
+                <img
+                  src={business.logoUrl}
+                  alt={business.name}
+                  className="w-9 h-9 rounded-lg object-cover"
+                />
+              ) : (
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <span className="text-white text-sm font-bold">
+                    {business.name[0]}
+                  </span>
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-semibold">{business.name}</p>
+                <p className="text-[11px] text-gray-400">{t('booking.bookTitle')}</p>
               </div>
-            )}
-            <div>
-              <p className="text-sm font-semibold">{business.name}</p>
-              <p className="text-[11px] text-gray-400">{t('booking.bookTitle')}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <CompactLocaleSwitcher />
+              <p className="text-xs text-gray-400">
+                {t('common.poweredBy')}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <CompactLocaleSwitcher />
-            <p className="text-xs text-gray-400">
-              {t('common.poweredBy')}
-            </p>
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Progress */}
       <div className="bg-white border-b border-gray-200 px-4 py-3">
@@ -503,9 +515,68 @@ export default function BookingPage() {
                   <Loader2 size={20} className="animate-spin text-gray-400" />
                 </div>
               ) : timeSlots.filter((s) => s.available).length === 0 ? (
-                <p className="text-sm text-gray-400 py-4 text-center">
-                  {t('booking.noSlots')}
-                </p>
+                <div className="py-4 text-center space-y-4">
+                  <p className="text-sm text-gray-400">
+                    {t('booking.noSlots')}
+                  </p>
+
+                  {/* Waitlist form */}
+                  {waitlistJoined ? (
+                    <div className="bg-green-50 rounded-xl border border-green-100 px-4 py-3">
+                      <p className="text-sm text-green-700 font-medium">
+                        {t('booking.waitlistSuccess') || 'Vous serez prévenu(e) si un créneau se libère !'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded-xl p-4 text-left space-y-3">
+                      <p className="text-xs font-semibold text-gray-700">
+                        {t('booking.waitlistTitle') || 'Être prévenu(e) si un créneau se libère'}
+                      </p>
+                      <input
+                        type="text"
+                        placeholder={t('booking.namePlaceholder') || 'Votre nom'}
+                        value={waitlistForm.name}
+                        onChange={(e) => setWaitlistForm((f) => ({ ...f, name: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-400"
+                      />
+                      <input
+                        type="email"
+                        placeholder={t('booking.emailPlaceholder') || 'Votre email'}
+                        value={waitlistForm.email}
+                        onChange={(e) => setWaitlistForm((f) => ({ ...f, email: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-400"
+                      />
+                      <button
+                        disabled={!waitlistForm.name.trim() || !waitlistForm.email.trim() || waitlistLoading}
+                        onClick={async () => {
+                          setWaitlistLoading(true)
+                          try {
+                            const res = await fetch(`/api/book/${slug}/waitlist`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                serviceId: selectedService?.id,
+                                staffId: selectedStaff?.id ?? null,
+                                date: format(selectedDate, 'yyyy-MM-dd'),
+                                clientName: waitlistForm.name,
+                                clientEmail: waitlistForm.email,
+                                clientPhone: waitlistForm.phone,
+                              }),
+                            })
+                            if (res.ok) {
+                              setWaitlistJoined(true)
+                            }
+                          } catch { /* ignore */ }
+                          setWaitlistLoading(false)
+                        }}
+                        className="w-full px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {waitlistLoading && <Loader2 size={14} className="animate-spin" />}
+                        {t('booking.joinWaitlist') || 'Me prévenir'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                   {timeSlots

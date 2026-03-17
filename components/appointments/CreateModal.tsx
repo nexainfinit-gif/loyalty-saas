@@ -17,6 +17,8 @@ interface CreateAppointmentModalProps {
     client_email: string
     client_phone: string
     notes: string
+    recurrence_pattern: string
+    recurrence_end_date: string | null
   }) => void
   services: Service[]
   staff: StaffMember[]
@@ -44,6 +46,8 @@ export default function CreateAppointmentModal({
     client_email: '',
     client_phone: '',
     notes: '',
+    recurrence_pattern: 'none',
+    recurrence_end_date: '' as string,
   })
 
   if (!isOpen) return null
@@ -52,7 +56,10 @@ export default function CreateAppointmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit(form)
+    onSubmit({
+      ...form,
+      recurrence_end_date: form.recurrence_end_date || null,
+    })
     onClose()
   }
 
@@ -199,6 +206,41 @@ export default function CreateAppointmentModal({
               </div>
             </div>
           </div>
+
+          {/* Recurrence */}
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">
+              Récurrence
+            </label>
+            <select
+              value={form.recurrence_pattern}
+              onChange={(e) => update('recurrence_pattern', e.target.value)}
+              className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+            >
+              <option value="none">Aucune (unique)</option>
+              <option value="weekly">Chaque semaine</option>
+              <option value="biweekly">Toutes les 2 semaines</option>
+              <option value="monthly">Chaque mois</option>
+            </select>
+          </div>
+
+          {form.recurrence_pattern !== 'none' && (
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1.5 block">
+                Fin de la récurrence
+              </label>
+              <input
+                type="date"
+                value={form.recurrence_end_date}
+                onChange={(e) => update('recurrence_end_date', e.target.value)}
+                min={form.date}
+                className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">
+                Laissez vide pour 1 an maximum (52 occurrences max).
+              </p>
+            </div>
+          )}
 
           {/* Notes */}
           <div>

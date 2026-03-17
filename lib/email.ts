@@ -241,6 +241,8 @@ interface BookingConfirmationProps {
   businessColor: string;
   businessSlug: string;
   confirmationMessage?: string | null;
+  cancelUrl?: string | null;
+  rescheduleUrl?: string | null;
 }
 
 export async function sendBookingConfirmationEmail({
@@ -257,6 +259,8 @@ export async function sendBookingConfirmationEmail({
   businessColor,
   businessSlug,
   confirmationMessage,
+  cancelUrl,
+  rescheduleUrl,
 }: BookingConfirmationProps) {
   const safeColor     = safeCssColor(businessColor);
   const safeBizName   = esc(businessName);
@@ -341,10 +345,12 @@ export async function sendBookingConfirmationEmail({
         </div>
 
         <div style="background: #f9fafb; border-radius: 12px; padding: 1rem; margin: 1.5rem 0;">
-          <p style="margin: 0; color: #6b7280; font-size: 0.8rem;">
-            <strong>Besoin de modifier ou annuler ?</strong><br/>
-            Contactez directement ${safeBizName} par téléphone ou en répondant à cet email.
+          <p style="margin: 0 0 0.5rem 0; color: #6b7280; font-size: 0.8rem;">
+            <strong>Besoin de modifier ou annuler ?</strong>
           </p>
+          ${rescheduleUrl ? `<p style="margin: 0 0 0.25rem 0; font-size: 0.8rem;"><a href="${rescheduleUrl}" style="color: ${safeColor}; text-decoration: underline;">Modifier mon rendez-vous</a></p>` : ''}
+          ${cancelUrl ? `<p style="margin: 0 0 0.25rem 0; font-size: 0.8rem;"><a href="${cancelUrl}" style="color: ${safeColor}; text-decoration: underline;">Annuler mon rendez-vous</a></p>` : ''}
+          ${!cancelUrl && !rescheduleUrl ? `<p style="margin: 0; color: #6b7280; font-size: 0.8rem;">Contactez directement ${safeBizName} par téléphone ou en répondant à cet email.</p>` : ''}
         </div>
 
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
@@ -497,6 +503,8 @@ interface ReminderEmailProps {
   businessColor: string;
   businessSlug: string;
   hoursUntil: number;  // 24 or 2
+  cancelUrl?: string | null;
+  rescheduleUrl?: string | null;
 }
 
 export async function sendReminderEmail({
@@ -512,6 +520,8 @@ export async function sendReminderEmail({
   businessColor,
   businessSlug,
   hoursUntil,
+  cancelUrl,
+  rescheduleUrl,
 }: ReminderEmailProps) {
   const safeColor     = safeCssColor(businessColor);
   const safeBizName   = esc(businessName);
@@ -588,14 +598,268 @@ export async function sendReminderEmail({
         </div>
 
         <div style="background: #fffbeb; border-radius: 12px; padding: 1rem; margin: 1.5rem 0;">
-          <p style="margin: 0; color: #92400e; font-size: 0.8rem;">
-            <strong>Empêchement ?</strong><br/>
-            Merci de prévenir ${safeBizName} le plus tôt possible par téléphone ou en répondant à cet email.
+          <p style="margin: 0 0 0.5rem 0; color: #92400e; font-size: 0.8rem;">
+            <strong>Empêchement ?</strong>
           </p>
+          ${rescheduleUrl ? `<p style="margin: 0 0 0.25rem 0; font-size: 0.8rem;"><a href="${rescheduleUrl}" style="color: ${safeColor}; text-decoration: underline;">Modifier mon rendez-vous</a></p>` : ''}
+          ${cancelUrl ? `<p style="margin: 0 0 0.25rem 0; font-size: 0.8rem;"><a href="${cancelUrl}" style="color: ${safeColor}; text-decoration: underline;">Annuler mon rendez-vous</a></p>` : ''}
+          ${!cancelUrl && !rescheduleUrl ? `<p style="margin: 0; color: #92400e; font-size: 0.8rem;">Merci de prévenir ${safeBizName} le plus tôt possible par téléphone ou en répondant à cet email.</p>` : ''}
         </div>
 
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
 
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
+          ${safeBizName} — Réservation en ligne par <a href="https://rebites.be" style="color: #9ca3af; text-decoration: underline;">Rebites</a>
+        </p>
+      </div>
+    `,
+  });
+}
+
+/* ── Staff notification email ──────────────────────────────────────────── */
+
+interface StaffNotificationProps {
+  to: string;
+  staffName: string;
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  serviceName: string;
+  date: string;        // "2026-03-15"
+  startTime: string;   // "14:00"
+  endTime: string;     // "14:45"
+  notes: string | null;
+  businessName: string;
+  businessColor: string;
+  isReschedule?: boolean;
+}
+
+export async function sendStaffNotificationEmail({
+  to,
+  staffName,
+  clientName,
+  clientPhone,
+  clientEmail,
+  serviceName,
+  date,
+  startTime,
+  endTime,
+  notes,
+  businessName,
+  businessColor,
+  isReschedule,
+}: StaffNotificationProps): Promise<void> {
+  const safeColor     = safeCssColor(businessColor);
+  const safeBizName   = esc(businessName);
+  const safeStaff     = esc(staffName);
+  const safeClient    = esc(clientName);
+  const safeService   = esc(serviceName);
+  const safePhone     = esc(clientPhone);
+  const safeEmailAddr = esc(clientEmail);
+  const safeNotes     = notes ? esc(notes) : null;
+
+  // Format date for display
+  const [y, m, d] = date.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  const monthNames = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  const displayDate = `${dayNames[dateObj.getDay()]} ${d} ${monthNames[m - 1]} ${y}`;
+
+  const title = isReschedule ? 'Rendez-vous modifié' : 'Nouveau rendez-vous';
+  const subject = isReschedule
+    ? `Rendez-vous modifié — ${clientName}`
+    : `Nouveau rendez-vous — ${clientName}`;
+
+  await resend.emails.send({
+    from: `${businessName} <noreply@rebites.be>`,
+    to,
+    subject,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+
+        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
+          <h1 style="color: white; margin: 0; font-size: 1.5rem;">${title}</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeBizName}</p>
+        </div>
+
+        <p style="color: #374151; font-size: 1rem;">
+          Bonjour <strong>${safeStaff}</strong>,
+        </p>
+
+        <p style="color: #374151;">
+          ${isReschedule ? 'Un rendez-vous a été modifié' : 'Un nouveau rendez-vous a été pris'}. Voici les détails :
+        </p>
+
+        <div style="background: #f9fafb; border-radius: 12px; padding: 1.25rem; margin: 1.5rem 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="color: #6b7280; font-size: 0.85rem; padding: 0.35rem 0;">Service</td>
+              <td style="color: #111827; font-size: 0.85rem; padding: 0.35rem 0; text-align: right; font-weight: 600;">${safeService}</td>
+            </tr>
+            <tr>
+              <td style="color: #6b7280; font-size: 0.85rem; padding: 0.35rem 0;">Client</td>
+              <td style="color: #111827; font-size: 0.85rem; padding: 0.35rem 0; text-align: right; font-weight: 600;">${safeClient}</td>
+            </tr>
+            <tr>
+              <td style="color: #6b7280; font-size: 0.85rem; padding: 0.35rem 0;">Date</td>
+              <td style="color: #111827; font-size: 0.85rem; padding: 0.35rem 0; text-align: right; font-weight: 600;">${displayDate}</td>
+            </tr>
+            <tr>
+              <td style="color: #6b7280; font-size: 0.85rem; padding: 0.35rem 0;">Heure</td>
+              <td style="color: #111827; font-size: 0.85rem; padding: 0.35rem 0; text-align: right; font-weight: 600;">${startTime} — ${endTime}</td>
+            </tr>
+            <tr>
+              <td style="color: #6b7280; font-size: 0.85rem; padding: 0.35rem 0;">Téléphone</td>
+              <td style="color: #111827; font-size: 0.85rem; padding: 0.35rem 0; text-align: right; font-weight: 600;">${safePhone}</td>
+            </tr>
+            <tr>
+              <td style="color: #6b7280; font-size: 0.85rem; padding: 0.35rem 0;">Email</td>
+              <td style="color: #111827; font-size: 0.85rem; padding: 0.35rem 0; text-align: right; font-weight: 600;">${safeEmailAddr}</td>
+            </tr>
+          </table>
+        </div>
+
+        ${safeNotes ? `
+        <div style="background: #fffbeb; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
+          <p style="margin: 0; color: #92400e; font-size: 0.85rem;">
+            <strong>Notes :</strong> ${safeNotes}
+          </p>
+        </div>
+        ` : ''}
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
+          ${safeBizName} — Réservation en ligne par <a href="https://rebites.be" style="color: #9ca3af; text-decoration: underline;">Rebites</a>
+        </p>
+      </div>
+    `,
+  });
+}
+
+/* ── Waiting list notification email ───────────────────────────────────── */
+
+interface WaitlistNotifyProps {
+  to: string;
+  clientName: string;
+  serviceName: string;
+  date: string;
+  businessName: string;
+  businessColor: string;
+  businessSlug: string;
+}
+
+export async function sendWaitlistNotifyEmail({
+  to,
+  clientName,
+  serviceName,
+  date,
+  businessName,
+  businessColor,
+  businessSlug,
+}: WaitlistNotifyProps) {
+  const safeColor   = safeCssColor(businessColor);
+  const safeBizName = esc(businessName);
+  const safeClient  = esc(clientName);
+  const safeService = esc(serviceName);
+
+  const [y, m, d] = date.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  const monthNames = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  const displayDate = `${dayNames[dateObj.getDay()]} ${d} ${monthNames[m - 1]} ${y}`;
+
+  const bookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/book/${businessSlug}`;
+
+  await resend.emails.send({
+    from: `${businessName} <noreply@rebites.be>`,
+    to,
+    subject: `Un créneau s'est libéré — ${businessName}`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
+          <h1 style="color: white; margin: 0; font-size: 1.5rem;">Bonne nouvelle !</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeBizName}</p>
+        </div>
+        <p style="color: #374151; font-size: 1rem;">Bonjour <strong>${safeClient}</strong>,</p>
+        <p style="color: #374151;">
+          Un créneau vient de se libérer pour le service <strong>${safeService}</strong>
+          le <strong>${displayDate}</strong>.
+        </p>
+        <p style="color: #374151;">Réservez vite avant qu'il ne soit pris !</p>
+        <div style="text-align: center; margin: 2rem 0;">
+          <a href="${bookUrl}" target="_blank" style="display: inline-block; background: ${safeColor}; color: white; text-decoration: none; padding: 0.875rem 2rem; border-radius: 12px; font-size: 0.95rem; font-weight: 600;">
+            Réserver maintenant
+          </a>
+        </div>
+        <div style="background: #fffbeb; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
+          <p style="margin: 0; color: #92400e; font-size: 0.85rem; text-align: center;">
+            Ce créneau est disponible pour tous — premier arrivé, premier servi.
+          </p>
+        </div>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
+          ${safeBizName} — Réservation en ligne par <a href="https://rebites.be" style="color: #9ca3af; text-decoration: underline;">Rebites</a>
+        </p>
+      </div>
+    `,
+  });
+}
+
+/* ── Follow-up email (J+1 after completed appointment) ─────────────────── */
+
+interface FollowUpEmailProps {
+  to: string;
+  clientName: string;
+  serviceName: string;
+  staffName: string;
+  businessName: string;
+  businessColor: string;
+  businessSlug: string;
+}
+
+export async function sendFollowUpEmail({
+  to,
+  clientName,
+  serviceName,
+  staffName,
+  businessName,
+  businessColor,
+  businessSlug,
+}: FollowUpEmailProps) {
+  const safeColor   = safeCssColor(businessColor);
+  const safeBizName = esc(businessName);
+  const safeClient  = esc(clientName);
+  const safeService = esc(serviceName);
+  const safeStaff   = esc(staffName);
+  const bookUrl     = `${process.env.NEXT_PUBLIC_APP_URL}/book/${businessSlug}`;
+
+  await resend.emails.send({
+    from: `${businessName} <noreply@rebites.be>`,
+    to,
+    subject: `Merci pour votre visite — ${businessName}`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
+          <h1 style="color: white; margin: 0; font-size: 1.5rem;">Merci !</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeBizName}</p>
+        </div>
+        <p style="color: #374151; font-size: 1rem;">Bonjour <strong>${safeClient}</strong>,</p>
+        <p style="color: #374151;">
+          Merci d'être venu(e) pour votre rendez-vous
+          ${safeService ? `<strong>${safeService}</strong>` : ''}
+          ${safeStaff ? `avec <strong>${safeStaff}</strong>` : ''}.
+          Nous espérons que tout s'est bien passé !
+        </p>
+        <p style="color: #374151;">
+          N'hésitez pas à reprendre rendez-vous dès maintenant pour votre prochaine visite.
+        </p>
+        <div style="text-align: center; margin: 2rem 0;">
+          <a href="${bookUrl}" target="_blank" style="display: inline-block; background: ${safeColor}; color: white; text-decoration: none; padding: 0.875rem 2rem; border-radius: 12px; font-size: 0.95rem; font-weight: 600;">
+            Reprendre rendez-vous
+          </a>
+        </div>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
         <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
           ${safeBizName} — Réservation en ligne par <a href="https://rebites.be" style="color: #9ca3af; text-decoration: underline;">Rebites</a>
         </p>

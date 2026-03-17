@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Check, XCircle, AlertTriangle, Phone, Mail, Clock, User } from 'lucide-react'
+import { X, Check, XCircle, AlertTriangle, Phone, Mail, Clock, User, Star } from 'lucide-react'
 import type { Appointment, AppointmentStatus } from '@/types/appointments'
 import { api } from '@/lib/use-api'
+import { useTranslation } from '@/lib/i18n'
 
 const statusConfig: Record<AppointmentStatus, { bg: string; text: string; label: string }> = {
   confirmed: { bg: 'bg-blue-50', text: 'text-blue-700', label: 'Confirmé' },
@@ -15,15 +16,24 @@ const statusConfig: Record<AppointmentStatus, { bg: string; text: string; label:
 interface AppointmentDetailModalProps {
   appointment: Appointment | null
   onClose: () => void
-  onStatusChange: (id: string, status: AppointmentStatus) => void
+  onStatusChange: (id: string, status: AppointmentStatus) => Promise<number | void>
+  onCancelSeries?: (id: string) => void
 }
 
 export default function AppointmentDetailModal({
   appointment,
   onClose,
   onStatusChange,
+  onCancelSeries,
 }: AppointmentDetailModalProps) {
+  const { t } = useTranslation()
   const [noShowCount, setNoShowCount] = useState(0)
+  const [loyaltyAwarded, setLoyaltyAwarded] = useState(0)
+
+  // Reset loyalty feedback when appointment changes
+  useEffect(() => {
+    setLoyaltyAwarded(0)
+  }, [appointment?.id])
 
   // Fetch no-show count when modal opens with a client email
   useEffect(() => {
@@ -126,6 +136,20 @@ export default function AppointmentDetailModal({
             )}
           </div>
 
+          {/* Recurrence badge */}
+          {appointment.recurrence_pattern && appointment.recurrence_pattern !== 'none' && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-100">
+              <p className="text-xs font-medium text-indigo-700">
+                Récurrent : {
+                  appointment.recurrence_pattern === 'weekly' ? 'Chaque semaine' :
+                  appointment.recurrence_pattern === 'biweekly' ? 'Toutes les 2 semaines' :
+                  appointment.recurrence_pattern === 'monthly' ? 'Chaque mois' : ''
+                }
+                {appointment.recurrence_end_date && ` — jusqu'au ${appointment.recurrence_end_date}`}
+              </p>
+            </div>
+          )}
+
           {/* Notes */}
           {appointment.notes && (
             <div>
@@ -134,11 +158,26 @@ export default function AppointmentDetailModal({
             </div>
           )}
 
+          {/* Loyalty awarded feedback */}
+          {loyaltyAwarded > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-green-50 border border-green-200">
+              <Star size={14} className="text-green-600" />
+              <p className="text-xs font-medium text-green-700">
+                +{loyaltyAwarded} {t('appointments.pointsAwarded')}
+              </p>
+            </div>
+          )}
+
           {/* Actions */}
           {appointment.status === 'confirmed' && (
             <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-200">
               <button
-                onClick={() => onStatusChange(appointment.id, 'completed')}
+                onClick={async () => {
+                  const awarded = await onStatusChange(appointment.id, 'completed')
+                  if (typeof awarded === 'number' && awarded > 0) {
+                    setLoyaltyAwarded(awarded)
+                  }
+                }}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
               >
                 <Check size={14} />
@@ -159,6 +198,24 @@ export default function AppointmentDetailModal({
                 Annuler
               </button>
             </div>
+          )}
+
+          {/* Cancel series button */}
+          {appointment.status === 'confirmed' &&
+           appointment.recurrence_pattern && appointment.recurrence_pattern !== 'none' &&
+           onCancelSeries && (
+            <button
+              onClick={() => {
+                if (confirm('Annuler tous les rendez-vous futurs de cette série ?')) {
+                  onCancelSeries(appointment.id)
+                  onClose()
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 text-red-600 text-xs font-medium hover:bg-red-50 transition-colors"
+            >
+              <XCircle size={13} />
+              Annuler toute la série
+            </button>
           )}
         </div>
       </div>

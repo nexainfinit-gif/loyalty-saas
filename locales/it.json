@@ -78,6 +78,8 @@
     "toastCustomerDeleted": "Cliente eliminato (GDPR)",
     "toastDeleteError": "Errore durante l'eliminazione del cliente.",
     "toastLoyaltySaved": "Impostazioni fedeltà salvate",
+    "toastSaveError": "Errore durante il salvataggio",
+    "toastWalletPushFailed": "Aggiornamento pass Wallet fallito",
     "toastLogoUpdated": "Logo aggiornato",
     "toastCampaignScheduled": "Campagna programmata!",
     "toastCampaignSent": "{count} email inviate con successo!",
@@ -822,12 +824,14 @@
     "completed": "Completato",
     "noShow": "Assenza segnalata",
     "canceled": "Cancellato",
-    "statusUpdated": "Stato aggiornato"
+    "statusUpdated": "Stato aggiornato",
+    "pointsAwarded": "punti fedeltà assegnati"
   },
   "appointmentNav": {
     "agenda": "Agenda",
     "services": "Servizi",
     "staff": "Personale",
+    "analytics": "Statistiche",
     "settings": "Impostazioni"
   },
   "appointmentServices": {
@@ -869,6 +873,8 @@
     "autoPoints": "Punti automatici",
     "autoPointsDesc": "Assegna punti fedeltà al completamento di un appuntamento",
     "pointsPerVisit": "Punti per visita",
+    "noShowThreshold": "Soglia di blocco no-show",
+    "noShowThresholdDesc": "Numero di no-show prima del blocco della prenotazione online. 0 = disattivato.",
     "saveError": "Errore durante il salvataggio",
     "settingsSaved": "Impostazioni salvate"
   },
@@ -915,6 +921,7 @@
     "phoneLabel": "Telefono *",
     "confirmBtn": "Conferma appuntamento",
     "bookError": "Errore di prenotazione.",
+    "blockedNoShow": "Il tuo account ha troppi appuntamenti mancati. Contatta direttamente la struttura.",
     "bookTitle": "Prenotazione online",
     "pageNotFound": "Pagina non trovata",
     "businessNotFound": "Questa attività non esiste."
@@ -932,6 +939,35 @@
     "modifyCancel": "Devi modificare o cancellare?",
     "contactBusiness": "Contatta {business} direttamente per telefono o rispondendo all'email di conferma.",
     "addToCalendar": "Aggiungi a Google Calendar"
+  },
+  "bookingCancel": {
+    "title": "Annulla il tuo appuntamento",
+    "subtitle": "Verifica i dettagli qui sotto prima di confermare l'annullamento.",
+    "notFound": "Appuntamento non trovato.",
+    "errorTitle": "Impossibile elaborare la richiesta",
+    "cancelError": "Errore durante l'annullamento.",
+    "cancelledTitle": "Appuntamento annullato",
+    "cancelledSubtitle": "Il tuo appuntamento è stato annullato con successo.",
+    "confirmCancelBtn": "Conferma annullamento",
+    "rescheduleBtn": "Modifica il mio appuntamento",
+    "rebookBtn": "Prenota un nuovo appuntamento",
+    "backToBooking": "Torna alla prenotazione",
+    "policyNotice": "L'annullamento è possibile fino a {hours} ore prima dell'appuntamento.",
+    "cancellationDisabled": "L'annullamento online non è disponibile per questa attività."
+  },
+  "bookingReschedule": {
+    "title": "Modifica il tuo appuntamento",
+    "subtitle": "Scegli un nuovo orario per il tuo appuntamento.",
+    "pageTitle": "Modifica appuntamento",
+    "notFound": "Appuntamento non trovato.",
+    "cannotModify": "Questo appuntamento non può più essere modificato.",
+    "errorTitle": "Impossibile elaborare la richiesta",
+    "rescheduleError": "Errore durante la modifica.",
+    "successTitle": "Appuntamento modificato!",
+    "successSubtitle": "Il tuo appuntamento è stato aggiornato. Un'email di conferma è stata inviata.",
+    "currentAppointment": "Appuntamento attuale",
+    "confirmBtn": "Conferma modifica",
+    "backToBooking": "Torna alla prenotazione"
   },
   "demo": {
     "welcome": "Benvenuto/a!",

@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Save, Clock, Calendar, Bell, Star, Shield, Loader2 } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Save, Clock, Calendar, Bell, Star, Shield, Loader2, Code, Copy, Check as CheckIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { AppointmentSettings } from '@/types/appointments'
 import { api } from '@/lib/use-api'
 import { useTranslation } from '@/lib/i18n'
+import { supabase } from '@/lib/supabase'
 
 export default function SettingsPage() {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
 
   const DAYS = [
     t('appointmentStaff.daySun') || 'Dim',
@@ -24,11 +25,46 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [slug, setSlug] = useState<string | null>(null)
+  const [embedCopied, setEmbedCopied] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+  const [gcalConnected, setGcalConnected] = useState(false)
+  const [gcalConfigured, setGcalConfigured] = useState(false)
+  const [gcalAuthUrl, setGcalAuthUrl] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchSettings() {
-      const res = await api<{ settings: AppointmentSettings }>('/api/appointments/settings')
-      if (res.data) setSettings(res.data.settings)
+      const settingsRes = await api<{ settings: AppointmentSettings }>('/api/appointments/settings')
+      if (settingsRes.data) setSettings(settingsRes.data.settings)
+
+      // Fetch restaurant slug for embed code
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: resto } = await supabase
+          .from('restaurants')
+          .select('slug')
+          .eq('owner_id', user.id)
+          .maybeSingle()
+        if (resto?.slug) setSlug(resto.slug)
+      }
+
+      // Fetch Google Calendar status
+      const gcalRes = await api<{ connected: boolean; configured: boolean; authUrl: string | null }>('/api/gcal')
+      if (gcalRes.data) {
+        setGcalConnected(gcalRes.data.connected)
+        setGcalConfigured(gcalRes.data.configured)
+        setGcalAuthUrl(gcalRes.data.authUrl)
+      }
+
+      // Handle gcal callback result
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('gcal') === 'connected') {
+        toast.success('Google Calendar connecté !')
+        setGcalConnected(true)
+      } else if (params.get('gcal') === 'error') {
+        toast.error('Erreur lors de la connexion à Google Calendar')
+      }
+
       setLoading(false)
     }
     fetchSettings()
@@ -261,6 +297,25 @@ export default function SettingsPage() {
               />
             </div>
           )}
+
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1.5 block">
+                {t('appointmentSettings.noShowThreshold')}
+              </label>
+              <input
+                type="number"
+                value={settings.no_show_block_threshold}
+                onChange={(e) => update('no_show_block_threshold', parseInt(e.target.value) || 0)}
+                min={0}
+                max={10}
+                className="w-full max-w-[200px] px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+              />
+              <p className="text-xs text-gray-400 mt-1.5">
+                {t('appointmentSettings.noShowThresholdDesc')}
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* Rappels */}
@@ -343,6 +398,123 @@ export default function SettingsPage() {
             </div>
           )}
         </section>
+
+        {/* ── Google Calendar ──────────────────────────────────── */}
+        {gcalConfigured && (
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar size={16} className="text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-900">
+                Google Calendar
+              </h3>
+            </div>
+            <p className="text-xs text-gray-500">
+              Synchronisez automatiquement vos rendez-vous avec votre Google Calendar.
+            </p>
+
+            {gcalConnected ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-sm text-emerald-700 font-medium">Connecté</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    await api('/api/gcal', { method: 'DELETE' })
+                    setGcalConnected(false)
+                    toast.success('Google Calendar déconnecté')
+                  }}
+                  className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors"
+                >
+                  Déconnecter
+                </button>
+              </div>
+            ) : (
+              <a
+                href={gcalAuthUrl ?? '#'}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                <Calendar size={14} />
+                Connecter Google Calendar
+              </a>
+            )}
+          </section>
+        )}
+
+        {/* ── Embed / Widget ───────────────────────────────────── */}
+        {slug && (
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Code size={16} className="text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-900">
+                {t('appointmentSettings.embedTitle') || 'Widget de réservation'}
+              </h3>
+            </div>
+            <p className="text-xs text-gray-500">
+              {t('appointmentSettings.embedDesc') || 'Intégrez le formulaire de réservation directement sur votre site web. Copiez le code ci-dessous et collez-le dans votre page HTML.'}
+            </p>
+
+            <div className="relative">
+              <pre className="bg-gray-50 rounded-xl border border-gray-200 p-4 text-xs text-gray-700 overflow-x-auto whitespace-pre-wrap break-all">
+{`<iframe
+  src="${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/book/${slug}?embed=1"
+  width="100%"
+  height="700"
+  frameborder="0"
+  style="border: none; border-radius: 16px;"
+  allow="payment"
+></iframe>`}
+              </pre>
+              <button
+                onClick={() => {
+                  const code = `<iframe src="${window.location.origin}/${locale}/book/${slug}?embed=1" width="100%" height="700" frameborder="0" style="border: none; border-radius: 16px;" allow="payment"></iframe>`
+                  navigator.clipboard.writeText(code)
+                  setEmbedCopied(true)
+                  toast.success(t('appointmentSettings.embedCopied') || 'Code copié !')
+                  setTimeout(() => setEmbedCopied(false), 2000)
+                }}
+                className="absolute top-3 right-3 p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                {embedCopied ? <CheckIcon size={14} className="text-emerald-500" /> : <Copy size={14} className="text-gray-400" />}
+              </button>
+            </div>
+
+            <div className="bg-blue-50 rounded-xl p-3">
+              <p className="text-xs text-blue-700">
+                {t('appointmentSettings.embedTip') || 'Astuce : Ajustez la hauteur (height) selon vos besoins. 700px fonctionne bien pour la plupart des sites.'}
+              </p>
+            </div>
+
+            {/* ── Direct booking link (social media) ───────────────── */}
+            <div className="border-t border-gray-100 pt-4 mt-4">
+              <h4 className="text-xs font-semibold text-gray-700 mb-2">
+                {t('appointmentSettings.socialTitle') || 'Lien de réservation (réseaux sociaux)'}
+              </h4>
+              <p className="text-xs text-gray-500 mb-3">
+                {t('appointmentSettings.socialDesc') || 'Ajoutez ce lien dans votre bio Instagram, page Facebook, ou Google Business pour permettre la réservation directe.'}
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={typeof window !== 'undefined' ? `${window.location.origin}/${locale}/book/${slug}` : ''}
+                  className="flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600 bg-gray-50 focus:outline-none"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/${locale}/book/${slug}`)
+                    setLinkCopied(true)
+                    toast.success(t('appointmentSettings.linkCopied') || 'Lien copié !')
+                    setTimeout(() => setLinkCopied(false), 2000)
+                  }}
+                  className="px-3 py-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors shrink-0"
+                >
+                  {linkCopied ? <CheckIcon size={14} className="text-emerald-500" /> : <Copy size={14} className="text-gray-400" />}
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   )

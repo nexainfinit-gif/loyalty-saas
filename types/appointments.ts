@@ -59,7 +59,11 @@ export interface Appointment {
   client_name: string
   client_email: string
   client_phone: string
+  cancel_token: string
   notes: string | null
+  recurrence_pattern: 'none' | 'weekly' | 'biweekly' | 'monthly'
+  recurrence_end_date: string | null
+  recurrence_parent_id: string | null
   created_at: string
   // Joined fields
   service?: Service
@@ -89,6 +93,7 @@ export interface AppointmentSettings {
   reminder_hours_before: number
   auto_loyalty_points: boolean
   loyalty_points_per_visit: number
+  no_show_block_threshold: number
   working_days: number[]       // [1,2,3,4,5]
   opening_time: string         // "09:00"
   closing_time: string         // "19:00"

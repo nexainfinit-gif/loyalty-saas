@@ -80,19 +80,31 @@ export default function AgendaPage() {
     client_email: string
     client_phone: string
     notes: string
+    recurrence_pattern: string
+    recurrence_end_date: string | null
   }) => {
-    const res = await api<{ appointment: Appointment }>('/api/appointments', {
+    const res = await api<{ appointment: Appointment; seriesCount?: number; skippedDates?: string[] }>('/api/appointments', {
       method: 'POST',
       body: JSON.stringify(data),
     })
     if (res.data) {
       setAppointments((prev) => [...prev, res.data!.appointment])
-      toast.success(t('appointments.created'))
+      const count = res.data.seriesCount ?? 1
+      if (count > 1) {
+        toast.success(`${count} rendez-vous créés (série récurrente)`)
+      } else {
+        toast.success(t('appointments.created'))
+      }
+      if (res.data.skippedDates?.length) {
+        toast.warning(`${res.data.skippedDates.length} créneau(x) ignoré(s) — déjà occupé(s)`)
+      }
+      // Refresh to show all series appointments
+      if (count > 1) fetchAppointments()
     }
   }
 
-  const handleStatusChange = async (id: string, status: AppointmentStatus) => {
-    const res = await api<{ appointment: Appointment }>('/api/appointments', {
+  const handleStatusChange = async (id: string, status: AppointmentStatus): Promise<number | void> => {
+    const res = await api<{ appointment: Appointment; loyaltyAwarded?: number }>('/api/appointments', {
       method: 'PUT',
       body: JSON.stringify({ id, status }),
     })
@@ -102,8 +114,16 @@ export default function AgendaPage() {
       )
       const labels: Record<string, string> = { completed: t('appointments.completed'), no_show: t('appointments.noShow'), cancelled: t('appointments.canceled') }
       toast.success(labels[status] || t('appointments.statusUpdated'))
+
+      const awarded = res.data.loyaltyAwarded ?? 0
+      if (awarded > 0) {
+        toast.success(`+${awarded} ${t('appointments.pointsAwarded')}`)
+        return awarded
+      }
     }
-    setSelectedAppointment(null)
+    if (status !== 'completed') {
+      setSelectedAppointment(null)
+    }
   }
 
   return (
@@ -135,6 +155,14 @@ export default function AgendaPage() {
         appointment={selectedAppointment}
         onClose={() => setSelectedAppointment(null)}
         onStatusChange={handleStatusChange}
+        onCancelSeries={async (id) => {
+          await api('/api/appointments', {
+            method: 'DELETE',
+            body: JSON.stringify({ id, cancelSeries: true }),
+          })
+          toast.success('Série annulée')
+          fetchAppointments()
+        }}
       />
     </div>
   )
