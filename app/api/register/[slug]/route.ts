@@ -7,6 +7,11 @@ import { logger } from '@/lib/logger'
 import crypto from 'crypto'
 
 // Rate limiting: IP-based (10 req/min) + per-restaurant (20 reg/min)
+// NOTE: ipLimiter is in-memory — on Vercel each serverless instance has its own
+// counter, so concurrent requests hitting different instances will bypass this
+// limit. The per-restaurant DB-based rate limit below (RATE_MAX) provides a
+// second line of defence that works across all instances. For stricter IP-based
+// rate limiting, consider Vercel Edge Middleware or an external store (e.g. Upstash Redis).
 const ipLimiter = rateLimit({ prefix: 'register-slug-ip', limit: 10, windowMs: 60_000 })
 const RATE_WINDOW_MS = 60_000
 const RATE_MAX       = 20

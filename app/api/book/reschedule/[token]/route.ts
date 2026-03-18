@@ -146,7 +146,13 @@ export async function POST(
     return NextResponse.json({ error: 'Lien invalide.' }, { status: 400 });
   }
 
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 });
+  }
+
   const parsed = rescheduleSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Paramètres invalides.' }, { status: 400 });

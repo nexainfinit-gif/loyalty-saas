@@ -40,7 +40,13 @@ export async function POST(
   }
 
   const { slug } = await params;
-  const body = await request.json();
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 });
+  }
 
   // Validate input
   const parsed = bookingSchema.safeParse(body);
