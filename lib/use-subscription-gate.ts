@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useLocaleRouter } from '@/lib/i18n';
 
 /**
  * Hook that checks if the current user has an active subscription.
@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
  * Returns { ready: boolean } — render nothing until ready is true.
  */
 export function useSubscriptionGate() {
-  const router = useRouter();
+  const router = useLocaleRouter();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
