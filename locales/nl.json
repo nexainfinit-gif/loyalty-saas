@@ -876,7 +876,12 @@
     "noShowThreshold": "Blokkeerdrempel no-show",
     "noShowThresholdDesc": "Aantal no-shows voordat online reserveren wordt geblokkeerd. 0 = uitgeschakeld.",
     "saveError": "Fout bij het opslaan",
-    "settingsSaved": "Instellingen opgeslagen"
+    "settingsSaved": "Instellingen opgeslagen",
+    "embedTitle": "Reserveringswidget",
+    "embedDesc": "Integreer het reserveringsformulier rechtstreeks op uw website. Kopieer onderstaande code en plak deze in uw HTML-pagina.",
+    "embedTip": "Tip: Pas de hoogte (height) aan naar wens. 700px werkt goed voor de meeste websites.",
+    "socialTitle": "Reserveringslink (sociale media)",
+    "socialDesc": "Voeg deze link toe aan uw Instagram-bio, Facebook-pagina of Google Business om directe reservering mogelijk te maken."
   },
   "appointmentStaff": {
     "title": "Personeel",
@@ -1609,5 +1614,22 @@
     "monthOct": "okt",
     "monthNov": "nov",
     "monthDec": "dec"
+  },
+  "triggers": {
+    "churn_risk_high": "Hoog churnrisico",
+    "churn_risk_medium": "Retentie vereist aandacht",
+    "inactive_majority": "Meerderheid klanten inactief",
+    "engagement_drop": "Betrokkenheid daalt snel",
+    "growth_stalled": "Geen nieuwe aanmeldingen deze maand",
+    "re_engagement": "Heractiveringsmogelijkheid",
+    "campaign_underused": "E-mailcampagnes onderbenut",
+    "no_rewards_issued": "Nog geen beloningen uitgereikt",
+    "low_wallet_adoption": "Lage Wallet-adoptie",
+    "missing_avg_ticket": "Gemiddeld ticket niet ingesteld",
+    "growth_momentum": "Groeiversnelling",
+    "wallet_upgrade": "Ontgrendel Google & Apple Wallet",
+    "revenue_kpis_locked": "Omzetschattingen vergrendeld",
+    "analytics_upgrade": "Geavanceerde analytics beschikbaar op Pro",
+    "ltv_upgrade": "Geschatte LTV beschikbaar op Pro"
   }
 }

@@ -893,7 +893,12 @@
     "noShowThreshold": "Seuil de blocage no-show",
     "noShowThresholdDesc": "Nombre de no-shows avant blocage de la réservation en ligne. 0 = désactivé.",
     "saveError": "Erreur lors de l'enregistrement",
-    "settingsSaved": "Paramètres enregistrés"
+    "settingsSaved": "Paramètres enregistrés",
+    "embedTitle": "Widget de réservation",
+    "embedDesc": "Intégrez le formulaire de réservation directement sur votre site web. Copiez le code ci-dessous et collez-le dans votre page HTML.",
+    "embedTip": "Astuce : Ajustez la hauteur (height) selon vos besoins. 700px fonctionne bien pour la plupart des sites.",
+    "socialTitle": "Lien de réservation (réseaux sociaux)",
+    "socialDesc": "Ajoutez ce lien dans votre bio Instagram, page Facebook, ou Google Business pour permettre la réservation directe."
   },
   "appointmentStaff": {
     "title": "Équipe",
@@ -1642,5 +1647,22 @@
     "monthOct": "oct",
     "monthNov": "nov",
     "monthDec": "déc"
+  },
+  "triggers": {
+    "churn_risk_high": "Risque de churn élevé",
+    "churn_risk_medium": "Rétention à surveiller",
+    "inactive_majority": "Majorité de clients inactifs",
+    "engagement_drop": "Engagement en chute libre",
+    "growth_stalled": "Aucune nouvelle inscription ce mois",
+    "re_engagement": "Opportunité de réactivation",
+    "campaign_underused": "Campagnes email sous-utilisées",
+    "no_rewards_issued": "Aucune récompense déclenchée",
+    "low_wallet_adoption": "Adoption Wallet faible",
+    "missing_avg_ticket": "Ticket moyen non configuré",
+    "growth_momentum": "Accélération de la croissance",
+    "wallet_upgrade": "Débloquez Google & Apple Wallet",
+    "revenue_kpis_locked": "Estimation de revenus verrouillée",
+    "analytics_upgrade": "Analytics avancés disponibles en Pro",
+    "ltv_upgrade": "LTV estimée disponible en Pro"
   }
 }

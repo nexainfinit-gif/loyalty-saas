@@ -362,7 +362,7 @@ export default function OverviewTab({
      FEATURE 3: SMART ACTION SHORTCUTS (max 3)
      ──────────────────────────────────────────────────────── */
   const actions = useMemo(() => {
-    const list: { icon: string; text: string; cta: string; onClick: () => void; accent: string; bg: string }[] = [];
+    const list: { icon: string; text: string; cta: string; onClick: () => void; accent: string; bg: string; _triggerKey?: string }[] = [];
 
     if (kpis.nearReward > 0) {
       list.push({
@@ -428,11 +428,14 @@ export default function OverviewTab({
 
     for (const tr of triggerActions) {
       if (list.length >= 3) break;
-      const alreadyCovered = list.some(a => a.text.includes('inactifs') || a.text.includes('recompense') || a.text.includes('nouveau'));
-      if (alreadyCovered && (tr.key.includes('churn') || tr.key.includes('reward') || tr.key.includes('growth'))) continue;
+      const coveredKeys = new Set(list.map(a => a._triggerKey).filter(Boolean));
+      if ((coveredKeys.has('churn_risk_high') || coveredKeys.has('inactive_majority')) && tr.key.includes('churn')) continue;
+      if (coveredKeys.has('no_rewards_issued') && tr.key.includes('reward')) continue;
+      if (coveredKeys.has('growth_stalled') && tr.key.includes('growth')) continue;
       list.push({
         icon: tr.type === 'risk' ? ICONS.warning : ICONS.trendUp,
-        text: tr.title,
+        text: t(`triggers.${tr.key}`) !== `triggers.${tr.key}` ? t(`triggers.${tr.key}`) : tr.title,
+        _triggerKey: tr.key,
         cta: tr.type === 'risk' ? t('overview.actionBtn') : t('overview.exploreBtn'),
         onClick: () => {
           if (tr.key.includes('campaign') || tr.key.includes('churn') || tr.key.includes('engagement') || tr.key.includes('re_')) onTabChange('campaigns');

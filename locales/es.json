@@ -871,7 +871,14 @@
     "autoPointsDesc": "Otorgar puntos de fidelización al completar una cita",
     "pointsPerVisit": "Puntos por visita",
     "saveError": "Error al guardar",
-    "settingsSaved": "Ajustes guardados"
+    "settingsSaved": "Ajustes guardados",
+    "noShowThreshold": "Umbral de bloqueo por ausencia",
+    "noShowThresholdDesc": "Número de ausencias antes de bloquear la reserva en línea. 0 = desactivado.",
+    "embedTitle": "Widget de reservas",
+    "embedDesc": "Integra el formulario de reservas directamente en tu sitio web. Copia el código de abajo y pégalo en tu página HTML.",
+    "embedTip": "Consejo: Ajusta la altura (height) según tus necesidades. 700px funciona bien para la mayoría de los sitios.",
+    "socialTitle": "Enlace de reserva (redes sociales)",
+    "socialDesc": "Añade este enlace a tu bio de Instagram, página de Facebook o Google Business para permitir la reserva directa."
   },
   "appointmentStaff": {
     "title": "Personal",
@@ -1604,5 +1611,22 @@
     "monthOct": "oct",
     "monthNov": "nov",
     "monthDec": "dic"
+  },
+  "triggers": {
+    "churn_risk_high": "Alto riesgo de abandono",
+    "churn_risk_medium": "Retención requiere atención",
+    "inactive_majority": "Mayoría de clientes inactivos",
+    "engagement_drop": "Compromiso en caída libre",
+    "growth_stalled": "Sin nuevas inscripciones este mes",
+    "re_engagement": "Oportunidad de reactivación",
+    "campaign_underused": "Campañas de email infrautilizadas",
+    "no_rewards_issued": "Ninguna recompensa activada",
+    "low_wallet_adoption": "Baja adopción de Wallet",
+    "missing_avg_ticket": "Ticket medio no configurado",
+    "growth_momentum": "Aceleración del crecimiento",
+    "wallet_upgrade": "Desbloquea Google & Apple Wallet",
+    "revenue_kpis_locked": "Estimaciones de ingresos bloqueadas",
+    "analytics_upgrade": "Analytics avanzados disponibles en Pro",
+    "ltv_upgrade": "LTV estimada disponible en Pro"
   }
 }

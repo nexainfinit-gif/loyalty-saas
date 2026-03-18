@@ -893,7 +893,12 @@
     "noShowThreshold": "No-show blocking threshold",
     "noShowThresholdDesc": "Number of no-shows before online booking is blocked. 0 = disabled.",
     "saveError": "Error saving",
-    "settingsSaved": "Settings saved"
+    "settingsSaved": "Settings saved",
+    "embedTitle": "Booking widget",
+    "embedDesc": "Embed the booking form directly on your website. Copy the code below and paste it into your HTML page.",
+    "embedTip": "Tip: Adjust the height as needed. 700px works well for most websites.",
+    "socialTitle": "Booking link (social media)",
+    "socialDesc": "Add this link to your Instagram bio, Facebook page, or Google Business to enable direct booking."
   },
   "appointmentStaff": {
     "title": "Staff",
@@ -1642,5 +1647,22 @@
     "monthOct": "Oct",
     "monthNov": "Nov",
     "monthDec": "Dec"
+  },
+  "triggers": {
+    "churn_risk_high": "High churn risk",
+    "churn_risk_medium": "Retention needs attention",
+    "inactive_majority": "Majority of customers inactive",
+    "engagement_drop": "Engagement dropping fast",
+    "growth_stalled": "No new sign-ups this month",
+    "re_engagement": "Re-engagement opportunity",
+    "campaign_underused": "Email campaigns underused",
+    "no_rewards_issued": "No rewards triggered yet",
+    "low_wallet_adoption": "Low Wallet adoption",
+    "missing_avg_ticket": "Average ticket not set",
+    "growth_momentum": "Growth acceleration",
+    "wallet_upgrade": "Unlock Google & Apple Wallet",
+    "revenue_kpis_locked": "Revenue estimates locked",
+    "analytics_upgrade": "Advanced analytics available on Pro",
+    "ltv_upgrade": "Estimated LTV available on Pro"
   }
 }

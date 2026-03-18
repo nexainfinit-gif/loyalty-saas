@@ -876,7 +876,12 @@
     "noShowThreshold": "Soglia di blocco no-show",
     "noShowThresholdDesc": "Numero di no-show prima del blocco della prenotazione online. 0 = disattivato.",
     "saveError": "Errore durante il salvataggio",
-    "settingsSaved": "Impostazioni salvate"
+    "settingsSaved": "Impostazioni salvate",
+    "embedTitle": "Widget di prenotazione",
+    "embedDesc": "Integra il modulo di prenotazione direttamente nel tuo sito web. Copia il codice qui sotto e incollalo nella tua pagina HTML.",
+    "embedTip": "Suggerimento: Regola l'altezza (height) secondo le tue esigenze. 700px funziona bene per la maggior parte dei siti.",
+    "socialTitle": "Link di prenotazione (social media)",
+    "socialDesc": "Aggiungi questo link alla tua bio Instagram, pagina Facebook o Google Business per consentire la prenotazione diretta."
   },
   "appointmentStaff": {
     "title": "Personale",
@@ -1611,5 +1616,22 @@
     "monthOct": "ott",
     "monthNov": "nov",
     "monthDec": "dic"
+  },
+  "triggers": {
+    "churn_risk_high": "Alto rischio di abbandono",
+    "churn_risk_medium": "Fidelizzazione da monitorare",
+    "inactive_majority": "Maggioranza dei clienti inattivi",
+    "engagement_drop": "Coinvolgimento in calo rapido",
+    "growth_stalled": "Nessuna nuova iscrizione questo mese",
+    "re_engagement": "Opportunità di riattivazione",
+    "campaign_underused": "Campagne email sottoutilizzate",
+    "no_rewards_issued": "Nessun premio attivato",
+    "low_wallet_adoption": "Bassa adozione Wallet",
+    "missing_avg_ticket": "Scontrino medio non configurato",
+    "growth_momentum": "Accelerazione della crescita",
+    "wallet_upgrade": "Sblocca Google & Apple Wallet",
+    "revenue_kpis_locked": "Stime dei ricavi bloccate",
+    "analytics_upgrade": "Analytics avanzati disponibili su Pro",
+    "ltv_upgrade": "LTV stimata disponibile su Pro"
   }
 }
