@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireOwner } from '@/lib/server-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Temporary seed route — DELETE after use
 
-export async function GET() {
+export async function GET(request: Request) {
+  const guard = await requireOwner(request);
+  if (guard instanceof NextResponse) return guard;
+
   // Check campaigns table constraints
   const { data, error } = await supabaseAdmin.rpc('get_check_constraints', {}).maybeSingle();
   // Fallback: try inserting with different types and see which work
@@ -29,7 +33,10 @@ export async function GET() {
   return NextResponse.json({ valid_types: valid, rpc_error: error?.message });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const guard = await requireOwner(request);
+  if (guard instanceof NextResponse) return guard;
+
   // 1. Find the first restaurant
   const { data: restaurant, error: rErr } = await supabaseAdmin
     .from('restaurants')

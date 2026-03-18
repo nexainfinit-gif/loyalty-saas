@@ -7,16 +7,27 @@
 import { requireOwner } from '@/lib/server-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
+
+const limiter = rateLimit({ prefix: 'admin-impersonate', limit: 10, windowMs: 60_000 });
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const rl = limiter.check(ip);
+  if (!rl.success) {
+    return Response.json({ error: 'Trop de requêtes' }, { status: 429 });
+  }
+
   const guard = await requireOwner(req);
   if (guard instanceof NextResponse) return guard;
 
   const body = await req.json().catch(() => ({}));
   const restaurantId = body.restaurant_id;
 
-  if (!restaurantId || typeof restaurantId !== 'string') {
-    return Response.json({ error: 'restaurant_id requis' }, { status: 400 });
+  if (!restaurantId || typeof restaurantId !== 'string' || !UUID_RE.test(restaurantId)) {
+    return Response.json({ error: 'restaurant_id requis (UUID)' }, { status: 400 });
   }
 
   // Verify restaurant exists

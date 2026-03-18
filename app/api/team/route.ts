@@ -45,13 +45,15 @@ export async function GET(request: Request) {
         .from('team_members')
         .select('id, user_id, role, created_at')
         .eq('restaurant_id', guard.restaurantId)
-        .order('created_at', { ascending: true }),
+        .order('created_at', { ascending: true })
+        .limit(100),
       supabaseAdmin
         .from('team_invites')
         .select('id, email, role, status, created_at, expires_at')
         .eq('restaurant_id', guard.restaurantId)
         .in('status', ['pending'])
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        .limit(50),
     ]);
 
   if (mErr || iErr) {

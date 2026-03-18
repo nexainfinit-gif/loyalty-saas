@@ -396,11 +396,12 @@ export async function DELETE(req: Request) {
   const guard = await requireOwner(req);
   if (guard instanceof NextResponse) return guard;
 
-  // Find all demo restaurants
+  // Find demo restaurants owned by this user only
   const { data: demoRestos } = await supabaseAdmin
     .from('restaurants')
     .select('id')
-    .eq('is_demo', true);
+    .eq('is_demo', true)
+    .eq('owner_id', guard.userId);
 
   if (!demoRestos?.length) {
     return NextResponse.json({ deleted: 0 });

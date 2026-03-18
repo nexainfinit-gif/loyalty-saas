@@ -23,6 +23,7 @@ export default function SettingsPage() {
 
   const [settings, setSettings] = useState<AppointmentSettings | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [slug, setSlug] = useState<string | null>(null)
@@ -34,38 +35,42 @@ export default function SettingsPage() {
 
   useEffect(() => {
     async function fetchSettings() {
-      const settingsRes = await api<{ settings: AppointmentSettings }>('/api/appointments/settings')
-      if (settingsRes.data) setSettings(settingsRes.data.settings)
+      try {
+        const settingsRes = await api<{ settings: AppointmentSettings }>('/api/appointments/settings')
+        if (settingsRes.data) setSettings(settingsRes.data.settings)
 
-      // Fetch restaurant slug for embed code
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: resto } = await supabase
-          .from('restaurants')
-          .select('slug')
-          .eq('owner_id', user.id)
-          .maybeSingle()
-        if (resto?.slug) setSlug(resto.slug)
+        // Fetch restaurant slug for embed code
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: resto } = await supabase
+            .from('restaurants')
+            .select('slug')
+            .eq('owner_id', user.id)
+            .maybeSingle()
+          if (resto?.slug) setSlug(resto.slug)
+        }
+
+        // Fetch Google Calendar status
+        const gcalRes = await api<{ connected: boolean; configured: boolean; authUrl: string | null }>('/api/gcal')
+        if (gcalRes.data) {
+          setGcalConnected(gcalRes.data.connected)
+          setGcalConfigured(gcalRes.data.configured)
+          setGcalAuthUrl(gcalRes.data.authUrl)
+        }
+
+        // Handle gcal callback result
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('gcal') === 'connected') {
+          toast.success('Google Calendar connecté !')
+          setGcalConnected(true)
+        } else if (params.get('gcal') === 'error') {
+          toast.error('Erreur lors de la connexion à Google Calendar')
+        }
+      } catch {
+        setError(true)
+      } finally {
+        setLoading(false)
       }
-
-      // Fetch Google Calendar status
-      const gcalRes = await api<{ connected: boolean; configured: boolean; authUrl: string | null }>('/api/gcal')
-      if (gcalRes.data) {
-        setGcalConnected(gcalRes.data.connected)
-        setGcalConfigured(gcalRes.data.configured)
-        setGcalAuthUrl(gcalRes.data.authUrl)
-      }
-
-      // Handle gcal callback result
-      const params = new URLSearchParams(window.location.search)
-      if (params.get('gcal') === 'connected') {
-        toast.success('Google Calendar connecté !')
-        setGcalConnected(true)
-      } else if (params.get('gcal') === 'error') {
-        toast.error('Erreur lors de la connexion à Google Calendar')
-      }
-
-      setLoading(false)
     }
     fetchSettings()
   }, [])
@@ -105,10 +110,24 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading || !settings) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 size={24} className="animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  if (error || !settings) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <p className="text-sm text-gray-500">Impossible de charger les paramètres. Veuillez réessayer.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+        >
+          Réessayer
+        </button>
       </div>
     )
   }

@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     .from('appointments')
     .select(`
       id, restaurant_id, date, start_time, end_time, status,
-      client_name, client_email,
+      client_name, client_email, cancel_token,
       service:services(name, duration_minutes),
       staff:staff_members(name)
     `)
@@ -131,6 +131,11 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Construct cancel/reschedule URLs if cancel_token is available
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://rebites.be';
+    const cancelUrl = apt.cancel_token ? `${APP_URL}/book/cancel/${apt.cancel_token}` : null;
+    const rescheduleUrl = apt.cancel_token ? `${APP_URL}/book/reschedule/${apt.cancel_token}` : null;
+
     for (const reminder of remindersToSend) {
       const promise = sendReminderEmail({
         to: apt.client_email,
@@ -145,6 +150,8 @@ export async function GET(req: NextRequest) {
         businessColor: restaurant.primary_color ?? '#111827',
         businessSlug: restaurant.slug,
         hoursUntil: reminder.hoursLabel,
+        cancelUrl,
+        rescheduleUrl,
       })
         .then(async () => {
           // Record the sent reminder

@@ -9,11 +9,20 @@
 // the public registration page for this restaurant.
 
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
+
+const limiter = rateLimit({ prefix: 'scanner-info', limit: 30, windowMs: 60_000 });
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
+  const ip = getClientIp(_req);
+  const rl = limiter.check(ip);
+  if (!rl.success) {
+    return Response.json({ error: 'Trop de requêtes' }, { status: 429 });
+  }
+
   const { token } = await params;
 
   if (!token || token.length < 10) {

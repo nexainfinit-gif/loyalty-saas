@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -254,7 +255,11 @@ export default function DashboardPage() {
   const [showPlanSelection, setShowPlanSelection] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [hasTemplates, setHasTemplates] = useState(true); // assume true until checked
-  const [templateBannerDismissed, setTemplateBannerDismissed] = useState(false);
+  const [templateBannerDismissed, setTemplateBannerDismissed] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('wallet-banner-dismissed') === '1';
+    return false;
+  });
+  const [busyAction, setBusyAction] = useState<string | null>(null);
 
   /* Data load */
   useEffect(() => {
@@ -366,10 +371,14 @@ export default function DashboardPage() {
         .limit(500);
       setTransactions(txs ?? []);
 
-      const { data: ls } = await supabase
+      const { data: ls, error: lsError } = await supabase
         .from('loyalty_settings').select('*')
         .eq('restaurant_id', resto.id).maybeSingle();
-      if (ls) setLoyaltySettings(ls);
+      if (lsError) {
+        console.warn('loyalty_settings fetch failed:', lsError.message);
+      } else if (ls) {
+        setLoyaltySettings(ls);
+      }
 
       const { data: camps } = await supabase
         .from('campaigns').select('*')
@@ -528,12 +537,15 @@ export default function DashboardPage() {
 
   /* Handlers */
   async function addPoint(customerId: string, delta: number) {
+    const key = `add-${customerId}-${delta}`;
+    if (busyAction === key) return;
     const customer = customers.find(c => c.id === customerId);
     if (!customer || !restaurant) return;
     if (delta < 0) {
       const confirmed = window.confirm(t('dashboard.confirmRemovePoints', { delta: Math.abs(delta), firstName: customer.first_name, lastName: customer.last_name }));
       if (!confirmed) return;
     }
+    setBusyAction(key);
     const { data: newTx } = await supabase.from('transactions').insert({
       customer_id: customerId, restaurant_id: restaurant.id,
       type: 'manual', points_delta: delta,
@@ -551,8 +563,9 @@ export default function DashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
         body: JSON.stringify({ customer_id: customerId }),
-      }).catch(() => {/* non-blocking */});
+      }).catch(() => { toast.error(t('dashboard.toastWalletPushFailed')); });
     });
+    setBusyAction(null);
   }
 
   function copyWalletUrl(customerId: string) {
@@ -562,14 +575,16 @@ export default function DashboardPage() {
   }
 
   async function deleteCustomer(customerId: string) {
+    if (busyAction === `del-${customerId}`) return;
     const customer = customers.find(c => c.id === customerId);
     if (!customer) return;
     const confirmed = window.confirm(
       t('dashboard.confirmDeleteCustomer', { firstName: customer.first_name, lastName: customer.last_name })
     );
     if (!confirmed) return;
+    setBusyAction(`del-${customerId}`);
     const { data: { session: s } } = await supabase.auth.getSession();
-    if (!s) return;
+    if (!s) { setBusyAction(null); return; }
     const res = await fetch(`/api/customers/${customerId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${s.access_token}` },
@@ -581,12 +596,13 @@ export default function DashboardPage() {
       const data = await res.json();
       toast.error(data.error || t('dashboard.toastDeleteError'));
     }
+    setBusyAction(null);
   }
 
   async function saveLoyaltySettings() {
     if (!restaurant) return;
     setSavingSettings(true);
-    await supabase.from('loyalty_settings').upsert({
+    const { error } = await supabase.from('loyalty_settings').upsert({
       restaurant_id: restaurant.id,
       points_per_scan: loyaltySettings.points_per_scan,
       reward_threshold: loyaltySettings.reward_threshold,
@@ -599,6 +615,10 @@ export default function DashboardPage() {
       vip_threshold_stamps: loyaltySettings.vip_threshold_stamps,
     }, { onConflict: 'restaurant_id' });
     setSavingSettings(false);
+    if (error) {
+      toast.error(t('dashboard.toastSaveError'));
+      return;
+    }
     toast.success(t('dashboard.toastLoyaltySaved'));
   }
 
@@ -654,7 +674,7 @@ export default function DashboardPage() {
     if (!session) return;
     setSendingCampaign(true);
     try {
-      const res  = await fetch('/api/campaigns', {
+      const res  = await fetch('/api/compaigns', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...newCampaign, bodyText: newCampaign.body }),
@@ -812,11 +832,13 @@ export default function DashboardPage() {
                 if (!session || !impersonatedId) return;
                 const planId = e.target.value;
                 if (!planId) return;
-                await fetch(`/api/admin/restaurants/${impersonatedId}`, {
+                const res = await fetch(`/api/admin/restaurants/${impersonatedId}`, {
                   method: 'PATCH',
                   headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
                   body: JSON.stringify({ plan_id: planId }),
                 });
+                if (!res.ok) { toast.error(t('demo.planSwitchError')); return; }
+                toast.success(t('demo.planSwitchSuccess'));
                 window.location.reload();
               }}
               className="text-xs bg-white border border-amber-300 rounded-lg px-2 py-1.5 text-amber-900"
@@ -980,14 +1002,14 @@ export default function DashboardPage() {
 
           {/* Booking Rebites — visible for salons, spas, beauty & wellness */}
           {BOOKING_ELIGIBLE_TYPES.has(restaurant?.business_type ?? '') && (
-            <a
+            <Link
               href={`/${locale}/dashboard/appointments`}
               aria-label={t('nav.booking')}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all"
             >
               <span className="flex-shrink-0"><ICalendar /></span>
               {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.booking')}</span>}
-            </a>
+            </Link>
           )}
 
           {/* Aide */}
@@ -1096,7 +1118,7 @@ export default function DashboardPage() {
                 </button>
               </div>
               <button
-                onClick={() => setTemplateBannerDismissed(true)}
+                onClick={() => { setTemplateBannerDismissed(true); localStorage.setItem('wallet-banner-dismissed', '1'); }}
                 className="shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors"
                 aria-label={t('dashboard.closeBanner')}
               >
@@ -1133,19 +1155,22 @@ export default function DashboardPage() {
                   <p className="text-sm text-gray-500 mt-0.5">{t('clients.resultCount', { count: filteredCustomers.length })}</p>
                 </div>
                 <button
+                  disabled={busyAction === 'export-csv'}
                   onClick={async () => {
-                    if (!restaurant) return;
+                    if (!restaurant || busyAction === 'export-csv') return;
+                    setBusyAction('export-csv');
                     const { data: { session: s } } = await supabase.auth.getSession();
-                    if (!s) return;
+                    if (!s) { setBusyAction(null); return; }
                     const res = await fetch('/api/export-csv', {
                       headers: { Authorization: `Bearer ${s.access_token}` },
                     });
-                    if (!res.ok) { toast.error(t('clients.exportError')); return; }
+                    if (!res.ok) { toast.error(t('clients.exportError')); setBusyAction(null); return; }
                     const blob = await res.blob();
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url; a.download = 'clients.csv'; a.click();
                     URL.revokeObjectURL(url);
+                    setBusyAction(null);
                   }}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >

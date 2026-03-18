@@ -103,15 +103,15 @@ export default function ClientPortalPage() {
             <div className="w-14 h-14 rounded-2xl bg-gray-900 flex items-center justify-center mx-auto mb-4">
               <User size={24} className="text-white" />
             </div>
-            <h1 className="text-xl font-semibold mb-1">Espace client</h1>
-            <p className="text-sm text-gray-500">Entrez votre email pour recevoir un lien de connexion</p>
+            <h1 className="text-xl font-semibold mb-1">{t('clientPortal.title')}</h1>
+            <p className="text-sm text-gray-500">{t('clientPortal.loginPrompt')}</p>
           </div>
 
           {loginSent ? (
             <div className="bg-green-50 rounded-xl border border-green-100 p-4 text-center">
               <Mail size={20} className="text-green-600 mx-auto mb-2" />
-              <p className="text-sm text-green-700 font-medium">Email envoyé !</p>
-              <p className="text-xs text-green-600 mt-1">Vérifiez votre boîte de réception.</p>
+              <p className="text-sm text-green-700 font-medium">{t('clientPortal.loginSuccess')}</p>
+              <p className="text-xs text-green-600 mt-1">{t('clientPortal.checkInbox')}</p>
             </div>
           ) : (
             <form
@@ -130,6 +130,7 @@ export default function ClientPortalPage() {
             >
               <input
                 type="email"
+                name="email"
                 required
                 placeholder="votre@email.com"
                 value={loginEmail}
@@ -142,7 +143,7 @@ export default function ClientPortalPage() {
                 className="w-full px-4 py-3 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loginLoading && <Loader2 size={14} className="animate-spin" />}
-                Recevoir le lien
+                {t('clientPortal.sendLink')}
               </button>
             </form>
           )}
@@ -163,13 +164,13 @@ export default function ClientPortalPage() {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-lg font-semibold text-gray-900 mb-2">Session expirée</p>
-          <p className="text-sm text-gray-500 mb-4">Veuillez vous reconnecter.</p>
+          <p className="text-lg font-semibold text-gray-900 mb-2">{t('clientPortal.sessionExpired')}</p>
+          <p className="text-sm text-gray-500 mb-4">{t('clientPortal.reconnectPrompt')}</p>
           <Link
             href={`/${locale}/client/${slug}`}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium"
           >
-            Se reconnecter
+            {t('clientPortal.reconnect')}
           </Link>
         </div>
       </div>
@@ -188,7 +189,7 @@ export default function ClientPortalPage() {
         <div className="max-w-lg mx-auto text-center">
           <p className="text-white/80 text-xs mb-1">{restaurant.name}</p>
           <h1 className="text-white text-xl font-semibold">
-            Bonjour {customer.first_name} !
+            {t('clientPortal.greeting', { name: customer.first_name })}
           </h1>
         </div>
       </header>
@@ -200,10 +201,10 @@ export default function ClientPortalPage() {
             <div className="flex items-center gap-2">
               <Star size={16} style={{ color: primaryColor }} />
               <span className="text-sm font-semibold text-gray-900">
-                {programType === 'stamps' ? 'Carte fidélité' : 'Points fidélité'}
+                {programType === 'stamps' ? t('clientPortal.loyaltyCard') : t('clientPortal.loyaltyPoints')}
               </span>
             </div>
-            <span className="text-xs text-gray-500">{customer.total_visits} visite{customer.total_visits !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-gray-500">{customer.total_visits} {customer.total_visits !== 1 ? t('clientPortal.visits') : t('clientPortal.visit')}</span>
           </div>
 
           <div className="text-center mb-3">
@@ -212,8 +213,8 @@ export default function ClientPortalPage() {
             </p>
             <p className="text-xs text-gray-500">
               {programType === 'stamps'
-                ? `${customer.stamps_count} / ${loyalty?.stamps_total ?? 10} tampons`
-                : `${customer.total_points} / ${loyalty?.reward_threshold ?? 100} points`
+                ? `${customer.stamps_count} / ${loyalty?.stamps_total ?? 10} ${t('clientPortal.stamps')}`
+                : `${customer.total_points} / ${loyalty?.reward_threshold ?? 100} ${t('clientPortal.points')}`
               }
             </p>
           </div>
@@ -233,25 +234,25 @@ export default function ClientPortalPage() {
         {/* Upcoming appointments */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-900">Prochains rendez-vous</h2>
+            <h2 className="text-sm font-semibold text-gray-900">{t('clientPortal.upcomingAppointments')}</h2>
             <Link
               href={`/${locale}/book/${slug}`}
               className="text-xs font-medium flex items-center gap-1 hover:opacity-80 transition-opacity"
               style={{ color: primaryColor }}
             >
-              Réserver <ArrowRight size={12} />
+              {t('clientPortal.book')} <ArrowRight size={12} />
             </Link>
           </div>
 
           {upcoming.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center">
               <Calendar size={20} className="text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-400">Aucun rendez-vous à venir</p>
+              <p className="text-sm text-gray-400">{t('clientPortal.noUpcoming')}</p>
             </div>
           ) : (
             <div className="space-y-2">
               {upcoming.map((apt) => (
-                <AppointmentCard key={apt.id} apt={apt} locale={locale} slug={slug} color={primaryColor} />
+                <AppointmentCard key={apt.id} apt={apt} locale={locale} slug={slug} color={primaryColor} t={t} />
               ))}
             </div>
           )}
@@ -260,10 +261,10 @@ export default function ClientPortalPage() {
         {/* Past appointments */}
         {past.length > 0 && (
           <div>
-            <h2 className="text-sm font-semibold text-gray-900 mb-3">Historique</h2>
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('clientPortal.history')}</h2>
             <div className="space-y-2">
               {past.slice(0, 10).map((apt) => (
-                <AppointmentCard key={apt.id} apt={apt} locale={locale} slug={slug} color={primaryColor} isPast />
+                <AppointmentCard key={apt.id} apt={apt} locale={locale} slug={slug} color={primaryColor} isPast t={t} />
               ))}
             </div>
           </div>
@@ -273,17 +274,24 @@ export default function ClientPortalPage() {
   )
 }
 
-function AppointmentCard({ apt, locale, slug, color, isPast }: {
-  apt: Appointment; locale: string; slug: string; color: string; isPast?: boolean
+function AppointmentCard({ apt, locale, slug, color, isPast, t }: {
+  apt: Appointment; locale: string; slug: string; color: string; isPast?: boolean; t: (key: string, params?: Record<string, string>) => string
 }) {
   const svc = apt.service as { name: string; price: number; duration_minutes: number } | null
   const staff = apt.staff as { name: string } | null
 
   const [y, m, d] = apt.date.split('-').map(Number)
   const dateObj = new Date(y, m - 1, d)
-  const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
-  const monthNames = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc']
-  const displayDate = `${dayNames[dateObj.getDay()]} ${d} ${monthNames[m - 1]}`
+  const dayNames = [
+    t('appointmentStaff.daySun'), t('appointmentStaff.dayMon'), t('appointmentStaff.dayTue'),
+    t('appointmentStaff.dayWed'), t('appointmentStaff.dayThu'), t('appointmentStaff.dayFri'),
+    t('appointmentStaff.daySat'),
+  ]
+  const monthKeys = [
+    'monthJan', 'monthFeb', 'monthMar', 'monthApr', 'monthMay', 'monthJun',
+    'monthJul', 'monthAug', 'monthSep', 'monthOct', 'monthNov', 'monthDec',
+  ]
+  const displayDate = `${dayNames[dateObj.getDay()]} ${d} ${t(`clientPortal.${monthKeys[m - 1]}`)}`
 
   const statusColors: Record<string, string> = {
     confirmed: 'bg-blue-50 text-blue-700',
@@ -292,18 +300,18 @@ function AppointmentCard({ apt, locale, slug, color, isPast }: {
     no_show: 'bg-orange-50 text-orange-700',
   }
   const statusLabels: Record<string, string> = {
-    confirmed: 'Confirmé',
-    completed: 'Terminé',
-    cancelled: 'Annulé',
-    no_show: 'Absent',
+    confirmed: t('clientPortal.statusConfirmed'),
+    completed: t('clientPortal.statusCompleted'),
+    cancelled: t('clientPortal.statusCancelled'),
+    no_show: t('clientPortal.statusNoShow'),
   }
 
   return (
     <div className={`bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4 ${isPast ? 'opacity-70' : ''}`}>
       <div className="flex items-start justify-between mb-2">
         <div>
-          <p className="text-sm font-semibold text-gray-900">{svc?.name ?? 'RDV'}</p>
-          {staff && <p className="text-xs text-gray-500">avec {staff.name}</p>}
+          <p className="text-sm font-semibold text-gray-900">{svc?.name ?? t('clientPortal.defaultAppointment')}</p>
+          {staff && <p className="text-xs text-gray-500">{t('clientPortal.withStaff')} {staff.name}</p>}
         </div>
         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColors[apt.status] ?? ''}`}>
           {statusLabels[apt.status] ?? apt.status}
@@ -320,14 +328,14 @@ function AppointmentCard({ apt, locale, slug, color, isPast }: {
             href={`/${locale}/book/cancel/${apt.cancel_token}`}
             className="text-xs text-red-500 hover:text-red-700 font-medium"
           >
-            Annuler
+            {t('clientPortal.cancelAction')}
           </Link>
           <Link
             href={`/${locale}/book/reschedule/${apt.cancel_token}`}
             className="text-xs font-medium hover:opacity-80"
             style={{ color }}
           >
-            Reporter
+            {t('clientPortal.rescheduleAction')}
           </Link>
         </div>
       )}

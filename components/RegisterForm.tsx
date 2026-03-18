@@ -469,6 +469,7 @@ export default function RegisterForm({ restaurant, refCode }: RegisterFormProps)
                   autoComplete="given-name"
                   placeholder={t('register.firstNamePlaceholder')}
                   required
+                  maxLength={100}
                   style={{
                     ...inputStyle('firstName'),
                     ...(fieldErrors.firstName ? { borderColor: '#ef4444' } : {}),

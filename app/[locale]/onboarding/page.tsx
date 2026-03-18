@@ -57,7 +57,7 @@ export default function OnboardingPage() {
         .from('restaurants')
         .select('id')
         .eq('owner_id', session.user.id)
-        .single();
+        .maybeSingle();
       if (existing) {
         window.location.href = `/${locale}/choose-plan`;
         return;

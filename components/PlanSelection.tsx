@@ -37,7 +37,10 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
 
   useEffect(() => {
     fetch('/api/plans')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load plans');
+        return res.json();
+      })
       .then(data => {
         setPlans(data.plans ?? []);
         setLoading(false);

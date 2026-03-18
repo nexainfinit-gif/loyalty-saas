@@ -36,6 +36,16 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Champs manquants' }, { status: 400 })
   }
 
+  if (typeof bodyText !== 'string' || bodyText.length > 5000) {
+    return Response.json({ error: 'Le contenu de la campagne est trop long (max 5000 caractères).' }, { status: 400 })
+  }
+  if (typeof subject !== 'string' || subject.length > 200) {
+    return Response.json({ error: 'L\'objet est trop long (max 200 caractères).' }, { status: 400 })
+  }
+  if (typeof name !== 'string' || name.length > 100) {
+    return Response.json({ error: 'Le nom est trop long (max 100 caractères).' }, { status: 400 })
+  }
+
   // Fetch loyalty settings for VIP threshold
   const { data: loyaltySettings } = await supabaseAdmin
     .from('loyalty_settings').select('program_type, vip_threshold_points, vip_threshold_stamps, reward_threshold')
@@ -204,12 +214,19 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Restaurant introuvable' }, { status: 404 })
   }
 
-  const { data: campaigns } = await supabaseAdmin
-    .from('campaigns').select('*')
+  const url   = new URL(req.url)
+  const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') ?? '100', 10)))
+  const page  = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10))
+  const from  = (page - 1) * limit
+  const to    = from + limit - 1
+
+  const { data: campaigns, count } = await supabaseAdmin
+    .from('campaigns').select('*', { count: 'exact' })
     .eq('restaurant_id', guard.restaurantId)
     .order('created_at', { ascending: false })
+    .range(from, to)
 
-  return Response.json({ campaigns: campaigns ?? [] })
+  return Response.json({ campaigns: campaigns ?? [], total: count ?? 0, page, limit })
 }
 
 function esc(s: string): string {

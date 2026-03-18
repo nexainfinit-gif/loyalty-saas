@@ -59,7 +59,10 @@ export default function ChoosePlanPage() {
   useEffect(() => {
     if (checking) return;
     fetch('/api/plans')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load plans');
+        return res.json();
+      })
       .then(data => {
         setPlans((data.plans ?? []).filter((p: Plan) => p.price_monthly && p.price_monthly > 0));
         setLoading(false);

@@ -23,6 +23,8 @@ export async function GET(request: Request) {
   const filter = url.searchParams.get('filter') ?? 'all';
   const sort   = url.searchParams.get('sort')   ?? 'health';
   const order  = url.searchParams.get('order')  ?? 'desc';
+  const page   = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
+  const limit  = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') ?? '50', 10)));
 
   // Fetch all restaurants with plan name via join
   const { data: restaurants, error: restErr } = await supabaseAdmin
@@ -116,5 +118,8 @@ export async function GET(request: Request) {
   };
   rows.sort(sortFn);
 
-  return NextResponse.json({ restaurants: rows, date: yDate });
+  const total = rows.length;
+  const paged = rows.slice((page - 1) * limit, page * limit);
+
+  return NextResponse.json({ restaurants: paged, total, page, limit, date: yDate });
 }

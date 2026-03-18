@@ -25,11 +25,10 @@ export async function GET(req: NextRequest) {
   const raw   = req.nextUrl.searchParams.get('token') ?? '';
   const token = raw.replace(/^\{|\}$/g, '');
 
-  console.log('[unsubscribe] raw token received:', JSON.stringify(raw));
-  console.log('[unsubscribe] cleaned token:', JSON.stringify(token));
+  // Tokens intentionally NOT logged to avoid leaking customer identifiers
 
   if (!token || token.length < 10) {
-    console.log('[unsubscribe] rejected: token too short');
+    // rejected: token too short
     return pageResponse(400, 'error');
   }
 
@@ -41,7 +40,7 @@ export async function GET(req: NextRequest) {
     .eq('qr_token', token)
     .maybeSingle();
 
-  console.log('[unsubscribe] lookup result — customer:', customer, '| error:', lookupError);
+  // lookup result intentionally NOT logged to avoid leaking customer data
 
   if (lookupError) {
     console.error('[unsubscribe] lookup error:', lookupError.message, lookupError.code);

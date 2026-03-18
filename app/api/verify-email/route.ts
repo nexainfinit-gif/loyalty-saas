@@ -5,6 +5,9 @@ import { issueGooglePass } from '@/lib/google-wallet';
 import { detectDevice } from '@/lib/detect-device';
 import type { DeviceType } from '@/lib/detect-device';
 import { randomUUID } from 'crypto';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
+
+const limiter = rateLimit({ prefix: 'verify-email', limit: 15, windowMs: 60_000 });
 
 interface WalletUrls {
   apple: string | null;
@@ -12,6 +15,15 @@ interface WalletUrls {
 }
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = limiter.check(ip);
+  if (!rl.success) {
+    return new NextResponse(errorHtml('Trop de requêtes', 'Veuillez réessayer dans quelques minutes.'), {
+      status: 429,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
+
   const token = req.nextUrl.searchParams.get('token');
   const device = detectDevice(req.headers.get('user-agent') ?? '');
 

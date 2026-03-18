@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { runMetricsBatch } from '@/lib/metrics-batch';
 import { generateAllGrowthActions } from '@/lib/growth-actions';
 
@@ -20,7 +21,10 @@ export const dynamic = 'force-dynamic';
  *     actionsCreated, actionErrors }
  */
 function isAuthorized(req: NextRequest): boolean {
-  return req.headers.get('authorization') === `Bearer ${process.env.CRON_SECRET}`;
+  const header = req.headers.get('authorization') ?? '';
+  const expected = `Bearer ${process.env.CRON_SECRET}`;
+  if (header.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(header), Buffer.from(expected));
 }
 
 async function handler(req: NextRequest): Promise<NextResponse> {

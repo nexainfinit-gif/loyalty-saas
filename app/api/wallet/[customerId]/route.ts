@@ -71,7 +71,7 @@ export async function GET(
         console.error(
           `[wallet/customerId] sync failed objectId=${existingPass.object_id}` +
           ` HTTP ${result.status}` +
-          (result.error ? ` error=${result.error}` : ` body=${JSON.stringify(result.data).slice(0, 200)}`),
+          (result.error ? ` error=${result.error}` : ''),
         );
       }
       if (result.ok) {

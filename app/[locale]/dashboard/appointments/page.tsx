@@ -20,7 +20,7 @@ import { useTranslation } from '@/lib/i18n'
 export default function AgendaPage() {
   const { ready: subReady } = useSubscriptionGate()
   const { t } = useTranslation()
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [view, setView] = useState<CalendarViewType>('day')
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [staff, setStaff] = useState<StaffMember[]>([])
@@ -33,6 +33,11 @@ export default function AgendaPage() {
     date?: Date
     time?: string
   }>({})
+
+  // Set the initial date on the client only (avoids server/client mismatch → hydration error #418)
+  useEffect(() => {
+    setSelectedDate(new Date())
+  }, [])
 
   // Fetch staff + services once
   useEffect(() => {
@@ -49,6 +54,7 @@ export default function AgendaPage() {
 
   // Fetch appointments when date or view changes
   const fetchAppointments = useCallback(async () => {
+    if (!selectedDate) return
     setLoading(true)
     const dateStr = format(selectedDate, 'yyyy-MM-dd')
     let url = `/api/appointments?date=${dateStr}`
@@ -124,6 +130,15 @@ export default function AgendaPage() {
     if (status !== 'completed') {
       setSelectedAppointment(null)
     }
+  }
+
+  // Wait for client-side date initialization before rendering calendar
+  if (!selectedDate) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-3 border-gray-200 border-t-primary-600 rounded-full animate-ds-spin" />
+      </div>
+    )
   }
 
   return (

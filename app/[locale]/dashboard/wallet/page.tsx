@@ -1384,6 +1384,7 @@ export default function WalletStudioPage() {
       const tk = session.access_token;
 
       const meRes = await fetch('/api/me', { headers: { Authorization: `Bearer ${tk}` } });
+      if (!meRes.ok) { router.replace('/dashboard/login'); return; }
       const me = await meRes.json();
 
       // Role check: non-owner roles are never allowed (redirect silently)

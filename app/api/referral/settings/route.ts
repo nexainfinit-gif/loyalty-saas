@@ -6,8 +6,8 @@ import { z } from 'zod';
 
 const referralSettingsSchema = z.object({
   enabled:         z.boolean(),
-  rewardReferrer:  z.number().int().min(0).max(10000),
-  rewardReferee:   z.number().int().min(0).max(10000),
+  rewardReferrer:  z.number().int().min(0).max(500),
+  rewardReferee:   z.number().int().min(0).max(500),
   maxPerCustomer:  z.number().int().min(1).max(100),
 });
 

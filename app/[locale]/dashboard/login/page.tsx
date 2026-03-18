@@ -38,8 +38,11 @@ function LoginForm() {
       options: { shouldCreateUser: true },
     });
     if (error) {
-      setErrorMsg(error.message);
-      setStatus('error');
+      setErrorMsg(t('auth.genericOtpSent') || 'Si un compte existe avec cet email, un code de connexion vous a été envoyé.');
+      // Always move to OTP step to avoid leaking email existence
+      setStep('otp');
+      setStatus('idle');
+      setCooldown(60);
     } else {
       setStep('otp');
       setStatus('idle');
@@ -100,6 +103,7 @@ function LoginForm() {
               </label>
               <input
                 type="email"
+                name="email"
                 autoComplete="email"
                 placeholder="vous@restaurant.com"
                 value={email}

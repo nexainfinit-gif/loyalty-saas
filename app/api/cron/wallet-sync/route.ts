@@ -6,6 +6,7 @@
 //
 // Runs every 6 hours via Vercel Cron. Secured with CRON_SECRET.
 
+import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { updateLoyaltyObject } from '@/lib/google-wallet';
 import { pushPassUpdate } from '@/lib/apns';
@@ -17,8 +18,11 @@ const MAX_ATTEMPTS    = 5;
 
 export async function GET(req: Request) {
   // Verify Vercel Cron secret
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  const auth = req.headers.get('authorization') ?? '';
+  const expected = `Bearer ${process.env.CRON_SECRET}`;
+  const authorized = auth.length === expected.length &&
+    timingSafeEqual(Buffer.from(auth), Buffer.from(expected));
+  if (!authorized) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
