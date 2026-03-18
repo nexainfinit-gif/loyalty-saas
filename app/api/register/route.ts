@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json();
+  let body: Record<string, unknown>;
+  try { body = await req.json(); }
+  catch { return NextResponse.json({ error: 'Format JSON invalide.' }, { status: 400 }); }
 
   // Turnstile CAPTCHA verification (skip if secret not configured)
   if (process.env.TURNSTILE_SECRET_KEY) {
