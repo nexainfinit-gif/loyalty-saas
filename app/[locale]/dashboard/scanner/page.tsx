@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useSubscriptionGate } from '@/lib/use-subscription-gate';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
 import jsQR from 'jsqr';
 
@@ -46,8 +45,6 @@ type Status = 'idle' | 'identifying' | 'identified' | 'loading' | 'success' | 'e
 export default function ScannerPage() {
   const router = useLocaleRouter();
   const { t } = useTranslation();
-  const { ready: subReady } = useSubscriptionGate();
-
   const [session, setSession]               = useState<any>(null);
   const [scannerUrl, setScannerUrl]         = useState<string | null>(null);
   const [urlCopied, setUrlCopied]           = useState(false);
