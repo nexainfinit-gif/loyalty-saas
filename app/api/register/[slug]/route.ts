@@ -42,7 +42,12 @@ export async function POST(
     return Response.json(planLimitError('customers', current, limit), { status: 403 })
   }
 
-  const body = await req.json()
+  let body: Record<string, unknown>
+  try {
+    body = await req.json()
+  } catch {
+    return Response.json({ error: 'Corps de requête invalide.' }, { status: 400 })
+  }
 
   // Turnstile CAPTCHA verification (skip if secret not configured)
   if (process.env.TURNSTILE_SECRET_KEY) {
