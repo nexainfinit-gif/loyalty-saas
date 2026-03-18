@@ -1607,6 +1607,7 @@
     "loginSuccess": "Si un compte existe avec cet email, un lien de connexion vous a été envoyé.",
     "checkInbox": "Vérifiez votre boîte de réception.",
     "sendLink": "Recevoir le lien",
+    "emailPlaceholder": "votre@email.com",
     "sessionExpired": "Session expirée",
     "reconnectPrompt": "Veuillez vous reconnecter.",
     "reconnect": "Se reconnecter",

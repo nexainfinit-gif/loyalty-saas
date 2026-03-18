@@ -132,7 +132,7 @@ export default function ClientPortalPage() {
                 type="email"
                 name="email"
                 required
-                placeholder="votre@email.com"
+                placeholder={t('clientPortal.emailPlaceholder') || 'your@email.com'}
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gray-400"

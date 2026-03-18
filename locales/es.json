@@ -1569,6 +1569,7 @@
     "loginSuccess": "Si existe una cuenta con este email, se ha enviado un enlace de acceso.",
     "checkInbox": "Revisa tu bandeja de entrada.",
     "sendLink": "Enviar enlace",
+    "emailPlaceholder": "tu@email.com",
     "sessionExpired": "Sesión expirada",
     "reconnectPrompt": "Por favor, vuelve a iniciar sesión.",
     "reconnect": "Reconectarse",

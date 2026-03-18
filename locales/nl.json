@@ -1574,6 +1574,7 @@
     "loginSuccess": "Als er een account bestaat met dit emailadres, is er een inloglink verzonden.",
     "checkInbox": "Controleer uw inbox.",
     "sendLink": "Link verzenden",
+    "emailPlaceholder": "uw@email.com",
     "sessionExpired": "Sessie verlopen",
     "reconnectPrompt": "Log opnieuw in.",
     "reconnect": "Opnieuw inloggen",

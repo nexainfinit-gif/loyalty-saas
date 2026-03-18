@@ -260,7 +260,7 @@ export default function RegisterPage() {
                 <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.4rem' }}>
                   {t('registerSlug.firstName')}
                 </label>
-                <input name="first_name" type="text" placeholder={t('register.firstNamePlaceholder')} required />
+                <input name="first_name" type="text" placeholder={t('register.firstNamePlaceholder')} required maxLength={100} />
               </div>
 
               {/* Email */}
