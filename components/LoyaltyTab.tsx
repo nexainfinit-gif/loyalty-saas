@@ -15,6 +15,7 @@ export interface LoyaltySettings {
   previous_program_type: string | null;
   vip_threshold_points: number;
   vip_threshold_stamps: number;
+  return_grace_days: number | null;
 }
 
 interface Transaction {
