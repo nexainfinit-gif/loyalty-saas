@@ -182,12 +182,20 @@ export default function OverviewTab({
       transactions.filter(t => { const age = NOW - new Date(t.created_at).getTime(); return age >= periodMs && age < 2 * periodMs; }).map(t => t.customer_id)
     ).size;
 
-    // Return rate: customers with 2+ total visits, excluding those registered
-    // too recently to have had a realistic chance to return (grace period
-    // depends on business type — e.g. 14 days for restaurants, 45 for salons).
+    // Return rate: customers with 2+ visits who are still active (visited
+    // within 90 days). Excludes customers registered too recently (grace
+    // period) AND customers who churned (no visit in 90 days). This way
+    // the rate goes down when loyal customers stop coming back.
     const graceDays = loyaltySettings.return_grace_days ?? RETURN_GRACE_DAYS[businessType ?? ''] ?? DEFAULT_GRACE_DAYS;
     const graceMs = graceDays * MS_DAY;
-    const eligibleCustomers = customers.filter(c => (NOW - new Date(c.created_at).getTime()) >= graceMs);
+    const RECENCY_MS = 90 * MS_DAY;
+    const eligibleCustomers = customers.filter(c => {
+      const age = NOW - new Date(c.created_at).getTime();
+      if (age < graceMs) return false; // too new — hasn't had time to return
+      const lastVisit = c.last_visit_at ? NOW - new Date(c.last_visit_at).getTime() : Infinity;
+      if (lastVisit > RECENCY_MS) return false; // churned — not seen in 90 days
+      return true;
+    });
     const returningCustomers = eligibleCustomers.filter(c => c.total_visits >= 2).length;
     const returnRate = eligibleCustomers.length > 0 ? Math.round((returningCustomers / eligibleCustomers.length) * 100) : 0;
 
