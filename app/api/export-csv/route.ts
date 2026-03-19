@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requireOwner, requireFeature } from '@/lib/server-auth';
+import { requireAuth, requireFeature } from '@/lib/server-auth';
 
 export async function GET(request: Request) {
-  // Auth: platform owner only — isolates export to their own restaurant
-  const guard = await requireOwner(request);
+  const guard = await requireAuth(request);
   if (guard instanceof NextResponse) return guard;
   if (!guard.restaurantId) {
     return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
