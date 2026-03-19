@@ -513,21 +513,24 @@ export default function DashboardPage() {
     const next = new Date(today.getFullYear(), b.getMonth(), b.getDate());
     return next >= today && next <= in7days;
   });
-  const nearReward   = customers.filter(c =>
-    c.total_points >= (loyaltySettings.reward_threshold * 0.8) &&
-    c.total_points < loyaltySettings.reward_threshold
-  );
+  const nearThreshold = loyaltySettings.program_type === 'stamps'
+    ? Math.max(1, loyaltySettings.stamps_total - 2)
+    : loyaltySettings.reward_threshold * 0.8;
+  const nearReward = loyaltySettings.program_type === 'stamps'
+    ? customers.filter(c => (c.stamps_count ?? 0) >= nearThreshold && (c.stamps_count ?? 0) < loyaltySettings.stamps_total)
+    : customers.filter(c => c.total_points >= nearThreshold && c.total_points < loyaltySettings.reward_threshold);
 
   const filteredCustomers = customers.filter(c => {
     const matchSearch = search === '' || `${c.first_name} ${c.last_name} ${c.email}`.toLowerCase().includes(search.toLowerCase());
     const vipThreshold = loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points;
     const status      = getCustomerStatus(c, loyaltySettings.program_type, vipThreshold);
     const matchFilter =
-      filter === 'all'      ? true :
-      filter === 'inactive' ? status === 'inactive' :
-      filter === 'vip'      ? status === 'vip' :
-      filter === 'birthday' ? (() => { if (!c.birth_date) return false; const b = new Date(c.birth_date); return b.getMonth() === today.getMonth(); })() :
-      filter === 'new'      ? new Date(c.created_at) >= new Date(today.getFullYear(), today.getMonth(), 1) : true;
+      filter === 'all'          ? true :
+      filter === 'inactive'     ? status === 'inactive' :
+      filter === 'vip'          ? status === 'vip' :
+      filter === 'near_reward'  ? nearReward.some(nr => nr.id === c.id) :
+      filter === 'birthday'     ? (() => { if (!c.birth_date) return false; const b = new Date(c.birth_date); return b.getMonth() === today.getMonth(); })() :
+      filter === 'new'          ? new Date(c.created_at) >= new Date(today.getFullYear(), today.getMonth(), 1) : true;
     return matchSearch && matchFilter;
   });
 
@@ -1198,11 +1201,12 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                   {[
-                    { id: 'all',      label: t('clients.filterAll') },
-                    { id: 'inactive', label: t('clients.filterInactive') },
-                    { id: 'vip',      label: t('clients.filterVip') },
-                    { id: 'birthday', label: t('clients.filterBirthday') },
-                    { id: 'new',      label: t('clients.filterNew') },
+                    { id: 'all',          label: t('clients.filterAll') },
+                    { id: 'inactive',     label: t('clients.filterInactive') },
+                    { id: 'vip',          label: t('clients.filterVip') },
+                    { id: 'near_reward',  label: t('clients.filterNearReward') },
+                    { id: 'birthday',     label: t('clients.filterBirthday') },
+                    { id: 'new',          label: t('clients.filterNew') },
                   ].map(f => (
                     <button
                       key={f.id}

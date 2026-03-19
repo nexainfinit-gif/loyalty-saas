@@ -430,7 +430,7 @@ export default function OverviewTab({
       value: kpis.nearReward,
       bg: 'bg-warning-50',
       text: 'text-warning-700',
-      onClick: () => onTabChange('clients'),
+      onClick: () => { onFilterChange('near_reward'); onTabChange('clients'); },
     },
     {
       label: t('overview.segmentInactive'),
