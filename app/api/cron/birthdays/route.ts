@@ -83,14 +83,11 @@ export async function GET(req: NextRequest) {
           points_delta: bonus,
           type: 'birthday_bonus',
         });
-        // Increment points/stamps — use rpc or raw update
-        await supabaseAdmin.rpc('increment_field', { row_id: c.id, field_name: field, amount: bonus }).then(() => {}).catch(async () => {
-          // Fallback: manual update if rpc doesn't exist
-          const { data: cust } = await supabaseAdmin.from('customers').select(field).eq('id', c.id).single();
-          if (cust) {
-            await supabaseAdmin.from('customers').update({ [field]: (cust[field] ?? 0) + bonus }).eq('id', c.id);
-          }
-        });
+        // Increment points/stamps
+        const { data: cust } = await supabaseAdmin.from('customers').select(field).eq('id', c.id).single();
+        if (cust) {
+          await supabaseAdmin.from('customers').update({ [field]: ((cust as Record<string, number>)[field] ?? 0) + bonus }).eq('id', c.id);
+        }
       }
       logger.info({ ctx: 'cron/birthdays', rid: restaurantId, msg: `awarded ${bonus} birthday bonus to ${capped.length} customers` });
     }
