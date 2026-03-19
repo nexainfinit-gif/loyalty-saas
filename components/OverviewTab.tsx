@@ -58,6 +58,7 @@ interface LoyaltySettings {
   stamps_total: number;
   vip_threshold_points: number;
   vip_threshold_stamps: number;
+  return_grace_days: number | null;
 }
 
 interface Props {
@@ -84,7 +85,7 @@ interface Props {
  * Customers registered more recently than this are excluded because they
  * haven't had a realistic chance to return yet.
  */
-const RETURN_GRACE_DAYS: Record<string, number> = {
+export const RETURN_GRACE_DAYS: Record<string, number> = {
   restaurant:     14,
   cafe:           14,
   salon_coiffure: 45,
@@ -94,7 +95,7 @@ const RETURN_GRACE_DAYS: Record<string, number> = {
   bien_etre:      30,
   boutique:       30,
 };
-const DEFAULT_GRACE_DAYS = 21;
+export const DEFAULT_GRACE_DAYS = 21;
 
 type Period = '7d' | '30d' | '90d';
 
@@ -184,7 +185,7 @@ export default function OverviewTab({
     // Return rate: customers with 2+ total visits, excluding those registered
     // too recently to have had a realistic chance to return (grace period
     // depends on business type — e.g. 14 days for restaurants, 45 for salons).
-    const graceDays = RETURN_GRACE_DAYS[businessType ?? ''] ?? DEFAULT_GRACE_DAYS;
+    const graceDays = loyaltySettings.return_grace_days ?? RETURN_GRACE_DAYS[businessType ?? ''] ?? DEFAULT_GRACE_DAYS;
     const graceMs = graceDays * MS_DAY;
     const eligibleCustomers = customers.filter(c => (NOW - new Date(c.created_at).getTime()) >= graceMs);
     const returningCustomers = eligibleCustomers.filter(c => c.total_visits >= 2).length;

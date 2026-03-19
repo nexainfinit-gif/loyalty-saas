@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import DashboardTutorial from '@/components/DashboardTutorial';
 import PlanSelection from '@/components/PlanSelection';
 import LoyaltyTab from '@/components/LoyaltyTab';
-import OverviewTab from '@/components/OverviewTab';
+import OverviewTab, { RETURN_GRACE_DAYS, DEFAULT_GRACE_DAYS } from '@/components/OverviewTab';
 import AnalyticsTab from '@/components/AnalyticsTab';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileHeader from '@/components/MobileHeader';
@@ -80,6 +80,7 @@ interface LoyaltySettings {
   previous_program_type: string | null;
   vip_threshold_points: number;
   vip_threshold_stamps: number;
+  return_grace_days: number | null;
 }
 
 interface Campaign {
@@ -209,6 +210,7 @@ export default function DashboardPage() {
     previous_program_type: null,
     vip_threshold_points: 100,
     vip_threshold_stamps: 10,
+    return_grace_days: null,
   });
   const [savingSettings, setSavingSettings]   = useState(false);
   const [logoFile,       setLogoFile]         = useState<File | null>(null);
@@ -2036,6 +2038,25 @@ export default function DashboardPage() {
                         className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600/20"
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                        {t('settings.graceDaysLabel')} <span className="text-gray-300">{t('settings.graceDaysUnit')}</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mb-1.5">{t('settings.graceDaysHint')}</p>
+                      <input
+                        type="number"
+                        step="1"
+                        min="1"
+                        max="120"
+                        value={loyaltySettings.return_grace_days ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                          setLoyaltySettings((prev) => ({ ...prev, return_grace_days: val }));
+                        }}
+                        placeholder={String(RETURN_GRACE_DAYS[restaurant?.business_type ?? ''] ?? DEFAULT_GRACE_DAYS)}
+                        className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                      />
+                    </div>
                   </div>
                   <div className="flex items-center gap-4 mt-4">
                     <button
@@ -2044,17 +2065,19 @@ export default function DashboardPage() {
                         setRestaurantSettingsMsg('');
                         try {
                           const { data: { session: s } } = await supabase.auth.getSession();
-                          const res = await fetch('/api/restaurant-settings', {
-                            method: 'PUT',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              Authorization: `Bearer ${s?.access_token ?? ''}`,
-                            },
-                            body: JSON.stringify(restaurantSettings),
-                          });
-                          const json = await res.json();
-                          if (!res.ok) { setRestaurantSettingsMsg(json.error ?? t('common.error')); return; }
+                          // Save both restaurant settings and grace days in parallel
+                          const [resSettings, resGrace] = await Promise.all([
+                            fetch('/api/restaurant-settings', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.access_token ?? ''}` },
+                              body: JSON.stringify(restaurantSettings),
+                            }),
+                            supabase.from('loyalty_settings').update({ return_grace_days: loyaltySettings.return_grace_days }).eq('restaurant_id', restaurant!.id),
+                          ]);
+                          const json = await resSettings.json();
+                          if (!resSettings.ok) { setRestaurantSettingsMsg(json.error ?? t('common.error')); return; }
                           setRestaurantSettings(json.settings ?? restaurantSettings);
+                          if (resGrace.error) { setRestaurantSettingsMsg(resGrace.error.message); return; }
                           setRestaurantSettingsMsg(t('settings.analyticsSaved'));
                         } finally {
                           setSavingRestaurantSettings(false);
