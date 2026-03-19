@@ -59,6 +59,8 @@ interface LoyaltySettings {
   vip_threshold_points: number;
   vip_threshold_stamps: number;
   return_grace_days: number | null;
+  welcome_bonus_points: number;
+  birthday_bonus_points: number;
 }
 
 interface Props {

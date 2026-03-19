@@ -81,6 +81,8 @@ interface LoyaltySettings {
   vip_threshold_points: number;
   vip_threshold_stamps: number;
   return_grace_days: number | null;
+  welcome_bonus_points: number;
+  birthday_bonus_points: number;
 }
 
 interface Campaign {
@@ -211,6 +213,8 @@ export default function DashboardPage() {
     vip_threshold_points: 100,
     vip_threshold_stamps: 10,
     return_grace_days: null,
+    welcome_bonus_points: 0,
+    birthday_bonus_points: 0,
   });
   const [savingSettings, setSavingSettings]   = useState(false);
   const [logoFile,       setLogoFile]         = useState<File | null>(null);
@@ -618,6 +622,8 @@ export default function DashboardPage() {
       previous_program_type: loyaltySettings.previous_program_type,
       vip_threshold_points: loyaltySettings.vip_threshold_points,
       vip_threshold_stamps: loyaltySettings.vip_threshold_stamps,
+      welcome_bonus_points: loyaltySettings.welcome_bonus_points,
+      birthday_bonus_points: loyaltySettings.birthday_bonus_points,
     }, { onConflict: 'restaurant_id' });
     setSavingSettings(false);
     if (error) {

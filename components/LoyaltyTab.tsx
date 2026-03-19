@@ -16,6 +16,8 @@ export interface LoyaltySettings {
   vip_threshold_points: number;
   vip_threshold_stamps: number;
   return_grace_days: number | null;
+  welcome_bonus_points: number;
+  birthday_bonus_points: number;
 }
 
 interface Transaction {
@@ -376,35 +378,82 @@ export default function LoyaltyTab({
             />
           </div>
 
-          {/* Bonus rules (Pro teaser) */}
+          {/* Bonus points (Pro feature) */}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.bonusTitle')}
-              <ProBadge />
+              {!isPro && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.bonusSubtitle')}</p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { label: t('loyalty.bonusFirstVisit'),  desc: t('loyalty.bonusFirstVisitDesc'), icon: '🎁' },
-                { label: t('loyalty.bonusBirthday'),    desc: t('loyalty.bonusBirthdayDesc'),   icon: '🎂' },
-                { label: t('loyalty.bonusReferral'),    desc: t('loyalty.bonusReferralDesc'),   icon: '🤝' },
-                { label: t('loyalty.bonusSignup'),      desc: t('loyalty.bonusSignupDesc'),     icon: '👋' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-start gap-3 rounded-xl border border-dashed border-gray-200 p-4 opacity-50">
-                  <span className="text-lg flex-shrink-0">{item.icon}</span>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">{item.label}</p>
-                    <p className="text-xs text-gray-400">{item.desc}</p>
+            {isPro ? (
+              <div className="space-y-4">
+                {/* Welcome bonus */}
+                <div className="flex items-start gap-4 rounded-xl border border-gray-200 p-4">
+                  <span className="text-xl flex-shrink-0 mt-0.5">🎁</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700 mb-0.5">{t('loyalty.bonusFirstVisit')}</p>
+                    <p className="text-xs text-gray-400 mb-2">{t('loyalty.bonusFirstVisitDesc')}</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number" min="0" max="500" step="1"
+                        value={settings.welcome_bonus_points}
+                        onChange={e => update({ welcome_bonus_points: Math.max(0, parseInt(e.target.value) || 0) })}
+                        className="w-20 px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                      />
+                      <span className="text-xs text-gray-400">{settings.program_type === 'stamps' ? t('loyalty.bonusStamps') : t('loyalty.bonusPts')}</span>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {!isPro && onUpgrade && (
-              <button onClick={onUpgrade} className="mt-5 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors">
-                {t('loyalty.bonusUnlock')}
-              </button>
+                {/* Birthday bonus */}
+                <div className="flex items-start gap-4 rounded-xl border border-gray-200 p-4">
+                  <span className="text-xl flex-shrink-0 mt-0.5">🎂</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700 mb-0.5">{t('loyalty.bonusBirthday')}</p>
+                    <p className="text-xs text-gray-400 mb-2">{t('loyalty.bonusBirthdayDesc')}</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number" min="0" max="500" step="1"
+                        value={settings.birthday_bonus_points}
+                        onChange={e => update({ birthday_bonus_points: Math.max(0, parseInt(e.target.value) || 0) })}
+                        className="w-20 px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                      />
+                      <span className="text-xs text-gray-400">{settings.program_type === 'stamps' ? t('loyalty.bonusStamps') : t('loyalty.bonusPts')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Referral & Signup — teasers (already managed in Referral tab) */}
+                <div className="flex items-start gap-4 rounded-xl border border-dashed border-gray-200 p-4 opacity-50">
+                  <span className="text-xl flex-shrink-0 mt-0.5">🤝</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">{t('loyalty.bonusReferral')}</p>
+                    <p className="text-xs text-gray-400">{t('loyalty.bonusReferralConfigured')}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[
+                  { label: t('loyalty.bonusFirstVisit'), desc: t('loyalty.bonusFirstVisitDesc'), icon: '🎁' },
+                  { label: t('loyalty.bonusBirthday'),   desc: t('loyalty.bonusBirthdayDesc'),   icon: '🎂' },
+                  { label: t('loyalty.bonusReferral'),   desc: t('loyalty.bonusReferralDesc'),   icon: '🤝' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-3 rounded-xl border border-dashed border-gray-200 p-4 opacity-50">
+                    <span className="text-lg flex-shrink-0">{item.icon}</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">{item.label}</p>
+                      <p className="text-xs text-gray-400">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+                {onUpgrade && (
+                  <button onClick={onUpgrade} className="mt-1 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors">
+                    {t('loyalty.bonusUnlock')}
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

@@ -143,12 +143,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 
+  // ── Welcome bonus (Pro feature) ──
+  let welcomeBonus = 0;
+  {
+    const { data: ls } = await supabase
+      .from('loyalty_settings')
+      .select('welcome_bonus_points, program_type')
+      .eq('restaurant_id', restaurant.id)
+      .maybeSingle();
+    if (ls && (ls.welcome_bonus_points ?? 0) > 0) {
+      welcomeBonus = ls.welcome_bonus_points;
+      const field = ls.program_type === 'stamps' ? 'stamps_count' : 'total_points';
+      await Promise.all([
+        supabase.from('customers').update({ [field]: welcomeBonus }).eq('id', customer.id),
+        supabase.from('transactions').insert({
+          customer_id: customer.id,
+          restaurant_id: restaurant.id,
+          points_delta: welcomeBonus,
+          type: 'welcome_bonus',
+        }),
+      ]);
+    }
+  }
+
   let walletLink = null;
   try {
     walletLink = await generateWalletUrl({
       customerId:     customer.id,
       firstName,
-      totalPoints:    0,
+      totalPoints:    welcomeBonus,
       restaurantName: restaurant.name,
       restaurantId:   restaurant.id,
       primaryColor:   restaurant.primary_color ?? '#FF6B35',

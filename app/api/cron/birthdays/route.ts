@@ -56,12 +56,45 @@ export async function GET(req: NextRequest) {
     byRestaurant.set(rid, list);
   }
 
+  // Pre-fetch loyalty settings for birthday bonus (keyed by restaurant_id)
+  const restaurantIds = [...byRestaurant.keys()];
+  const { data: allSettings } = await supabaseAdmin
+    .from('loyalty_settings')
+    .select('restaurant_id, birthday_bonus_points, program_type')
+    .in('restaurant_id', restaurantIds);
+  const settingsMap = new Map((allSettings ?? []).map(s => [s.restaurant_id, s]));
+
   const emailTasks: Promise<void>[] = [];
   for (const [restaurantId, group] of byRestaurant) {
     const capped = group.slice(0, MAX_BIRTHDAY_EMAILS_PER_RESTAURANT);
     if (capped.length < group.length) {
       logger.warn({ ctx: 'cron/birthdays', rid: restaurantId, msg: `capped ${group.length} birthday emails to ${capped.length}` });
     }
+
+    // Award birthday bonus points if configured
+    const ls = settingsMap.get(restaurantId);
+    const bonus = ls?.birthday_bonus_points ?? 0;
+    if (bonus > 0) {
+      const field = ls?.program_type === 'stamps' ? 'stamps_count' : 'total_points';
+      for (const c of capped) {
+        await supabaseAdmin.from('transactions').insert({
+          customer_id: c.id,
+          restaurant_id: restaurantId,
+          points_delta: bonus,
+          type: 'birthday_bonus',
+        });
+        // Increment points/stamps — use rpc or raw update
+        await supabaseAdmin.rpc('increment_field', { row_id: c.id, field_name: field, amount: bonus }).then(() => {}).catch(async () => {
+          // Fallback: manual update if rpc doesn't exist
+          const { data: cust } = await supabaseAdmin.from('customers').select(field).eq('id', c.id).single();
+          if (cust) {
+            await supabaseAdmin.from('customers').update({ [field]: (cust[field] ?? 0) + bonus }).eq('id', c.id);
+          }
+        });
+      }
+      logger.info({ ctx: 'cron/birthdays', rid: restaurantId, msg: `awarded ${bonus} birthday bonus to ${capped.length} customers` });
+    }
+
     for (const c of capped) {
       const restaurant = c.restaurants as unknown as { name: string; primary_color: string } | null;
       if (!restaurant) continue;
