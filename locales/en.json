@@ -285,6 +285,8 @@
   "loyalty": {
     "title": "Loyalty",
     "subtitle": "Configure and customize your loyalty program",
+    "tabProgram": "Program",
+    "tabAdvanced": "Advanced",
     "tabType": "Program type",
     "tabRules": "Loyalty rules",
     "tabRewards": "Rewards",

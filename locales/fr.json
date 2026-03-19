@@ -285,6 +285,8 @@
   "loyalty": {
     "title": "Fidélité",
     "subtitle": "Configurez et personnalisez votre programme de fidélité",
+    "tabProgram": "Programme",
+    "tabAdvanced": "Avancé",
     "tabType": "Type de programme",
     "tabRules": "Règles de fidélité",
     "tabRewards": "Récompenses",

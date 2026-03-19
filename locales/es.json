@@ -266,6 +266,8 @@
   "loyalty": {
     "title": "Fidelización",
     "subtitle": "Configura y personaliza tu programa de fidelización",
+    "tabProgram": "Programa",
+    "tabAdvanced": "Avanzado",
     "tabType": "Tipo de programa",
     "tabRules": "Reglas de fidelización",
     "tabRewards": "Recompensas",
