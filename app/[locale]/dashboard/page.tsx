@@ -549,7 +549,7 @@ export default function DashboardPage() {
       filter === 'inactive'     ? status === 'inactive' :
       filter === 'vip'          ? status === 'vip' :
       filter === 'near_reward'  ? nearReward.some(nr => nr.id === c.id) :
-      filter === 'birthday'     ? (() => { if (!c.birth_date) return false; const b = new Date(c.birth_date); return b.getMonth() === today.getMonth(); })() :
+      filter === 'birthday'     ? birthdaysSoon.some(bc => bc.id === c.id) :
       filter === 'new'          ? new Date(c.created_at) >= new Date(today.getFullYear(), today.getMonth(), 1) : true;
     return matchSearch && matchFilter;
   });
