@@ -217,9 +217,10 @@ export default function OverviewTab({
 
     const inactiveCustomers = customers.filter(c => !c.last_visit_at || (NOW - new Date(c.last_visit_at).getTime()) > 45 * MS_DAY).length;
 
+    // Near reward = one more visit away from the reward
     const nearThreshold = loyaltySettings.program_type === 'stamps'
-      ? Math.max(1, loyaltySettings.stamps_total - 2)
-      : loyaltySettings.reward_threshold * 0.8;
+      ? loyaltySettings.stamps_total - 1
+      : loyaltySettings.reward_threshold - loyaltySettings.points_per_scan;
     const nearReward = loyaltySettings.program_type === 'stamps'
       ? customers.filter(c => (c.stamps_count ?? 0) >= nearThreshold && (c.stamps_count ?? 0) < loyaltySettings.stamps_total).length
       : customers.filter(c => c.total_points >= nearThreshold && c.total_points < loyaltySettings.reward_threshold).length;

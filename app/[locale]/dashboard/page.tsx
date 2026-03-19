@@ -514,8 +514,8 @@ export default function DashboardPage() {
     return next >= today && next <= in7days;
   });
   const nearThreshold = loyaltySettings.program_type === 'stamps'
-    ? Math.max(1, loyaltySettings.stamps_total - 2)
-    : loyaltySettings.reward_threshold * 0.8;
+    ? loyaltySettings.stamps_total - 1
+    : loyaltySettings.reward_threshold - loyaltySettings.points_per_scan;
   const nearReward = loyaltySettings.program_type === 'stamps'
     ? customers.filter(c => (c.stamps_count ?? 0) >= nearThreshold && (c.stamps_count ?? 0) < loyaltySettings.stamps_total)
     : customers.filter(c => c.total_points >= nearThreshold && c.total_points < loyaltySettings.reward_threshold);
