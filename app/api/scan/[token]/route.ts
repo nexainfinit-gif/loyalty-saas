@@ -15,6 +15,7 @@ type ScanCustomer = {
   id: string;
   first_name: string;
   last_name: string;
+  email: string | null;
   total_points: number;
   stamps_count: number;
   reward_pending: boolean;
@@ -38,7 +39,7 @@ async function resolveScanToken(
   // 1. qr_token (primary — what camera reads from barcode.value)
   const { data: byQrToken } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, last_name, total_points, stamps_count, reward_pending')
+    .select('id, first_name, last_name, email, total_points, stamps_count, reward_pending')
     .eq('qr_token', token)
     .eq('restaurant_id', restaurantId)
     .maybeSingle();
@@ -48,7 +49,7 @@ async function resolveScanToken(
   // 2. customer.id (legacy fallback)
   const { data: byId } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, last_name, total_points, stamps_count, reward_pending')
+    .select('id, first_name, last_name, email, total_points, stamps_count, reward_pending')
     .eq('id', token)
     .eq('restaurant_id', restaurantId)
     .maybeSingle();
@@ -67,7 +68,7 @@ async function resolveScanToken(
   if (byPassId?.customer_id) {
     const { data: custFromPass } = await supabaseAdmin
       .from('customers')
-      .select('id, first_name, last_name, total_points, stamps_count, reward_pending')
+      .select('id, first_name, last_name, email, total_points, stamps_count, reward_pending')
       .eq('id', byPassId.customer_id)
       .eq('restaurant_id', restaurantId)
       .maybeSingle();
@@ -87,7 +88,7 @@ async function resolveScanToken(
   if (passRow?.customer_id) {
     const { data: byShortCode } = await supabaseAdmin
       .from('customers')
-      .select('id, first_name, last_name, total_points, stamps_count, reward_pending')
+      .select('id, first_name, last_name, email, total_points, stamps_count, reward_pending')
       .eq('id', passRow.customer_id)
       .eq('restaurant_id', restaurantId)
       .maybeSingle();
