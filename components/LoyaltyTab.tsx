@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { useTranslation } from '@/lib/i18n';
 import ScanActionsManager from '@/components/ScanActionsManager';
+import { supabase } from '@/lib/supabase';
 
 /* ─── Types ─────────────────────────────────────────────── */
 export interface LoyaltySettings {
@@ -505,35 +506,40 @@ export default function LoyaltyTab({
             </div>
           </div>
 
-          {/* Multi-reward (Pro teaser) */}
+          {/* Multi-reward catalog */}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.rewardCatalogTitle')}
-              <ProBadge />
+              {!isPro && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.rewardCatalogSubtitle')}</p>
 
-            <div className="space-y-3">
-              {[
-                { type: t('loyalty.rewardFreeProduct'),      example: t('loyalty.rewardFreeProductDesc'),      icon: '☕' },
-                { type: t('loyalty.rewardPercentDiscount'),   example: t('loyalty.rewardPercentDiscountDesc'),  icon: '💸' },
-                { type: t('loyalty.rewardFixedDiscount'),     example: t('loyalty.rewardFixedDiscountDesc'),    icon: '🏷️' },
-                { type: t('loyalty.rewardCustomGift'),        example: t('loyalty.rewardCustomGiftDesc'),       icon: '🎁' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-xl border border-dashed border-gray-200 p-3.5 opacity-50">
-                  <span className="text-base flex-shrink-0">{item.icon}</span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-700">{item.type}</p>
-                    <p className="text-xs text-gray-400">{item.example}</p>
-                  </div>
+            {isPro ? (
+              <RewardCatalogManager programType={settings.program_type} t={t} />
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {[
+                    { type: t('loyalty.rewardFreeProduct'),    example: t('loyalty.rewardFreeProductDesc'),    icon: '☕' },
+                    { type: t('loyalty.rewardPercentDiscount'), example: t('loyalty.rewardPercentDiscountDesc'), icon: '💸' },
+                    { type: t('loyalty.rewardFixedDiscount'),   example: t('loyalty.rewardFixedDiscountDesc'),  icon: '🏷️' },
+                    { type: t('loyalty.rewardCustomGift'),      example: t('loyalty.rewardCustomGiftDesc'),     icon: '🎁' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-3 rounded-xl border border-dashed border-gray-200 p-3.5 opacity-50">
+                      <span className="text-base flex-shrink-0">{item.icon}</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-700">{item.type}</p>
+                        <p className="text-xs text-gray-400">{item.example}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-
-            {!isPro && onUpgrade && (
-              <button onClick={onUpgrade} className="mt-5 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors">
-                {t('loyalty.rewardCatalogUnlock')}
-              </button>
+                {onUpgrade && (
+                  <button onClick={onUpgrade} className="mt-5 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors">
+                    {t('loyalty.rewardCatalogUnlock')}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -890,6 +896,205 @@ interface ReferralSettings {
   rewardReferrer: number;
   rewardReferee: number;
   maxPerCustomer: number;
+}
+
+/* ── Reward Catalog Manager (Pro) ─────────────────────────── */
+
+interface CatalogReward {
+  id: string;
+  name: string;
+  type: 'free_product' | 'percent_discount' | 'fixed_discount' | 'custom';
+  value: number | null;
+  points_cost: number;
+  icon: string;
+  active: boolean;
+}
+
+const REWARD_TYPES = [
+  { value: 'free_product',      label: '☕ Produit offert',     needsValue: false },
+  { value: 'percent_discount',  label: '💸 Réduction %',       needsValue: true, unit: '%' },
+  { value: 'fixed_discount',    label: '🏷️ Réduction fixe',    needsValue: true, unit: '€' },
+  { value: 'custom',            label: '🎁 Cadeau personnalisé', needsValue: false },
+];
+
+function RewardCatalogManager({ programType, t }: { programType: string; t: (key: string, vars?: Record<string, string | number>) => string }) {
+  const [rewards, setRewards] = useState<CatalogReward[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: '', type: 'free_product', value: '', points_cost: '0', icon: '🎁' });
+  const [saving, setSaving] = useState(false);
+
+  const unit = programType === 'stamps' ? t('loyalty.bonusStamps') : t('loyalty.bonusPts');
+
+  const fetchRewards = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/api/reward-catalog', { headers: { Authorization: `Bearer ${session.access_token}` } });
+    if (res.ok) {
+      const data = await res.json();
+      setRewards(data.rewards ?? []);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchRewards(); }, [fetchRewards]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setSaving(false); return; }
+
+    const payload = {
+      ...(editId ? { id: editId } : {}),
+      name: form.name,
+      type: form.type,
+      value: form.value ? parseFloat(form.value) : null,
+      points_cost: parseInt(form.points_cost) || 0,
+      icon: form.icon,
+    };
+
+    const res = await fetch('/api/reward-catalog', {
+      method: editId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      setShowForm(false);
+      setEditId(null);
+      setForm({ name: '', type: 'free_product', value: '', points_cost: '0', icon: '🎁' });
+      fetchRewards();
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    await fetch(`/api/reward-catalog?id=${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    fetchRewards();
+  };
+
+  const startEdit = (r: CatalogReward) => {
+    setForm({ name: r.name, type: r.type, value: r.value?.toString() ?? '', points_cost: r.points_cost.toString(), icon: r.icon });
+    setEditId(r.id);
+    setShowForm(true);
+  };
+
+  const typeConfig = REWARD_TYPES.find(rt => rt.value === form.type);
+
+  if (loading) return <div className="text-sm text-gray-400 py-4 text-center">{t('common.loading')}</div>;
+
+  return (
+    <div className="space-y-3">
+      {rewards.length === 0 && !showForm && (
+        <div className="text-center py-6">
+          <p className="text-2xl mb-2">🎁</p>
+          <p className="text-sm text-gray-400">{t('loyalty.rewardCatalogEmpty')}</p>
+        </div>
+      )}
+
+      {rewards.map(r => (
+        <div key={r.id} className={`flex items-center gap-3 rounded-xl border p-3.5 ${r.active ? 'border-gray-200' : 'border-dashed border-gray-200 opacity-50'}`}>
+          <span className="text-lg flex-shrink-0">{r.icon}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-700 truncate">{r.name}</p>
+            <p className="text-xs text-gray-400">
+              {r.points_cost > 0 ? `${r.points_cost} ${unit}` : t('loyalty.rewardCatalogFree')}
+              {r.value ? ` · ${r.type === 'percent_discount' ? `${r.value}%` : `${r.value}€`}` : ''}
+            </p>
+          </div>
+          <div className="flex gap-1.5">
+            <button onClick={() => startEdit(r)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+            </button>
+            <button onClick={() => handleDelete(r.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {showForm && (
+        <div className="rounded-xl border border-primary-200 bg-primary-50/30 p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.rewardCatalogName')}</label>
+              <input
+                value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Ex: Café offert"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.rewardCatalogType')}</label>
+              <select
+                value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600/20 bg-white"
+              >
+                {REWARD_TYPES.map(rt => <option key={rt.value} value={rt.value}>{rt.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {typeConfig?.needsValue && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.rewardCatalogValue')} ({typeConfig.unit})</label>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.rewardCatalogCost')} ({unit})</label>
+              <input
+                type="number" min="0"
+                value={form.points_cost} onChange={e => setForm(f => ({ ...f, points_cost: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.rewardCatalogIcon')}</label>
+              <input
+                value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600/20 text-center"
+                maxLength={4}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave} disabled={saving || !form.name}
+              className="px-4 py-2 text-sm font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? t('common.savingDots') : editId ? t('common.save') : t('loyalty.rewardCatalogAdd')}
+            </button>
+            <button
+              onClick={() => { setShowForm(false); setEditId(null); setForm({ name: '', type: 'free_product', value: '', points_cost: '0', icon: '🎁' }); }}
+              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!showForm && (
+        <button
+          onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', type: 'free_product', value: '', points_cost: '0', icon: '🎁' }); }}
+          className="w-full py-2.5 rounded-xl border border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-primary-300 hover:text-primary-600 transition-colors"
+        >
+          + {t('loyalty.rewardCatalogAddBtn')}
+        </button>
+      )}
+    </div>
+  );
 }
 
 function ReferralSection({
