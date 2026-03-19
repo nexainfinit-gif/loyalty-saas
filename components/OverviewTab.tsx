@@ -241,9 +241,9 @@ export default function OverviewTab({
   const programScore = useMemo(() => {
     if (totalCustomers === 0) return { score: 0, label: t('overview.noData'), color: 'text-gray-400' as const };
 
-    // A. Activity ratio (0–30 pts)
+    // A. Activity ratio (0–30 pts) — use same source as KPI card
     const activeRatio = totalCustomers > 0
-      ? (restaurantMetrics?.active_customers_30d ?? kpis.activeThisPeriod) / totalCustomers
+      ? kpis.activeThisPeriod / totalCustomers
       : 0;
     const activityScore = clamp(Math.round(activeRatio * 100 * 0.3), 0, 30);
 
@@ -271,7 +271,7 @@ export default function OverviewTab({
       : 'text-danger-700' as const;
 
     return { score: total, label, color };
-  }, [totalCustomers, restaurantMetrics, kpis, t]);
+  }, [totalCustomers, kpis, t]);
 
   /* Score ring colors */
   const scoreRingColor = programScore.score >= 75 ? 'var(--color-success-600)'
@@ -346,7 +346,8 @@ export default function OverviewTab({
   /* ── Health summary sentence ── */
   const healthSummary = useMemo(() => {
     const parts: string[] = [];
-    const active = restaurantMetrics?.active_customers_30d ?? kpis.activeThisPeriod;
+    // Use the same source as the KPI card to avoid mismatch
+    const active = kpis.activeThisPeriod;
     if (active > 0) {
       const trend = kpis.trendActive;
       parts.push(`${t('overview.activeClientsInfo', { count: active })}${trend !== null && trend !== 0 ? ` (${trend > 0 ? '+' : ''}${trend}%)` : ''}`);
@@ -356,7 +357,7 @@ export default function OverviewTab({
     if (kpis.nearReward > 0) parts.push(t('overview.nearRewardInfo', { count: kpis.nearReward }));
     if (kpis.birthdaysSoon > 0) parts.push(t('overview.birthdayInfo', { count: kpis.birthdaysSoon }));
     return parts.join(' \u00b7 ');
-  }, [restaurantMetrics, kpis, t]);
+  }, [kpis, t]);
 
   /* ══════════════════════════════════════════════════════════
      FEATURE 3: SMART ACTION SHORTCUTS (max 3)
