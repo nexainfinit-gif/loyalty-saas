@@ -279,55 +279,6 @@ export default function OverviewTab({
     : programScore.score >= 35 ? 'var(--color-warning-600)'
     : 'var(--color-danger-600)';
 
-  /* ══════════════════════════════════════════════════════════
-     FEATURE 2: MICRO INSIGHTS (max 2)
-     ──────────────────────────────────────────────────────── */
-  const insights = useMemo(() => {
-    const list: { text: string; icon: string; color: string }[] = [];
-
-    if (kpis.nearReward > 0) {
-      list.push({
-        text: t('overview.nearRewardBoost', { count: kpis.nearReward }),
-        icon: ICONS.gift,
-        color: 'text-warning-700',
-      });
-    }
-
-    if (kpis.birthdaysSoon > 0 && list.length < 2) {
-      list.push({
-        text: t('overview.birthdayBoost', { count: kpis.birthdaysSoon }),
-        icon: ICONS.cake,
-        color: 'text-primary-700',
-      });
-    }
-
-    if (kpis.trendActive !== null && kpis.trendActive < -15 && list.length < 2) {
-      list.push({
-        text: t('overview.activityDecline', { percent: Math.abs(kpis.trendActive) }),
-        icon: ICONS.warning,
-        color: 'text-danger-700',
-      });
-    }
-
-    if (kpis.newCustomers === 0 && totalCustomers > 0 && list.length < 2) {
-      list.push({
-        text: t('overview.noNewClients'),
-        icon: ICONS.userPlus,
-        color: 'text-warning-700',
-      });
-    }
-
-    if (kpis.trendNew !== null && kpis.trendNew > 20 && list.length < 2) {
-      list.push({
-        text: t('overview.growthPositive', { percent: kpis.trendNew }),
-        icon: ICONS.trendUp,
-        color: 'text-success-700',
-      });
-    }
-
-    return list.slice(0, 2);
-  }, [kpis, totalCustomers, t]);
-
   /* ── Health status ── */
   const highRiskCount = growthTriggers.filter(t => t.type === 'risk' && t.severity === 'high').length;
   const medRiskCount = growthTriggers.filter(t => t.type === 'risk' && t.severity === 'medium').length;
@@ -345,18 +296,13 @@ export default function OverviewTab({
 
   /* ── Health summary sentence ── */
   const healthSummary = useMemo(() => {
-    const parts: string[] = [];
-    // Use the same source as the KPI card to avoid mismatch
+    // Keep it simple — trends, near-reward & birthdays are already visible
+    // in KPI cards and priority actions below.
     const active = kpis.activeThisPeriod;
     if (active > 0) {
-      const trend = kpis.trendActive;
-      parts.push(`${t('overview.activeClientsInfo', { count: active })}${trend !== null && trend !== 0 ? ` (${trend > 0 ? '+' : ''}${trend}%)` : ''}`);
-    } else {
-      parts.push(t('overview.noActiveClients'));
+      return t('overview.activeClientsInfo', { count: active });
     }
-    if (kpis.nearReward > 0) parts.push(t('overview.nearRewardInfo', { count: kpis.nearReward }));
-    if (kpis.birthdaysSoon > 0) parts.push(t('overview.birthdayInfo', { count: kpis.birthdaysSoon }));
-    return parts.join(' \u00b7 ');
+    return t('overview.noActiveClients');
   }, [kpis, t]);
 
   /* ══════════════════════════════════════════════════════════
@@ -530,18 +476,6 @@ export default function OverviewTab({
                 <span className={`text-sm font-semibold ${hc.text}`}>{hc.label}</span>
               </div>
               <p className="text-sm text-gray-600 leading-relaxed">{healthSummary}</p>
-
-              {/* Micro insights */}
-              {insights.length > 0 && (
-                <div className="mt-3 flex flex-col gap-1.5">
-                  {insights.map((ins, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <I d={ins.icon} className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${ins.color}`} />
-                      <p className="text-xs text-gray-600 leading-relaxed">{ins.text}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Right: score ring */}
