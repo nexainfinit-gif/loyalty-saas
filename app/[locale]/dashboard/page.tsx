@@ -1143,7 +1143,7 @@ export default function DashboardPage() {
               onUpgrade={() => setShowPlanSelection(true)}
               onTabChange={(tab) => setActiveTab(tab as Tab)}
               onFilterChange={setFilter}
-              onCampaignOpen={() => setCampaignModal(true)}
+              onCampaignOpen={() => { setActiveTab('campaigns'); setCampaignModal(true); }}
               restaurantSlug={restaurant?.slug}
               businessType={restaurant?.business_type}
             />
