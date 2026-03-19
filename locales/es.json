@@ -350,6 +350,8 @@
     "antifraudMinDelay": "Tiempo mínimo entre 2 escaneos",
     "antifraudMinDelayDesc": "Ej.: 2h entre cada escaneo",
     "antifraudMinDelayValue": "2h",
+    "antifraudPerDay": "escaneos/día (0 = ilimitado)",
+    "antifraudMinutes": "minutos (0 = desactivado)",
     "antifraudEmployeeValidation": "Validación del empleado",
     "antifraudEmployeeValidationDesc": "El escaneo debe confirmarse en caja",
     "antifraudAlerts": "Alerta automática de fraude",
@@ -1562,7 +1564,9 @@
     "invalidIdempotencyKey": "idempotency_key debe ser un UUID válido.",
     "invalidScanAction": "Acción de escaneo inválida o desactivada.",
     "scanError": "Error al registrar el escaneo. Inténtalo de nuevo.",
-    "defaultReward": "¡Recompensa desbloqueada!"
+    "defaultReward": "¡Recompensa desbloqueada!",
+    "maxScansReached": "Límite diario de escaneos alcanzado. ¡Vuelve mañana!",
+    "scanTooSoon": "Espera {minutes} minuto(s) más antes del próximo escaneo."
   },
   "appointmentAnalytics": {
     "noData": "Sin datos",

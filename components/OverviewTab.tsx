@@ -61,6 +61,8 @@ interface LoyaltySettings {
   return_grace_days: number | null;
   welcome_bonus_points: number;
   birthday_bonus_points: number;
+  max_scans_per_day: number;
+  min_scan_delay_minutes: number;
 }
 
 interface Props {

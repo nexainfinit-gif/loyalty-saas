@@ -352,6 +352,8 @@
     "antifraudMinDelay": "Minimale tijd tussen 2 scans",
     "antifraudMinDelayDesc": "Bijv.: 2u tussen elke scan",
     "antifraudMinDelayValue": "2u",
+    "antifraudPerDay": "scans/dag (0 = onbeperkt)",
+    "antifraudMinutes": "minuten (0 = uitgeschakeld)",
     "antifraudEmployeeValidation": "Validatie door medewerker",
     "antifraudEmployeeValidationDesc": "De scan moet aan de kassa bevestigd worden",
     "antifraudAlerts": "Automatische fraudemelding",
@@ -1565,7 +1567,9 @@
     "invalidIdempotencyKey": "idempotency_key moet een geldig UUID zijn.",
     "invalidScanAction": "Ongeldige of inactieve scanactie.",
     "scanError": "Fout bij het registreren van de scan. Probeer opnieuw.",
-    "defaultReward": "Beloning ontgrendeld!"
+    "defaultReward": "Beloning aangeboden!",
+    "maxScansReached": "Daglimiet voor scans bereikt. Kom morgen terug!",
+    "scanTooSoon": "Wacht nog {minutes} minuten voor de volgende scan."
   },
   "appointmentAnalytics": {
     "noData": "Geen gegevens",

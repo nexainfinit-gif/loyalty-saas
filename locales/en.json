@@ -369,6 +369,8 @@
     "antifraudMinDelay": "Minimum delay between 2 scans",
     "antifraudMinDelayDesc": "E.g.: 2h between each scan",
     "antifraudMinDelayValue": "2h",
+    "antifraudPerDay": "scans/day (0 = unlimited)",
+    "antifraudMinutes": "minutes (0 = disabled)",
     "antifraudEmployeeValidation": "Employee validation",
     "antifraudEmployeeValidationDesc": "Scan must be confirmed at checkout",
     "antifraudAlerts": "Automatic fraud alert",
@@ -1584,7 +1586,9 @@
     "invalidIdempotencyKey": "idempotency_key must be a valid UUID.",
     "invalidScanAction": "Invalid or inactive scan action.",
     "scanError": "Error recording the scan. Please try again.",
-    "defaultReward": "Reward unlocked!"
+    "defaultReward": "Reward unlocked!",
+    "maxScansReached": "Daily scan limit reached. Come back tomorrow!",
+    "scanTooSoon": "Please wait {minutes} more minute(s) before the next scan."
   },
   "demo": {
     "bannerLabel": "Demo mode",

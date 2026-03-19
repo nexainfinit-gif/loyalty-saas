@@ -188,12 +188,50 @@ export async function POST(
   // ── Loyalty config ────────────────────────────────────────────────────
   const { data: settings } = await supabaseAdmin
     .from('loyalty_settings')
-    .select('points_per_scan, reward_threshold, reward_message, program_type, stamps_total')
+    .select('points_per_scan, reward_threshold, reward_message, program_type, stamps_total, max_scans_per_day, min_scan_delay_minutes')
     .eq('restaurant_id', restaurantId)
     .maybeSingle();
 
   const programType     = settings?.program_type ?? 'points';
   const stampsTotal     = settings?.stamps_total ?? 10;
+
+  // ── Anti-fraud checks ──────────────────────────────────────────────
+  const maxScans = settings?.max_scans_per_day ?? 0;
+  const minDelay = settings?.min_scan_delay_minutes ?? 0;
+
+  if (maxScans > 0 || minDelay > 0) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const { data: recentScans } = await supabaseAdmin
+      .from('scan_events')
+      .select('created_at')
+      .eq('customer_id', customer.id)
+      .eq('restaurant_id', restaurantId)
+      .gte('created_at', todayStart.toISOString())
+      .order('created_at', { ascending: false });
+
+    // Max scans per day
+    if (maxScans > 0 && recentScans && recentScans.length >= maxScans) {
+      return Response.json(
+        { error: t('api.maxScansReached') },
+        { status: 429 },
+      );
+    }
+
+    // Min delay between scans
+    if (minDelay > 0 && recentScans && recentScans.length > 0) {
+      const lastScanTime = new Date(recentScans[0].created_at).getTime();
+      const elapsed = (Date.now() - lastScanTime) / 60_000; // minutes
+      if (elapsed < minDelay) {
+        const remaining = Math.ceil(minDelay - elapsed);
+        return Response.json(
+          { error: t('api.scanTooSoon', { minutes: remaining }) },
+          { status: 429 },
+        );
+      }
+    }
+  }
 
   // ── Resolve points to add (scan_action override or default) ─────────
   let pointsToAdd = settings?.points_per_scan ?? 1;

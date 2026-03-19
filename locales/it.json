@@ -352,6 +352,8 @@
     "antifraudMinDelay": "Intervallo minimo tra 2 scansioni",
     "antifraudMinDelayDesc": "Es.: 2h tra ogni scansione",
     "antifraudMinDelayValue": "2h",
+    "antifraudPerDay": "scansioni/giorno (0 = illimitato)",
+    "antifraudMinutes": "minuti (0 = disattivato)",
     "antifraudEmployeeValidation": "Validazione dipendente",
     "antifraudEmployeeValidationDesc": "La scansione deve essere confermata alla cassa",
     "antifraudAlerts": "Avviso frode automatico",
@@ -1567,7 +1569,9 @@
     "invalidIdempotencyKey": "idempotency_key deve essere un UUID valido.",
     "invalidScanAction": "Azione di scansione non valida o disattivata.",
     "scanError": "Errore durante la registrazione dello scan. Riprova.",
-    "defaultReward": "Ricompensa sbloccata!"
+    "defaultReward": "Ricompensa offerta!",
+    "maxScansReached": "Limite giornaliero di scansioni raggiunto. Torna domani!",
+    "scanTooSoon": "Attendi ancora {minutes} minuti prima della prossima scansione."
   },
   "appointmentAnalytics": {
     "noData": "Nessun dato",

@@ -18,6 +18,8 @@ export interface LoyaltySettings {
   return_grace_days: number | null;
   welcome_bonus_points: number;
   birthday_bonus_points: number;
+  max_scans_per_day: number;
+  min_scan_delay_minutes: number;
 }
 
 interface Transaction {
@@ -545,31 +547,84 @@ export default function LoyaltyTab({
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.antifraudTitle')}
-              <ProBadge />
+              {!isPro && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.antifraudSubtitle')}</p>
 
-            <div className="space-y-4">
-              {[
-                { label: t('loyalty.antifraudMaxScans'),            desc: t('loyalty.antifraudMaxScansDesc'),            defaultVal: '1' },
-                { label: t('loyalty.antifraudMinDelay'),             desc: t('loyalty.antifraudMinDelayDesc'),             defaultVal: t('loyalty.antifraudMinDelayValue') },
-                { label: t('loyalty.antifraudEmployeeValidation'),   desc: t('loyalty.antifraudEmployeeValidationDesc'),   defaultVal: t('loyalty.antifraudDisabled') },
-                { label: t('loyalty.antifraudAlerts'),               desc: t('loyalty.antifraudAlertsDesc'),               defaultVal: t('loyalty.antifraudDisabled') },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between gap-4 rounded-xl border border-dashed border-gray-200 p-4 opacity-50">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">{item.label}</p>
-                    <p className="text-xs text-gray-400">{item.desc}</p>
+            {isPro ? (
+              <div className="space-y-4">
+                {/* Max scans per day */}
+                <div className="flex items-start gap-4 rounded-xl border border-gray-200 p-4">
+                  <span className="text-xl flex-shrink-0 mt-0.5">🛡️</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700 mb-0.5">{t('loyalty.antifraudMaxScans')}</p>
+                    <p className="text-xs text-gray-400 mb-2">{t('loyalty.antifraudMaxScansDesc')}</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number" min="0" max="50" step="1"
+                        value={settings.max_scans_per_day}
+                        onChange={e => update({ max_scans_per_day: Math.max(0, parseInt(e.target.value) || 0) })}
+                        className="w-20 px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                      />
+                      <span className="text-xs text-gray-400">{t('loyalty.antifraudPerDay')}</span>
+                    </div>
                   </div>
-                  <span className="text-xs font-mono text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg flex-shrink-0">{item.defaultVal}</span>
                 </div>
-              ))}
-            </div>
 
-            {!isPro && onUpgrade && (
-              <button onClick={onUpgrade} className="mt-5 w-full py-3 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors">
-                {t('loyalty.antifraudProPlan')}
-              </button>
+                {/* Min delay between scans */}
+                <div className="flex items-start gap-4 rounded-xl border border-gray-200 p-4">
+                  <span className="text-xl flex-shrink-0 mt-0.5">⏱️</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700 mb-0.5">{t('loyalty.antifraudMinDelay')}</p>
+                    <p className="text-xs text-gray-400 mb-2">{t('loyalty.antifraudMinDelayDesc')}</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number" min="0" max="1440" step="1"
+                        value={settings.min_scan_delay_minutes}
+                        onChange={e => update({ min_scan_delay_minutes: Math.max(0, parseInt(e.target.value) || 0) })}
+                        className="w-20 px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                      />
+                      <span className="text-xs text-gray-400">{t('loyalty.antifraudMinutes')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Future: employee validation + alerts (teaser) */}
+                {[
+                  { label: t('loyalty.antifraudEmployeeValidation'), desc: t('loyalty.antifraudEmployeeValidationDesc') },
+                  { label: t('loyalty.antifraudAlerts'),             desc: t('loyalty.antifraudAlertsDesc') },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center justify-between gap-4 rounded-xl border border-dashed border-gray-200 p-4 opacity-50">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">{item.label}</p>
+                      <p className="text-xs text-gray-400">{item.desc}</p>
+                    </div>
+                    <span className="text-xs font-mono text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg flex-shrink-0">{t('loyalty.comingSoon')}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[
+                  { label: t('loyalty.antifraudMaxScans'),          desc: t('loyalty.antifraudMaxScansDesc'),          defaultVal: '1' },
+                  { label: t('loyalty.antifraudMinDelay'),           desc: t('loyalty.antifraudMinDelayDesc'),           defaultVal: t('loyalty.antifraudMinDelayValue') },
+                  { label: t('loyalty.antifraudEmployeeValidation'), desc: t('loyalty.antifraudEmployeeValidationDesc'), defaultVal: t('loyalty.antifraudDisabled') },
+                  { label: t('loyalty.antifraudAlerts'),             desc: t('loyalty.antifraudAlertsDesc'),             defaultVal: t('loyalty.antifraudDisabled') },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center justify-between gap-4 rounded-xl border border-dashed border-gray-200 p-4 opacity-50">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">{item.label}</p>
+                      <p className="text-xs text-gray-400">{item.desc}</p>
+                    </div>
+                    <span className="text-xs font-mono text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg flex-shrink-0">{item.defaultVal}</span>
+                  </div>
+                ))}
+                {onUpgrade && (
+                  <button onClick={onUpgrade} className="mt-1 w-full py-3 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors">
+                    {t('loyalty.antifraudProPlan')}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
