@@ -14,13 +14,13 @@ export async function GET(request: Request) {
   const { data: customers, error } = await supabaseAdmin
     .from('customers')
     .select(
-      'first_name, last_name, email, total_points, birth_date, postal_code, last_visit_at, created_at',
+      'first_name, last_name, email, total_points, stamps_count, birth_date, last_visit_at, created_at, total_visits',
     )
     .eq('restaurant_id', guard.restaurantId)
     .order('created_at', { ascending: false });
 
   if (error || !customers) {
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error?.message ?? 'Erreur serveur' }, { status: 500 });
   }
 
   const headers = [
@@ -28,19 +28,21 @@ export async function GET(request: Request) {
     'Nom',
     'Email',
     'Points',
+    'Tampons',
+    'Visites',
     'Date de naissance',
-    'Code postal',
     'Dernière visite',
     'Inscrit le',
   ];
 
   const rows = customers.map((c) => [
-    c.first_name   ?? '',
-    c.last_name    ?? '',
-    c.email        ?? '',
-    c.total_points ?? 0,
-    c.birth_date   ?? '',
-    c.postal_code  ?? '',
+    c.first_name    ?? '',
+    c.last_name     ?? '',
+    c.email         ?? '',
+    c.total_points  ?? 0,
+    c.stamps_count  ?? 0,
+    c.total_visits  ?? 0,
+    c.birth_date    ?? '',
     c.last_visit_at ? new Date(c.last_visit_at).toLocaleDateString('fr-BE') : '',
     new Date(c.created_at).toLocaleDateString('fr-BE'),
   ]);
