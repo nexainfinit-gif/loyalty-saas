@@ -76,7 +76,25 @@ interface Props {
   onCampaignOpen: () => void;
   restaurantSlug?: string;
   referralEnabled?: boolean;
+  businessType?: string | null;
 }
+
+/**
+ * Minimum days before a customer is eligible for return rate calculation.
+ * Customers registered more recently than this are excluded because they
+ * haven't had a realistic chance to return yet.
+ */
+const RETURN_GRACE_DAYS: Record<string, number> = {
+  restaurant:     14,
+  cafe:           14,
+  salon_coiffure: 45,
+  salon_beaute:   30,
+  barbershop:     30,
+  spa:            45,
+  bien_etre:      30,
+  boutique:       30,
+};
+const DEFAULT_GRACE_DAYS = 21;
 
 type Period = '7d' | '30d' | '90d';
 
@@ -137,6 +155,7 @@ export default function OverviewTab({
   onCampaignOpen,
   restaurantSlug,
   referralEnabled,
+  businessType,
 }: Props) {
   const { t, locale } = useTranslation();
   const [period, setPeriod] = useState<Period>('30d');
@@ -162,13 +181,14 @@ export default function OverviewTab({
       transactions.filter(t => { const age = NOW - new Date(t.created_at).getTime(); return age >= periodMs && age < 2 * periodMs; }).map(t => t.customer_id)
     ).size;
 
-    // Return rate: customers who visited more than once within the period
-    const visitsByCustomer = new Map<string, number>();
-    transactions.filter(tx => tx.type === 'visit' && (NOW - new Date(tx.created_at).getTime()) < periodMs)
-      .forEach(tx => visitsByCustomer.set(tx.customer_id, (visitsByCustomer.get(tx.customer_id) ?? 0) + 1));
-    const customersWithVisits = visitsByCustomer.size;
-    const returningCustomers = [...visitsByCustomer.values()].filter(v => v > 1).length;
-    const returnRate = customersWithVisits > 0 ? Math.round((returningCustomers / customersWithVisits) * 100) : 0;
+    // Return rate: customers with 2+ total visits, excluding those registered
+    // too recently to have had a realistic chance to return (grace period
+    // depends on business type — e.g. 14 days for restaurants, 45 for salons).
+    const graceDays = RETURN_GRACE_DAYS[businessType ?? ''] ?? DEFAULT_GRACE_DAYS;
+    const graceMs = graceDays * MS_DAY;
+    const eligibleCustomers = customers.filter(c => (NOW - new Date(c.created_at).getTime()) >= graceMs);
+    const returningCustomers = eligibleCustomers.filter(c => c.total_visits >= 2).length;
+    const returnRate = eligibleCustomers.length > 0 ? Math.round((returningCustomers / eligibleCustomers.length) * 100) : 0;
 
     const rewardsThisPeriod = transactions.filter(t => t.type === 'reward_redeem' && (NOW - new Date(t.created_at).getTime()) < periodMs).length;
     const rewardsPrevPeriod = transactions.filter(t => {
@@ -220,7 +240,7 @@ export default function OverviewTab({
       trendActive: trendPct(activeThisPeriod, activePrevPeriod),
       trendRewards: trendPct(rewardsThisPeriod, rewardsPrevPeriod),
     };
-  }, [customers, transactions, totalCustomers, periodMs, loyaltySettings, NOW]);
+  }, [customers, transactions, totalCustomers, periodMs, loyaltySettings, NOW, businessType]);
 
   /* ── Chart data ── */
   const chartData = useMemo(() => {
@@ -495,7 +515,7 @@ export default function OverviewTab({
           icon={ICONS.refresh}
           iconBg="bg-warning-50"
           iconColor="text-warning-600"
-          sub={t('overview.kpiTwoPlus')}
+          sub={t('overview.kpiReturnSub')}
         />
         <KpiCard
           label={t('overview.kpiRewards')}

@@ -1143,6 +1143,7 @@ export default function DashboardPage() {
               onFilterChange={setFilter}
               onCampaignOpen={() => setCampaignModal(true)}
               restaurantSlug={restaurant?.slug}
+              businessType={restaurant?.business_type}
             />
           )}
 
