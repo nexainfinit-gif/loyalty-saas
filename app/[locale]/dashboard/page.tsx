@@ -88,6 +88,9 @@ interface LoyaltySettings {
   notify_reward_reached: boolean;
   notify_near_reward: boolean;
   notify_inactive: boolean;
+  card_color: string | null;
+  welcome_text: string | null;
+  stamp_shape: string;
 }
 
 interface Campaign {
@@ -225,6 +228,9 @@ export default function DashboardPage() {
     notify_reward_reached: false,
     notify_near_reward: false,
     notify_inactive: false,
+    card_color: null,
+    welcome_text: null,
+    stamp_shape: 'circle',
   });
   const [savingSettings, setSavingSettings]   = useState(false);
   const [logoFile,       setLogoFile]         = useState<File | null>(null);
@@ -639,6 +645,9 @@ export default function DashboardPage() {
       notify_reward_reached: loyaltySettings.notify_reward_reached,
       notify_near_reward: loyaltySettings.notify_near_reward,
       notify_inactive: loyaltySettings.notify_inactive,
+      card_color: loyaltySettings.card_color,
+      welcome_text: loyaltySettings.welcome_text,
+      stamp_shape: loyaltySettings.stamp_shape,
     }, { onConflict: 'restaurant_id' });
     setSavingSettings(false);
     if (error) {

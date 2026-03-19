@@ -66,6 +66,9 @@ interface LoyaltySettings {
   notify_reward_reached: boolean;
   notify_near_reward: boolean;
   notify_inactive: boolean;
+  card_color: string | null;
+  welcome_text: string | null;
+  stamp_shape: string;
 }
 
 interface Props {

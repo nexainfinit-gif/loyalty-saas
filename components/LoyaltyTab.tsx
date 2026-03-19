@@ -24,6 +24,9 @@ export interface LoyaltySettings {
   notify_reward_reached: boolean;
   notify_near_reward: boolean;
   notify_inactive: boolean;
+  card_color: string | null;
+  welcome_text: string | null;
+  stamp_shape: string;
 }
 
 interface Transaction {
@@ -784,10 +787,81 @@ export default function LoyaltyTab({
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.customizationAdvancedAppearance')}
-              <ProBadge />
+              {!isPro && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.customizationAdvancedDesc')}</p>
-            <ComingSoon />
+
+            {isPro ? (
+              <div className="space-y-5">
+                {/* Card color override */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('loyalty.customCardColor')}</label>
+                  <p className="text-xs text-gray-400 mb-2">{t('loyalty.customCardColorDesc')}</p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={settings.card_color ?? '#4F6BED'}
+                      onChange={e => update({ card_color: e.target.value })}
+                      className="w-10 h-10 rounded-xl border border-gray-200 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={settings.card_color ?? ''}
+                      onChange={e => update({ card_color: e.target.value || null })}
+                      placeholder="#4F6BED"
+                      className="w-32 px-3 py-2 text-sm font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                    />
+                    {settings.card_color && (
+                      <button onClick={() => update({ card_color: null })} className="text-xs text-gray-400 hover:text-gray-600">{t('loyalty.customReset')}</button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Welcome text */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('loyalty.customWelcomeText')}</label>
+                  <p className="text-xs text-gray-400 mb-2">{t('loyalty.customWelcomeTextDesc')}</p>
+                  <input
+                    type="text"
+                    value={settings.welcome_text ?? ''}
+                    onChange={e => update({ welcome_text: e.target.value || null })}
+                    placeholder={t('loyalty.customWelcomeTextPlaceholder')}
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                  />
+                </div>
+
+                {/* Stamp shape (stamps mode) */}
+                {settings.program_type === 'stamps' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-2">{t('loyalty.customStampShape')}</label>
+                    <div className="flex gap-3">
+                      {[
+                        { id: 'circle', label: '●', name: t('loyalty.customShapeCircle') },
+                        { id: 'star',   label: '★', name: t('loyalty.customShapeStar') },
+                        { id: 'heart',  label: '♥', name: t('loyalty.customShapeHeart') },
+                        { id: 'diamond', label: '◆', name: t('loyalty.customShapeDiamond') },
+                      ].map(shape => (
+                        <button
+                          key={shape.id}
+                          onClick={() => update({ stamp_shape: shape.id })}
+                          className={[
+                            'flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl border transition-all',
+                            settings.stamp_shape === shape.id
+                              ? 'border-primary-400 bg-primary-50 text-primary-700'
+                              : 'border-gray-200 text-gray-400 hover:border-gray-300',
+                          ].join(' ')}
+                        >
+                          <span className="text-xl">{shape.label}</span>
+                          <span className="text-[10px] font-medium">{shape.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <ComingSoon />
+            )}
           </div>
         </div>
       )}
