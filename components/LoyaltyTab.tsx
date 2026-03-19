@@ -20,6 +20,9 @@ export interface LoyaltySettings {
   birthday_bonus_points: number;
   max_scans_per_day: number;
   min_scan_delay_minutes: number;
+  notify_reward_reached: boolean;
+  notify_near_reward: boolean;
+  notify_inactive: boolean;
 }
 
 interface Transaction {
@@ -636,34 +639,67 @@ export default function LoyaltyTab({
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.notificationsTitle')}
-              <ProBadge />
+              {!isPro && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.notificationsSubtitle')}</p>
 
-            <div className="space-y-3">
-              {[
-                { label: t('loyalty.notifRewardReached'),  desc: t('loyalty.notifRewardReachedDesc'), icon: '🏆', color: 'bg-success-50 border-success-200 text-success-700' },
-                { label: t('loyalty.notifNearReward'),     desc: t('loyalty.notifNearRewardDesc'),    icon: '🔔', color: 'bg-warning-50 border-warning-200 text-warning-700' },
-                { label: t('loyalty.notifInactive'),       desc: t('loyalty.notifInactiveDesc'),      icon: '😴', color: 'bg-gray-50 border-gray-200 text-gray-600' },
-                { label: t('loyalty.notifExpiration'),     desc: t('loyalty.notifExpirationDesc'),    icon: '⏰', color: 'bg-danger-50 border-danger-200 text-danger-700' },
-              ].map((item, i) => (
-                <div key={i} className={`flex items-start gap-3 rounded-xl border p-4 opacity-50 ${item.color}`}>
-                  <span className="text-lg flex-shrink-0">{item.icon}</span>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">{item.label}</p>
-                    <p className="text-xs opacity-75">{item.desc}</p>
+            {isPro ? (
+              <div className="space-y-3">
+                {([
+                  { key: 'notify_reward_reached' as const, label: t('loyalty.notifRewardReached'), desc: t('loyalty.notifRewardReachedDesc'), icon: '🏆', color: 'bg-success-50 border-success-200 text-success-700' },
+                  { key: 'notify_near_reward' as const,    label: t('loyalty.notifNearReward'),    desc: t('loyalty.notifNearRewardDesc'),    icon: '🔔', color: 'bg-warning-50 border-warning-200 text-warning-700' },
+                  { key: 'notify_inactive' as const,       label: t('loyalty.notifInactive'),      desc: t('loyalty.notifInactiveDesc'),      icon: '😴', color: 'bg-gray-50 border-gray-200 text-gray-600' },
+                ] as const).map((item) => (
+                  <div key={item.key} className={`flex items-start gap-3 rounded-xl border p-4 ${item.color}`}>
+                    <span className="text-lg flex-shrink-0">{item.icon}</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold">{item.label}</p>
+                      <p className="text-xs opacity-75">{item.desc}</p>
+                    </div>
+                    <button
+                      onClick={() => update({ [item.key]: !settings[item.key] })}
+                      className={`flex-shrink-0 w-10 h-5 rounded-full relative transition-colors ${settings[item.key] ? 'bg-primary-600' : 'bg-gray-200'}`}
+                    >
+                      <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${settings[item.key] ? 'left-[1.375rem]' : 'left-0.5'}`} />
+                    </button>
                   </div>
-                  <div className="flex-shrink-0 w-10 h-5 bg-gray-200 rounded-full relative">
-                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm" />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
 
-            {!isPro && onUpgrade && (
-              <button onClick={onUpgrade} className="mt-5 w-full py-3 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors">
-                {t('loyalty.notifProPlan')}
-              </button>
+                {/* Expiration — coming soon */}
+                <div className="flex items-start gap-3 rounded-xl border p-4 opacity-50 bg-danger-50 border-danger-200 text-danger-700">
+                  <span className="text-lg flex-shrink-0">⏰</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{t('loyalty.notifExpiration')}</p>
+                    <p className="text-xs opacity-75">{t('loyalty.notifExpirationDesc')}</p>
+                  </div>
+                  <span className="text-xs font-mono text-gray-400 bg-white/60 px-2 py-1 rounded-lg flex-shrink-0">{t('loyalty.comingSoon')}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {[
+                  { label: t('loyalty.notifRewardReached'), desc: t('loyalty.notifRewardReachedDesc'), icon: '🏆', color: 'bg-success-50 border-success-200 text-success-700' },
+                  { label: t('loyalty.notifNearReward'),    desc: t('loyalty.notifNearRewardDesc'),    icon: '🔔', color: 'bg-warning-50 border-warning-200 text-warning-700' },
+                  { label: t('loyalty.notifInactive'),      desc: t('loyalty.notifInactiveDesc'),      icon: '😴', color: 'bg-gray-50 border-gray-200 text-gray-600' },
+                  { label: t('loyalty.notifExpiration'),    desc: t('loyalty.notifExpirationDesc'),    icon: '⏰', color: 'bg-danger-50 border-danger-200 text-danger-700' },
+                ].map((item, i) => (
+                  <div key={i} className={`flex items-start gap-3 rounded-xl border p-4 opacity-50 ${item.color}`}>
+                    <span className="text-lg flex-shrink-0">{item.icon}</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold">{item.label}</p>
+                      <p className="text-xs opacity-75">{item.desc}</p>
+                    </div>
+                    <div className="flex-shrink-0 w-10 h-5 bg-gray-200 rounded-full relative">
+                      <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm" />
+                    </div>
+                  </div>
+                ))}
+                {onUpgrade && (
+                  <button onClick={onUpgrade} className="mt-3 w-full py-3 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors">
+                    {t('loyalty.notifProPlan')}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

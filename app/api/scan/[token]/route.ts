@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { pushPassUpdate } from '@/lib/apns';
+import { sendRewardReachedEmail, sendNearRewardEmail } from '@/lib/email';
 import { getTranslator, defaultLocale, locales, type Locale } from '@/lib/i18n-server';
 
 // Rate limiting: max 30 scans per IP per minute (covers busy service periods)
@@ -188,7 +189,7 @@ export async function POST(
   // ── Loyalty config ────────────────────────────────────────────────────
   const { data: settings } = await supabaseAdmin
     .from('loyalty_settings')
-    .select('points_per_scan, reward_threshold, reward_message, program_type, stamps_total, max_scans_per_day, min_scan_delay_minutes')
+    .select('points_per_scan, reward_threshold, reward_message, program_type, stamps_total, max_scans_per_day, min_scan_delay_minutes, notify_reward_reached, notify_near_reward')
     .eq('restaurant_id', restaurantId)
     .maybeSingle();
 
@@ -498,6 +499,47 @@ export async function POST(
     }
   } catch (err) {
     logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push failed', err: err instanceof Error ? err.message : String(err) });
+  }
+
+  // ── Auto-notifications (fire-and-forget, never blocks response) ─────
+  if (customer.email) {
+    const { data: resto } = await supabaseAdmin
+      .from('restaurants').select('name, primary_color').eq('id', restaurantId).single();
+
+    if (resto) {
+      const rewardThreshold = settings?.reward_threshold ?? 100;
+      const nearThreshold = programType === 'stamps'
+        ? stampsTotal - 1
+        : rewardThreshold - (settings?.points_per_scan ?? 1);
+      const currentBalance = programType === 'stamps' ? actualStamps : actualBalance;
+
+      // Reward reached notification
+      if (settings?.notify_reward_reached && (rewardTriggered || stampCardCompleted)) {
+        sendRewardReachedEmail({
+          to: customer.email,
+          firstName: customer.first_name,
+          restaurantName: resto.name,
+          restaurantColor: resto.primary_color ?? '#4f6bed',
+          rewardMessage: settings.reward_message ?? t('api.defaultReward'),
+        }).catch(err => logger.error({ ctx: 'scan/notify', rid: restaurantId, msg: 'reward email failed', err }));
+      }
+
+      // Near reward notification (only if just crossed the threshold)
+      if (settings?.notify_near_reward && !rewardTriggered && !stampCardCompleted) {
+        const prevBalance = programType === 'stamps' ? stampsBefore : balanceBefore;
+        if (prevBalance < nearThreshold && currentBalance >= nearThreshold) {
+          sendNearRewardEmail({
+            to: customer.email,
+            firstName: customer.first_name,
+            restaurantName: resto.name,
+            restaurantColor: resto.primary_color ?? '#4f6bed',
+            currentPoints: currentBalance,
+            threshold: programType === 'stamps' ? stampsTotal : rewardThreshold,
+            programType,
+          }).catch(err => logger.error({ ctx: 'scan/notify', rid: restaurantId, msg: 'near-reward email failed', err }));
+        }
+      }
+    }
   }
 
   return Response.json(responsePayload);

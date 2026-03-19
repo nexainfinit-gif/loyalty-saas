@@ -867,3 +867,80 @@ export async function sendFollowUpEmail({
     `,
   });
 }
+
+/* ── Reward Reached Notification ───────────────────────────────────── */
+
+export async function sendRewardReachedEmail({
+  to, firstName, restaurantName, restaurantColor, rewardMessage,
+}: {
+  to: string; firstName: string; restaurantName: string; restaurantColor: string; rewardMessage: string;
+}) {
+  const safeColor = safeCssColor(restaurantColor);
+  await resend.emails.send({
+    from: `${restaurantName} <noreply@rebites.be>`,
+    to,
+    subject: `🏆 Félicitations ${esc(firstName)} — votre récompense est prête !`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
+          <div style="font-size: 3rem; margin-bottom: 0.5rem;">🏆</div>
+          <h1 style="color: white; font-size: 1.25rem; margin: 0;">Récompense débloquée !</h1>
+        </div>
+        <p style="color: #374151; font-size: 0.95rem; line-height: 1.6;">
+          Bonjour <strong>${esc(firstName)}</strong>,<br/><br/>
+          Votre fidélité chez <strong>${esc(restaurantName)}</strong> a payé ! Vous avez atteint le seuil de récompense.
+        </p>
+        <div style="background: #f0fdf4; border-radius: 12px; padding: 1rem; margin: 1.5rem 0; text-align: center;">
+          <p style="color: #059669; font-weight: 600; margin: 0;">${esc(rewardMessage)}</p>
+        </div>
+        <p style="color: #6b7280; font-size: 0.85rem;">
+          Présentez-vous en caisse lors de votre prochaine visite pour en profiter.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
+          ${esc(restaurantName)} — Programme fidélité par <a href="https://rebites.be" style="color: #9ca3af;">Rebites</a>
+        </p>
+      </div>
+    `,
+  });
+}
+
+/* ── Near Reward Notification ──────────────────────────────────────── */
+
+export async function sendNearRewardEmail({
+  to, firstName, restaurantName, restaurantColor, currentPoints, threshold, programType,
+}: {
+  to: string; firstName: string; restaurantName: string; restaurantColor: string;
+  currentPoints: number; threshold: number; programType: 'points' | 'stamps';
+}) {
+  const safeColor = safeCssColor(restaurantColor);
+  const remaining = threshold - currentPoints;
+  const unit = programType === 'stamps' ? 'tampon(s)' : 'point(s)';
+  await resend.emails.send({
+    from: `${restaurantName} <noreply@rebites.be>`,
+    to,
+    subject: `🔔 ${esc(firstName)}, plus que ${remaining} ${unit} !`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
+          <div style="font-size: 3rem; margin-bottom: 0.5rem;">🔔</div>
+          <h1 style="color: white; font-size: 1.25rem; margin: 0;">Vous y êtes presque !</h1>
+        </div>
+        <p style="color: #374151; font-size: 0.95rem; line-height: 1.6;">
+          Bonjour <strong>${esc(firstName)}</strong>,<br/><br/>
+          Plus que <strong>${remaining} ${unit}</strong> pour votre récompense chez <strong>${esc(restaurantName)}</strong> !
+        </p>
+        <div style="background: #fef3c7; border-radius: 12px; padding: 1rem; margin: 1.5rem 0; text-align: center;">
+          <p style="color: #92400e; font-weight: 600; margin: 0;">${currentPoints} / ${threshold} ${unit}</p>
+        </div>
+        <p style="color: #6b7280; font-size: 0.85rem;">
+          Passez nous voir bientôt pour compléter votre carte !
+        </p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
+          ${esc(restaurantName)} — Programme fidélité par <a href="https://rebites.be" style="color: #9ca3af;">Rebites</a>
+        </p>
+      </div>
+    `,
+  });
+}

@@ -63,6 +63,9 @@ interface LoyaltySettings {
   birthday_bonus_points: number;
   max_scans_per_day: number;
   min_scan_delay_minutes: number;
+  notify_reward_reached: boolean;
+  notify_near_reward: boolean;
+  notify_inactive: boolean;
 }
 
 interface Props {

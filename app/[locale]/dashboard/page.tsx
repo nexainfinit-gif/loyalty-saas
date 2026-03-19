@@ -85,6 +85,9 @@ interface LoyaltySettings {
   birthday_bonus_points: number;
   max_scans_per_day: number;
   min_scan_delay_minutes: number;
+  notify_reward_reached: boolean;
+  notify_near_reward: boolean;
+  notify_inactive: boolean;
 }
 
 interface Campaign {
@@ -219,6 +222,9 @@ export default function DashboardPage() {
     birthday_bonus_points: 0,
     max_scans_per_day: 0,
     min_scan_delay_minutes: 0,
+    notify_reward_reached: false,
+    notify_near_reward: false,
+    notify_inactive: false,
   });
   const [savingSettings, setSavingSettings]   = useState(false);
   const [logoFile,       setLogoFile]         = useState<File | null>(null);
@@ -630,6 +636,9 @@ export default function DashboardPage() {
       birthday_bonus_points: loyaltySettings.birthday_bonus_points,
       max_scans_per_day: loyaltySettings.max_scans_per_day,
       min_scan_delay_minutes: loyaltySettings.min_scan_delay_minutes,
+      notify_reward_reached: loyaltySettings.notify_reward_reached,
+      notify_near_reward: loyaltySettings.notify_near_reward,
+      notify_inactive: loyaltySettings.notify_inactive,
     }, { onConflict: 'restaurant_id' });
     setSavingSettings(false);
     if (error) {
