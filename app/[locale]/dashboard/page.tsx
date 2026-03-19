@@ -911,13 +911,13 @@ export default function DashboardPage() {
           'shadow-[1px_0_0_rgba(17,24,39,0.04)] sticky top-0 h-screen z-10',
           'transition-[width] duration-200 ease-in-out',
           'hidden lg:flex',
-          sidebarOpen ? 'w-60' : 'w-16',
+          sidebarOpen ? 'w-60' : 'w-20',
         ].join(' ')}
       >
         {/* Brand header */}
-        <div className="flex items-center gap-3 px-3 py-4 border-b border-gray-100">
+        <div className={`flex items-center gap-3 py-4 border-b border-gray-100 ${sidebarOpen ? 'px-3' : 'justify-center px-2'}`}>
           <div
-            className="w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center text-2xl shadow-sm"
+            className={`rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center text-2xl shadow-sm ${sidebarOpen ? 'w-14 h-14' : 'w-12 h-12'}`}
             style={{ background: `color-mix(in srgb, ${restaurant?.primary_color ?? DS.primary} 15%, white)` }}
           >
             {restaurant?.logo_url
@@ -954,6 +954,7 @@ export default function DashboardPage() {
                   isActive
                     ? 'bg-primary-50 text-primary-600'
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700',
+                  !sidebarOpen && 'justify-center px-0',
                 ].join(' ')}
               >
                 <span className="flex-shrink-0">{item.icon}</span>
@@ -970,7 +971,7 @@ export default function DashboardPage() {
           <Link
             href={`/${locale}/dashboard/scanner`}
             aria-label={t('nav.scannerQr')}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all mt-1"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all mt-1${!sidebarOpen ? ' justify-center px-0' : ''}`}
           >
             <span className="flex-shrink-0"><ICamera /></span>
             {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.scannerQr')}</span>}
@@ -981,7 +982,7 @@ export default function DashboardPage() {
             <Link
               href={`/${locale}/dashboard/wallet`}
               aria-label={t('nav.walletStudio')}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all${!sidebarOpen ? ' justify-center px-0' : ''}`}
             >
               <span className="flex-shrink-0"><IWallet /></span>
               {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.walletStudio')}</span>}
@@ -992,7 +993,7 @@ export default function DashboardPage() {
           <Link
             href={`/${locale}/dashboard/billing`}
             aria-label={t('nav.billing')}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all${!sidebarOpen ? ' justify-center px-0' : ''}`}
           >
             <span className="flex-shrink-0">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
@@ -1005,7 +1006,7 @@ export default function DashboardPage() {
             <Link
               href={`/${locale}/dashboard/appointments`}
               aria-label={t('nav.booking')}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all${!sidebarOpen ? ' justify-center px-0' : ''}`}
             >
               <span className="flex-shrink-0"><ICalendar /></span>
               {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.booking')}</span>}
@@ -1016,7 +1017,7 @@ export default function DashboardPage() {
           <Link
             href={`/${locale}/support`}
             aria-label={t('nav.help')}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all mt-1"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all mt-1${!sidebarOpen ? ' justify-center px-0' : ''}`}
           >
             <span className="flex-shrink-0">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -1041,7 +1042,7 @@ export default function DashboardPage() {
           <button
             onClick={handleSignOut}
             aria-label={t('nav.signOut')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-all"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-all${!sidebarOpen ? ' justify-center px-0' : ''}`}
           >
             <span className="flex-shrink-0"><ILogOut /></span>
             {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.signOut')}</span>}
