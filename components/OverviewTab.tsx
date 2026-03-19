@@ -294,16 +294,6 @@ export default function OverviewTab({
 
   const hc = healthConfig[health];
 
-  /* ── Health summary sentence ── */
-  const healthSummary = useMemo(() => {
-    // Keep it simple — trends, near-reward & birthdays are already visible
-    // in KPI cards and priority actions below.
-    const active = kpis.activeThisPeriod;
-    if (active > 0) {
-      return t('overview.activeClientsInfo', { count: active });
-    }
-    return t('overview.noActiveClients');
-  }, [kpis, t]);
 
   /* ══════════════════════════════════════════════════════════
      FEATURE 3: SMART ACTION SHORTCUTS (max 3)
@@ -465,29 +455,19 @@ export default function OverviewTab({
         </div>
       </div>
 
-      {/* ═══ B. HEALTH HERO + PROGRAM SCORE ═════════════════════ */}
+      {/* ═══ B. HEALTH STATUS (compact) ═══════════════════════ */}
       {!triggersLoading && (
-        <div className={`${hc.bg} rounded-2xl px-6 py-5`}>
-          <div className="flex items-start justify-between gap-4">
-            {/* Left: status + summary + insights */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-1.5">
-                <div className={`w-2 h-2 rounded-full ${hc.dot}`} />
-                <span className={`text-sm font-semibold ${hc.text}`}>{hc.label}</span>
-              </div>
-              <p className="text-sm text-gray-600 leading-relaxed">{healthSummary}</p>
-            </div>
-
-            {/* Right: score ring */}
-            {totalCustomers > 0 && (
-              <div className="flex-shrink-0 flex flex-col items-center">
-                <ScoreRing score={programScore.score} color={scoreRingColor} />
-                <p className={`text-xs font-semibold mt-1.5 ${programScore.color}`}>
-                  {programScore.label}
-                </p>
-              </div>
-            )}
+        <div className={`${hc.bg} rounded-2xl px-5 py-3 flex items-center justify-between gap-4`}>
+          <div className="flex items-center gap-2.5">
+            <div className={`w-2 h-2 rounded-full ${hc.dot}`} />
+            <span className={`text-sm font-semibold ${hc.text}`}>{hc.label}</span>
           </div>
+          {totalCustomers > 0 && (
+            <div className="flex items-center gap-2.5">
+              <ScoreRing score={programScore.score} color={scoreRingColor} size={36} />
+              <span className={`text-xs font-semibold ${programScore.color}`}>{programScore.label}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -641,8 +621,8 @@ export default function OverviewTab({
    ═══════════════════════════════════════════════════════════ */
 
 /* ─── Score Ring ─────────────────────────────────────────── */
-function ScoreRing({ score, color }: { score: number; color: string }) {
-  const size = 64;
+function ScoreRing({ score, color, size: sizeProp }: { score: number; color: string; size?: number }) {
+  const size = sizeProp ?? 64;
   const strokeWidth = 5;
   const center = size / 2;
   const radius = (size - strokeWidth) / 2;
