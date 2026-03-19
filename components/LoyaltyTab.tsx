@@ -228,37 +228,49 @@ export default function LoyaltyTab({
             </div>
           </div>
 
-          {/* Future modes (teaser) */}
+          {/* Advanced programs */}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.advancedTitle')}
-              <ProBadge />
+              {!isPro && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.advancedSubtitle')}</p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[
-                { title: t('loyalty.advancedCustomRewards'), desc: t('loyalty.advancedCustomRewardsDesc'), icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' },
-                { title: t('loyalty.advancedVipLevels'),     desc: t('loyalty.advancedVipLevelsDesc'), icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z' },
-                { title: t('loyalty.advancedMultipliers'),   desc: t('loyalty.advancedMultipliersDesc'), icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-              ].map((item, i) => (
-                <div key={i} className="rounded-xl border border-dashed border-gray-200 p-4 opacity-60">
-                  <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 mb-3">
-                    <SectionIcon d={item.icon} className="w-4.5 h-4.5" />
-                  </div>
-                  <p className="text-sm font-semibold text-gray-700 mb-1">{item.title}</p>
-                  <p className="text-xs text-gray-400">{item.desc}</p>
+            {isPro ? (
+              <div className="space-y-6">
+                {/* VIP Tiers */}
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">⭐ {t('loyalty.advancedVipLevels')}</h4>
+                  <VipTiersManager programType={settings.program_type} t={t} />
                 </div>
-              ))}
-            </div>
-
-            {!isPro && onUpgrade && (
-              <button
-                onClick={onUpgrade}
-                className="mt-5 w-full py-3 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors"
-              >
-                {t('loyalty.advancedUnlock')}
-              </button>
+                {/* Multipliers */}
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">⚡ {t('loyalty.advancedMultipliers')}</h4>
+                  <MultipliersManager t={t} />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: t('loyalty.advancedVipLevels'),   desc: t('loyalty.advancedVipLevelsDesc'),   icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z' },
+                    { title: t('loyalty.advancedMultipliers'), desc: t('loyalty.advancedMultipliersDesc'), icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+                  ].map((item, i) => (
+                    <div key={i} className="rounded-xl border border-dashed border-gray-200 p-4 opacity-60">
+                      <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 mb-3">
+                        <SectionIcon d={item.icon} className="w-4.5 h-4.5" />
+                      </div>
+                      <p className="text-sm font-semibold text-gray-700 mb-1">{item.title}</p>
+                      <p className="text-xs text-gray-400">{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+                {onUpgrade && (
+                  <button onClick={onUpgrade} className="mt-5 w-full py-3 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors">
+                    {t('loyalty.advancedUnlock')}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -896,6 +908,185 @@ interface ReferralSettings {
   rewardReferrer: number;
   rewardReferee: number;
   maxPerCustomer: number;
+}
+
+/* ── VIP Tiers Manager (Pro) ──────────────────────────────── */
+
+interface VipTier { id: string; name: string; min_points: number; icon: string; color: string; perk: string; }
+
+function VipTiersManager({ programType, t }: { programType: string; t: (k: string, v?: Record<string, string | number>) => string }) {
+  const [tiers, setTiers] = useState<VipTier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: '', min_points: '0', icon: '⭐', color: '#F59E0B', perk: '' });
+  const [saving, setSaving] = useState(false);
+  const unit = programType === 'stamps' ? t('loyalty.bonusStamps') : t('loyalty.bonusPts');
+
+  const fetchTiers = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/api/vip-tiers', { headers: { Authorization: `Bearer ${session.access_token}` } });
+    if (res.ok) { const d = await res.json(); setTiers(d.tiers ?? []); }
+    setLoading(false);
+  }, []);
+  useEffect(() => { fetchTiers(); }, [fetchTiers]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setSaving(false); return; }
+    const payload = { ...(editId ? { id: editId } : {}), name: form.name, min_points: parseInt(form.min_points) || 0, icon: form.icon, color: form.color, perk: form.perk };
+    const res = await fetch('/api/vip-tiers', { method: editId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify(payload) });
+    if (res.ok) { setShowForm(false); setEditId(null); setForm({ name: '', min_points: '0', icon: '⭐', color: '#F59E0B', perk: '' }); fetchTiers(); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    await fetch(`/api/vip-tiers?id=${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${session.access_token}` } });
+    fetchTiers();
+  };
+
+  if (loading) return <div className="text-sm text-gray-400 py-2 text-center">{t('common.loading')}</div>;
+
+  return (
+    <div className="space-y-2">
+      {tiers.map(tier => (
+        <div key={tier.id} className="flex items-center gap-3 rounded-xl border border-gray-200 p-3">
+          <span className="text-lg">{tier.icon}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-700">{tier.name}</p>
+            <p className="text-xs text-gray-400">{tier.min_points}+ {unit}{tier.perk ? ` · ${tier.perk}` : ''}</p>
+          </div>
+          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: tier.color }} />
+          <button onClick={() => { setForm({ name: tier.name, min_points: String(tier.min_points), icon: tier.icon, color: tier.color, perk: tier.perk }); setEditId(tier.id); setShowForm(true); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+          </button>
+          <button onClick={() => handleDelete(tier.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </button>
+        </div>
+      ))}
+      {showForm && (
+        <div className="rounded-xl border border-primary-200 bg-primary-50/30 p-4 space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.vipTierName')}</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Gold" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" /></div>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.vipTierThreshold')}</label><input type="number" min="0" value={form.min_points} onChange={e => setForm(f => ({ ...f, min_points: e.target.value }))} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" /></div>
+            <div className="flex gap-2">
+              <div className="flex-1"><label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.rewardCatalogIcon')}</label><input value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg text-center" maxLength={4} /></div>
+              <div><label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.vipTierColor')}</label><input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} className="w-10 h-9 mt-0.5 rounded-lg border border-gray-200 cursor-pointer" /></div>
+            </div>
+          </div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.vipTierPerk')}</label><input value={form.perk} onChange={e => setForm(f => ({ ...f, perk: e.target.value }))} placeholder="Ex: -10% permanent" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" /></div>
+          <div className="flex gap-2">
+            <button onClick={handleSave} disabled={saving || !form.name} className="px-4 py-2 text-sm font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">{saving ? t('common.savingDots') : editId ? t('common.save') : t('loyalty.rewardCatalogAdd')}</button>
+            <button onClick={() => { setShowForm(false); setEditId(null); }} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">{t('common.cancel')}</button>
+          </div>
+        </div>
+      )}
+      {!showForm && (
+        <button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', min_points: '0', icon: '⭐', color: '#F59E0B', perk: '' }); }} className="w-full py-2 rounded-xl border border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-primary-300 hover:text-primary-600 transition-colors">
+          + {t('loyalty.vipTierAdd')}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ── Multipliers Manager (Pro) ───────────────────────────── */
+
+const DAY_LABELS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+
+interface Multiplier { id: string; name: string; multiplier: number; day_of_week: number | null; start_time: string | null; end_time: string | null; active: boolean; }
+
+function MultipliersManager({ t }: { t: (k: string, v?: Record<string, string | number>) => string }) {
+  const [items, setItems] = useState<Multiplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: '', multiplier: '2', day_of_week: '', start_time: '', end_time: '' });
+  const [saving, setSaving] = useState(false);
+
+  const fetchItems = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/api/point-multipliers', { headers: { Authorization: `Bearer ${session.access_token}` } });
+    if (res.ok) { const d = await res.json(); setItems(d.multipliers ?? []); }
+    setLoading(false);
+  }, []);
+  useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setSaving(false); return; }
+    const payload = { ...(editId ? { id: editId } : {}), name: form.name, multiplier: parseFloat(form.multiplier) || 2, day_of_week: form.day_of_week !== '' ? parseInt(form.day_of_week) : null, start_time: form.start_time || null, end_time: form.end_time || null };
+    const res = await fetch('/api/point-multipliers', { method: editId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify(payload) });
+    if (res.ok) { setShowForm(false); setEditId(null); setForm({ name: '', multiplier: '2', day_of_week: '', start_time: '', end_time: '' }); fetchItems(); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    await fetch(`/api/point-multipliers?id=${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${session.access_token}` } });
+    fetchItems();
+  };
+
+  if (loading) return <div className="text-sm text-gray-400 py-2 text-center">{t('common.loading')}</div>;
+
+  return (
+    <div className="space-y-2">
+      {items.map(m => (
+        <div key={m.id} className={`flex items-center gap-3 rounded-xl border p-3 ${m.active ? 'border-gray-200' : 'border-dashed border-gray-200 opacity-50'}`}>
+          <span className="text-lg">⚡</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-700">{m.name}</p>
+            <p className="text-xs text-gray-400">
+              x{m.multiplier}
+              {m.day_of_week !== null ? ` · ${DAY_LABELS[m.day_of_week]}` : ' · Tous les jours'}
+              {m.start_time && m.end_time ? ` · ${m.start_time}–${m.end_time}` : ''}
+            </p>
+          </div>
+          <button onClick={() => { setForm({ name: m.name, multiplier: String(m.multiplier), day_of_week: m.day_of_week !== null ? String(m.day_of_week) : '', start_time: m.start_time ?? '', end_time: m.end_time ?? '' }); setEditId(m.id); setShowForm(true); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+          </button>
+          <button onClick={() => handleDelete(m.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </button>
+        </div>
+      ))}
+      {showForm && (
+        <div className="rounded-xl border border-primary-200 bg-primary-50/30 p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.multiplierName')}</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Happy Hour x2" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" /></div>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.multiplierValue')}</label><input type="number" min="1" max="10" step="0.5" value={form.multiplier} onChange={e => setForm(f => ({ ...f, multiplier: e.target.value }))} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" /></div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.multiplierDay')}</label>
+              <select value={form.day_of_week} onChange={e => setForm(f => ({ ...f, day_of_week: e.target.value }))} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white">
+                <option value="">{t('loyalty.multiplierAllDays')}</option>
+                {DAY_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+              </select>
+            </div>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.multiplierFrom')}</label><input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" /></div>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1">{t('loyalty.multiplierTo')}</label><input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" /></div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleSave} disabled={saving || !form.name} className="px-4 py-2 text-sm font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">{saving ? t('common.savingDots') : editId ? t('common.save') : t('loyalty.rewardCatalogAdd')}</button>
+            <button onClick={() => { setShowForm(false); setEditId(null); }} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">{t('common.cancel')}</button>
+          </div>
+        </div>
+      )}
+      {!showForm && (
+        <button onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', multiplier: '2', day_of_week: '', start_time: '', end_time: '' }); }} className="w-full py-2 rounded-xl border border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-primary-300 hover:text-primary-600 transition-colors">
+          + {t('loyalty.multiplierAdd')}
+        </button>
+      )}
+    </div>
+  );
 }
 
 /* ── Reward Catalog Manager (Pro) ─────────────────────────── */

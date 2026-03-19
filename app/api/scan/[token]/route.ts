@@ -257,6 +257,27 @@ export async function POST(
     scanActionLabel = action.label;
   }
 
+  // ── Point multiplier check (Pro feature) ─────────────────────────────
+  const now = new Date();
+  const currentDay = now.getDay(); // 0=Sun, 6=Sat
+  const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
+  const { data: multipliers } = await supabaseAdmin
+    .from('point_multipliers')
+    .select('multiplier, day_of_week, start_time, end_time')
+    .eq('restaurant_id', restaurantId)
+    .eq('active', true);
+
+  if (multipliers && multipliers.length > 0) {
+    for (const m of multipliers) {
+      const dayMatch = m.day_of_week === null || m.day_of_week === currentDay;
+      const timeMatch = (!m.start_time || currentTime >= m.start_time) && (!m.end_time || currentTime <= m.end_time);
+      if (dayMatch && timeMatch) {
+        pointsToAdd = Math.round(pointsToAdd * (m.multiplier ?? 1));
+        break; // apply first matching multiplier only
+      }
+    }
+  }
+
   // Capture pre-scan balances for audit trail
   const balanceBefore = customer.total_points;
   const stampsBefore  = customer.stamps_count ?? 0;
