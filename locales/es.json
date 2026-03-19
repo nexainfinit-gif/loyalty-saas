@@ -92,7 +92,7 @@
     "exportError": "Error en la exportación.",
     "searchPlaceholder": "Buscar un cliente...",
     "filterAll": "Todos",
-    "filterInactive": "Inactivos 30d",
+    "filterInactive": "Inactivos 45d",
     "filterVip": "⭐ VIP",
     "filterBirthday": "🎂 Cumpleaños",
     "filterNearReward": "🎁 Cerca de recompensa",

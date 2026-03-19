@@ -94,7 +94,7 @@
     "exportError": "Erreur lors de l'export.",
     "searchPlaceholder": "Rechercher un client...",
     "filterAll": "Tous",
-    "filterInactive": "Inactifs 30j",
+    "filterInactive": "Inactifs 45j",
     "filterVip": "⭐ VIP",
     "filterBirthday": "🎂 Anniversaire",
     "filterNearReward": "🎁 Proches récompense",

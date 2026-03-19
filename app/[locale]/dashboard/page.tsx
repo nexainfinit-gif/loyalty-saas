@@ -143,7 +143,7 @@ function getCustomerStatus(
   programType: 'points' | 'stamps',
   vipThreshold: number
 ): 'vip' | 'active' | 'inactive' {
-  const inactiveDays = 30;
+  const inactiveDays = 45;
   const lastVisit = c.last_visit_at ? new Date(c.last_visit_at) : null;
   if (!lastVisit || (Date.now() - lastVisit.getTime()) > inactiveDays * 86400000) return 'inactive';
 

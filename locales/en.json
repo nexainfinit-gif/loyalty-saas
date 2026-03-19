@@ -94,7 +94,7 @@
     "exportError": "Export failed.",
     "searchPlaceholder": "Search a customer...",
     "filterAll": "All",
-    "filterInactive": "Inactive 30d",
+    "filterInactive": "Inactive 45d",
     "filterVip": "⭐ VIP",
     "filterBirthday": "🎂 Birthday",
     "filterNearReward": "🎁 Near reward",
