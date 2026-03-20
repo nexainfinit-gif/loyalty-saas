@@ -13,6 +13,14 @@ interface Template {
   config_json: Record<string, unknown>;
 }
 
+interface WalletPass {
+  id: string;
+  platform: 'apple' | 'google';
+  status: 'active' | 'revoked' | 'expired';
+  issued_at: string;
+  customer: { first_name: string; last_name: string; email: string } | null;
+}
+
 interface Props {
   restaurantId: string;
   locale: string;
@@ -25,6 +33,7 @@ export default function WalletTab({ restaurantId, locale, t }: Props) {
   const [totalPasses, setTotalPasses] = useState(0);
   const [applePasses, setApplePasses] = useState(0);
   const [googlePasses, setGooglePasses] = useState(0);
+  const [passList, setPassList] = useState<WalletPass[]>([]);
 
   const fetchData = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -32,7 +41,11 @@ export default function WalletTab({ restaurantId, locale, t }: Props) {
 
     const [tmplRes, passesRes] = await Promise.all([
       fetch('/api/wallet/templates', { headers: { Authorization: `Bearer ${session.access_token}` } }),
-      supabase.from('wallet_passes').select('platform, status').eq('restaurant_id', restaurantId).eq('status', 'active'),
+      supabase.from('wallet_passes')
+        .select('id, platform, status, issued_at, customer:customers(first_name, last_name, email)')
+        .eq('restaurant_id', restaurantId)
+        .order('issued_at', { ascending: false })
+        .limit(100),
     ]);
 
     if (tmplRes.ok) {
@@ -40,10 +53,12 @@ export default function WalletTab({ restaurantId, locale, t }: Props) {
       setTemplates((data.templates ?? []).filter((t: Template) => t.status !== 'archived'));
     }
 
-    const passes = passesRes.data ?? [];
-    setTotalPasses(passes.length);
-    setApplePasses(passes.filter(p => p.platform === 'apple').length);
-    setGooglePasses(passes.filter(p => p.platform === 'google').length);
+    const passes = (passesRes.data ?? []) as unknown as WalletPass[];
+    setPassList(passes);
+    const active = passes.filter(p => p.status === 'active');
+    setTotalPasses(active.length);
+    setApplePasses(active.filter(p => p.platform === 'apple').length);
+    setGooglePasses(active.filter(p => p.platform === 'google').length);
     setLoading(false);
   }, [restaurantId]);
 
@@ -101,6 +116,48 @@ export default function WalletTab({ restaurantId, locale, t }: Props) {
             {drafts.map(tmpl => (
               <WalletCardPreview key={tmpl.id} template={tmpl} t={t} isDraft />
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Issued passes list */}
+      {passList.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('wallet.simplePassList')}</h3>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/60">
+                  {[t('wallet.simplePassClient'), t('wallet.simplePassPlatform'), t('wallet.simplePassStatus'), t('wallet.simplePassDate')].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {passList.map(p => {
+                  const cust = p.customer as unknown as { first_name: string; last_name: string; email: string } | null;
+                  return (
+                    <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-gray-900">{cust ? `${cust.first_name} ${cust.last_name}` : '—'}</p>
+                        <p className="text-xs text-gray-400">{cust?.email ?? ''}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${p.platform === 'apple' ? 'bg-gray-100 text-gray-700' : 'bg-blue-50 text-blue-700'}`}>
+                          {p.platform === 'apple' ? '' : '🟢'} {p.platform === 'apple' ? 'Apple' : 'Google'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${p.status === 'active' ? 'bg-success-50 text-success-700' : p.status === 'revoked' ? 'bg-danger-50 text-danger-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {p.status === 'active' ? t('wallet.simpleStatusActive') : p.status === 'revoked' ? t('wallet.simpleStatusRevoked') : t('wallet.simpleStatusExpired')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{new Date(p.issued_at).toLocaleDateString(locale)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
