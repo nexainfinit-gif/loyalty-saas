@@ -234,6 +234,13 @@ function WalletCardPreview({ template, t, isDraft }: { template: Template; t: (k
   );
 }
 
+/** Convert Supabase signed URL to public URL (strip /sign/ path + ?token=) */
+function toPublicUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  // /storage/v1/object/sign/bucket/path?token=... → /storage/v1/object/public/bucket/path
+  return url.replace('/object/sign/', '/object/public/').split('?')[0];
+}
+
 /* ── Real Apple Wallet pass preview ──────────────────────── */
 
 function RealPassPreview({ pass: p, restaurantName, restaurantColor, locale, t }: {
@@ -247,7 +254,7 @@ function RealPassPreview({ pass: p, restaurantName, restaurantColor, locale, t }
   const bgColor = (cfg.bgColor as string) ?? tmpl?.primary_color ?? restaurantColor ?? '#1a5e2a';
   const fg = (cfg.foregroundColor as string) ?? '#ffffff';
   const labelColor = (cfg.labelColor as string) ?? `${fg}99`;
-  const logoUrl = cfg.logoImageUrl as string | undefined;
+  const logoUrl = toPublicUrl(cfg.logoImageUrl as string | undefined);
   const logoText = (cfg.logoText as string) ?? (cfg.merchantName as string) ?? restaurantName ?? '';
   const stampFilledUrl = cfg.stampFilledUrl as string | undefined;
   const stampEmptyUrl = cfg.stampEmptyUrl as string | undefined;
@@ -291,7 +298,7 @@ function RealPassPreview({ pass: p, restaurantName, restaurantColor, locale, t }
         {/* ── Strip image ── */}
         {cfg.stripImageUrl && (
           <div className="w-full overflow-hidden" style={{ height: 98 }}>
-            <img src={cfg.stripImageUrl as string} alt="" className="w-full h-full object-cover" />
+            <img src={toPublicUrl(cfg.stripImageUrl as string) ?? ''} alt="" className="w-full h-full object-cover" />
           </div>
         )}
 
