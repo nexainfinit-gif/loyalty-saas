@@ -108,68 +108,100 @@ export default function WalletTab({ restaurantId, locale, t }: Props) {
   );
 }
 
-/* ── Visual card preview ────────────────────────────────── */
+/* ── Apple Wallet–style card preview ─────────────────────── */
 
 function WalletCardPreview({ template, t, isDraft }: { template: Template; t: (key: string, vars?: Record<string, string | number>) => string; isDraft?: boolean }) {
   const color = template.primary_color ?? '#4F6BED';
   const kind = template.pass_kind;
+  const stampsTotal = 10;
+  const stampsFilled = 4;
 
   return (
     <div className={`relative group ${isDraft ? 'opacity-60' : ''}`}>
-      {/* Card */}
       <div
-        className="rounded-2xl overflow-hidden shadow-lg transition-transform group-hover:scale-[1.02]"
-        style={{ background: `linear-gradient(135deg, ${color}, ${color}dd)` }}
+        className="rounded-[18px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-transform group-hover:scale-[1.02]"
+        style={{ background: color, aspectRatio: '3.375 / 2.125' }}
       >
-        {/* Card header */}
-        <div className="px-5 pt-5 pb-3 flex items-start justify-between">
-          <div>
-            <p className="text-white/70 text-[10px] font-semibold uppercase tracking-wider">
-              {kind === 'stamps' ? t('wallet.simpleStamps') : t('wallet.simplePoints')}
-            </p>
-            <p className="text-white text-sm font-bold mt-0.5">{template.name}</p>
+        {/* ── Top strip: logo area + pass type ── */}
+        <div className="flex items-center justify-between px-4 pt-3.5 pb-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-xs font-bold">
+              {template.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="text-white text-[13px] font-semibold leading-tight">{template.name}</p>
+              <p className="text-white/50 text-[9px] font-medium uppercase tracking-wider">
+                {kind === 'stamps' ? t('wallet.simpleStamps') : t('wallet.simplePoints')}
+              </p>
+            </div>
           </div>
           {template.is_default && (
-            <span className="bg-white/20 text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
+            <span className="bg-white/15 backdrop-blur-sm text-white text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-white/10">
               {t('wallet.simpleDefault')}
             </span>
           )}
         </div>
 
-        {/* Card body — visual stamps or points */}
-        <div className="px-5 pb-4">
+        {/* ── Separator line ── */}
+        <div className="mx-4 mt-2.5 mb-2 border-t border-white/10" />
+
+        {/* ── Main content: stamps or points ── */}
+        <div className="px-4 flex-1">
           {kind === 'stamps' ? (
-            <div className="flex gap-1.5 flex-wrap">
-              {Array.from({ length: 10 }, (_, i) => (
-                <div
-                  key={i}
-                  className={`w-6 h-6 rounded-full border-2 ${i < 4 ? 'bg-white border-white' : 'border-white/40'}`}
-                />
-              ))}
+            <div>
+              <div className="flex gap-[6px] flex-wrap">
+                {Array.from({ length: stampsTotal }, (_, i) => (
+                  <div
+                    key={i}
+                    className="w-[22px] h-[22px] rounded-full flex items-center justify-center"
+                    style={{ background: i < stampsFilled ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.25)' }}
+                  >
+                    {i < stampsFilled && (
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill={color} stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-white/40 text-[10px] mt-1.5">{stampsFilled} / {stampsTotal}</p>
             </div>
           ) : (
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-bold text-white tabular-nums">42</span>
-              <span className="text-white/60 text-sm font-medium">pts</span>
+            <div>
+              <p className="text-white/40 text-[9px] font-medium uppercase tracking-wider mb-0.5">{t('wallet.simplePoints')}</p>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-white text-[28px] font-bold tabular-nums leading-none">42</span>
+                <span className="text-white/40 text-xs font-medium">pts</span>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Card footer */}
-        <div className="bg-black/10 px-5 py-3 flex items-center justify-between">
+        {/* ── Bottom bar: QR + info ── */}
+        <div className="mt-auto px-4 pb-3 pt-1.5 flex items-end justify-between">
           <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <span className="text-white/70 text-xs">{template.active_passes} {t('wallet.simplePasses')}</span>
+            <svg className="w-3.5 h-3.5 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="text-white/30 text-[10px]">{template.active_passes} {t('wallet.simplePasses')}</span>
           </div>
-          {isDraft && (
-            <span className="text-white/50 text-[10px] font-semibold uppercase">{t('wallet.simpleDraft')}</span>
-          )}
+          {/* Mini QR placeholder */}
+          <div className="w-8 h-8 rounded-[4px] bg-white/90 p-[3px]">
+            <div className="w-full h-full" style={{
+              backgroundImage: `
+                linear-gradient(90deg, ${color} 25%, transparent 25%, transparent 50%, ${color} 50%, ${color} 75%, transparent 75%),
+                linear-gradient(${color} 25%, transparent 25%, transparent 50%, ${color} 50%, ${color} 75%, transparent 75%)
+              `,
+              backgroundSize: '4px 4px',
+            }} />
+          </div>
         </div>
       </div>
+
+      {/* Draft overlay */}
+      {isDraft && (
+        <div className="absolute inset-0 rounded-[18px] bg-black/30 flex items-center justify-center">
+          <span className="bg-black/60 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">{t('wallet.simpleDraft')}</span>
+        </div>
+      )}
     </div>
   );
 }
