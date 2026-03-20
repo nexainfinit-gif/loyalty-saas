@@ -1387,8 +1387,8 @@ export default function WalletStudioPage() {
       if (!meRes.ok) { router.replace('/dashboard/login'); return; }
       const me = await meRes.json();
 
-      // Role check: non-owner roles are never allowed (redirect silently)
-      if (me.platformRole !== 'owner') { router.replace('/dashboard'); return; }
+      // Role check: staff cannot access Wallet Studio (only owners and admins)
+      if (me.platformRole === 'staff') { router.replace('/dashboard'); return; }
 
       // Plan check: free-plan restaurants cannot access Wallet Studio via direct URL.
       // me.walletStudio = true when plan !== 'free' OR wallet_studio_enabled = true (manual override).
