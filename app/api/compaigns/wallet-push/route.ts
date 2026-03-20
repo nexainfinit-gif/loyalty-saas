@@ -76,7 +76,7 @@ export async function POST(req: Request) {
   // ── Fetch all customers ─────────────────────────────────────────────────
   const { data: allCustomers } = await supabaseAdmin
     .from('customers')
-    .select('id, total_points, stamps_count, last_visit_at, birth_date')
+    .select('id, first_name, total_points, stamps_count, last_visit_at, birth_date')
     .eq('restaurant_id', restaurant.id);
 
   const customers = allCustomers ?? [];
@@ -127,16 +127,21 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Aucun porteur Apple Wallet dans ce segment' }, { status: 400 });
   }
 
-  // ── Update promo_message on all targeted passes ─────────────────────────
+  // ── Update promo_message on each pass (personalized per customer) ────
+  const customerMap = new Map(customers.map(c => [c.id, c]));
   const passIds = passes.map(p => p.id);
-  const { error: updateErr } = await supabaseAdmin
-    .from('wallet_passes')
-    .update({ promo_message: message.trim() })
-    .in('id', passIds);
 
-  if (updateErr) {
-    logger.error({ ctx: CTX, rid: restaurant.id, msg: 'Failed to update promo_message', err: updateErr });
-    return Response.json({ error: 'Erreur mise à jour des passes' }, { status: 500 });
+  for (const pass of passes) {
+    const cust = customerMap.get(pass.customer_id);
+    const personalizedMsg = message.trim()
+      .replace(/\{\{prenom\}\}/gi, cust?.first_name ?? '')
+      .replace(/\{\{points\}\}/gi, String(cust?.total_points ?? 0))
+      .replace(/\{\{restaurant\}\}/gi, restaurant.name);
+
+    await supabaseAdmin
+      .from('wallet_passes')
+      .update({ promo_message: personalizedMsg })
+      .eq('id', pass.id);
   }
 
   // ── Save campaign record ────────────────────────────────────────────────
