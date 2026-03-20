@@ -346,14 +346,14 @@ export default function AnalyticsTab({
       {/* ═══ B. Distribution + D. Loyalty Performance ═══ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Pie chart: client distribution */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('analytics.clientDistribution')}</h3>
           {distribution.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-3">
-                <svg className="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" /><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" /></svg>
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <div className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center mb-2.5">
+                <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" /><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" /></svg>
               </div>
-              <p className="text-sm text-gray-400">{t('analytics.notEnoughData')}</p>
+              <p className="text-xs text-gray-400">{t('analytics.notEnoughData')}</p>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
