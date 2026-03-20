@@ -14,11 +14,9 @@ import type {
   AppointmentStatus,
 } from '@/types/appointments'
 import { api } from '@/lib/use-api'
-import { useSubscriptionGate } from '@/lib/use-subscription-gate'
 import { useTranslation } from '@/lib/i18n'
 
 export default function AgendaPage() {
-  const { ready: subReady } = useSubscriptionGate()
   const { t } = useTranslation()
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [view, setView] = useState<CalendarViewType>('day')

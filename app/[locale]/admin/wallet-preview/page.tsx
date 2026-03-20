@@ -1,7 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { useSubscriptionGate } from '@/lib/use-subscription-gate';
 import QRCode from 'react-qr-code';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
@@ -1276,7 +1275,6 @@ function TemplateSaver({
 export default function WalletPreviewPage() {
   const router = useLocaleRouter();
   const { t } = useTranslation();
-  const { ready: subReady } = useSubscriptionGate();
   const [data, setData]         = useState<PreviewData | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
