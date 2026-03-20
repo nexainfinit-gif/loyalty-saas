@@ -1364,6 +1364,7 @@ export default function WalletStudioPage() {
   const [issueTemplateId, setIssueTemplateId] = useState<string | undefined>(undefined);
   const [issuedCount,  setIssuedCount]  = useState(0);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Silence unused var warning for restaurantId
   void restaurantId;
@@ -1393,6 +1394,8 @@ export default function WalletStudioPage() {
       // Plan check: free-plan restaurants cannot access Wallet Studio via direct URL.
       // me.walletStudio = true when plan !== 'free' OR wallet_studio_enabled = true (manual override).
       if (!me.walletStudio) { setPlanBlocked(true); setLoading(false); return; }
+
+      setIsAdmin(me.platformRole === 'owner');
 
       setToken(tk);
       setRestaurantId(me.restaurantId ?? '');
@@ -1481,6 +1484,97 @@ export default function WalletStudioPage() {
 
   const visibleTemplates = templates.filter(t => t.status !== 'archived');
 
+  /* ═══ Simplified view for restaurant admins (non-platform-owner) ═══ */
+  if (!isAdmin) {
+    const publishedTemplates = visibleTemplates.filter(t => t.status === 'published');
+    const defaultTemplate = publishedTemplates.find(t => t.is_default) ?? publishedTemplates[0];
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
+          <button onClick={() => router.push('/dashboard')} className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+            {t('wallet.backDashboard')}
+          </button>
+          <div className="h-5 w-px bg-gray-200" />
+          <h1 className="text-base font-semibold text-gray-900">{t('wallet.simpleTitle')}</h1>
+        </header>
+
+        <div className="max-w-3xl mx-auto p-6 space-y-6">
+          {/* Templates overview */}
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('wallet.simpleTemplates')}</h2>
+            {publishedTemplates.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-8 text-center">
+                <div className="text-3xl mb-3">🎴</div>
+                <p className="text-sm text-gray-500 mb-1">{t('wallet.simpleNoTemplates')}</p>
+                <p className="text-xs text-gray-400">{t('wallet.simpleNoTemplatesHint')}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {publishedTemplates.map(tmpl => (
+                  <div key={tmpl.id} className={`bg-white rounded-2xl border ${tmpl.is_default ? 'border-primary-300 ring-2 ring-primary-100' : 'border-gray-100'} shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5`}>
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{tmpl.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{tmpl.pass_kind === 'stamps' ? t('wallet.simpleStamps') : t('wallet.simplePoints')}</p>
+                      </div>
+                      {tmpl.is_default && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-primary-100 text-primary-700">{t('wallet.simpleDefault')}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ background: tmpl.primary_color ?? '#4F6BED' }} />
+                        <span className="text-xs text-gray-500">{tmpl.active_passes} {t('wallet.simplePasses')}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Issue pass to customer */}
+          {defaultTemplate && customers.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('wallet.simpleIssue')}</h2>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5">
+                <p className="text-xs text-gray-400 mb-3">{t('wallet.simpleIssueDesc')}</p>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {customers.slice(0, 50).map(c => (
+                    <div key={c.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{c.first_name} {c.last_name}</p>
+                        <p className="text-xs text-gray-400">{c.email}</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const res = await fetch('/api/wallet/issue', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ templateId: defaultTemplate.id, customerIds: [c.id] }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setIssuedCount(prev => prev + (data.issued ?? 0));
+                          }
+                        }}
+                        className="px-3 py-1.5 text-xs font-semibold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                      >
+                        {t('wallet.simpleIssueBtn')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══ Full admin Wallet Studio (platform owner) ═══ */
   return (
     <div className="min-h-screen bg-gray-50">
 
