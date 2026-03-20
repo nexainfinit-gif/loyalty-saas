@@ -122,62 +122,101 @@ export default function WalletTab({ restaurantId, restaurantName, restaurantColo
         </div>
       )}
 
-      {/* Issued passes — visual cards */}
+      {/* Issued passes — Apple Wallet style */}
       {passList.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('wallet.simplePassList')}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {passList.map(p => {
               const cust = p.customer as unknown as { first_name: string; last_name: string; email: string; total_points: number; stamps_count: number; total_visits: number } | null;
               const color = restaurantColor ?? '#4F6BED';
+              const fg = '#ffffff';
+              const labelColor = 'rgba(255,255,255,0.6)';
               const name = cust ? `${cust.first_name} ${cust.last_name ?? ''}`.trim() : '—';
+              const points = cust?.total_points ?? 0;
+              const stamps = cust?.stamps_count ?? 0;
+              const visits = cust?.total_visits ?? 0;
+              const stampsTotal = 10;
+              const filled = Math.min(stamps, stampsTotal);
 
               return (
-                <div key={p.id} className={`rounded-[16px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.08)] ${p.status !== 'active' ? 'opacity-50' : ''}`}>
-                  {/* Pass header */}
-                  <div className="px-4 pt-3.5 pb-2" style={{ background: color }}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-white text-[10px] font-bold">
-                          {(restaurantName ?? 'R').charAt(0)}
+                <div key={p.id} className={`${p.status !== 'active' ? 'opacity-50' : ''}`}>
+                  <div
+                    className="w-full mx-auto overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.15)] select-none"
+                    style={{ background: color, borderRadius: 13, maxWidth: 340, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}
+                  >
+                    {/* Logo row */}
+                    <div className="flex items-center justify-between" style={{ padding: '12px 14px 8px' }}>
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex-shrink-0 flex items-center justify-center font-bold"
+                          style={{ color: fg, width: 30, height: 30, borderRadius: 8, backgroundColor: `${fg}22`, fontSize: 14 }}>
+                          {(restaurantName ?? 'R').charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <p className="text-white text-[11px] font-semibold leading-tight">{restaurantName ?? ''}</p>
-                          <p className="text-white/50 text-[8px] uppercase tracking-wider">{t('wallet.simplePoints')}</p>
-                        </div>
-                      </div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${p.platform === 'apple' ? 'bg-white/15 text-white' : 'bg-white/15 text-white'}`}>
-                        {p.platform === 'apple' ? '' : '●'} {p.platform === 'apple' ? 'Apple' : 'Google'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Pass body */}
-                  <div className="bg-white px-4 py-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{name}</p>
-                        <p className="text-[10px] text-gray-400">{cust?.email ?? ''}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900 tabular-nums">{cust?.total_points ?? 0}</p>
-                        <p className="text-[10px] text-gray-400">points</p>
-                      </div>
-                    </div>
-
-                    {/* Mini stats */}
-                    <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                      <div className="flex items-center gap-1">
-                        <svg className="w-3 h-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                        <span className="text-[10px] text-gray-400">{cust?.total_visits ?? 0} {t('wallet.simpleVisits')}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className={`w-1.5 h-1.5 rounded-full ${p.status === 'active' ? 'bg-success-500' : 'bg-gray-300'}`} />
-                        <span className="text-[10px] text-gray-400">
-                          {p.status === 'active' ? t('wallet.simpleStatusActive') : p.status === 'revoked' ? t('wallet.simpleStatusRevoked') : t('wallet.simpleStatusExpired')}
+                        <span className="truncate" style={{ color: fg, fontSize: 15, fontWeight: 600 }}>
+                          {restaurantName ?? ''}
                         </span>
                       </div>
-                      <span className="text-[10px] text-gray-300 ml-auto">{new Date(p.issued_at).toLocaleDateString(locale)}</span>
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <p style={{ color: labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500 }}>VISITES</p>
+                        <p style={{ color: fg, fontSize: 13, fontWeight: 500 }}>{visits}</p>
+                      </div>
+                    </div>
+
+                    {/* Primary field — stamps or points */}
+                    <div style={{ padding: '10px 14px 6px' }}>
+                      <p style={{ color: labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500 }}>TAMPONS</p>
+                      <p style={{ color: fg, fontSize: 26, fontWeight: 700, lineHeight: 1.1 }}>{filled} / {stampsTotal}</p>
+                    </div>
+
+                    {/* Stamp grid */}
+                    <div style={{ padding: '4px 14px 8px' }}>
+                      {(() => {
+                        const row1 = Math.ceil(stampsTotal / 2);
+                        const row2 = stampsTotal - row1;
+                        const sz = 24;
+                        const renderStamp = (idx: number) => (
+                          <div key={idx} className="flex items-center justify-center"
+                            style={{ width: sz, height: sz, borderRadius: '50%', border: `1.5px solid ${idx < filled ? fg : `${fg}55`}`, backgroundColor: idx < filled ? fg : 'transparent' }}>
+                            {idx < filled && <span style={{ fontSize: sz * 0.4, fontWeight: 700, color: color, lineHeight: 1 }}>✓</span>}
+                          </div>
+                        );
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>{Array.from({ length: row1 }, (_, i) => renderStamp(i))}</div>
+                            {row2 > 0 && <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>{Array.from({ length: row2 }, (_, i) => renderStamp(row1 + i))}</div>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Secondary fields */}
+                    <div className="flex" style={{ padding: '4px 14px 6px' }}>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ color: labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500 }}>CLIENT</p>
+                        <p className="truncate" style={{ color: fg, fontSize: 13, fontWeight: 500 }}>{name}</p>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ color: labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500 }}>POINTS</p>
+                        <p style={{ color: fg, fontSize: 13, fontWeight: 500 }}>{points}</p>
+                      </div>
+                    </div>
+
+                    {/* Platform badge + status */}
+                    <div className="flex items-center justify-between" style={{ padding: '4px 14px 8px' }}>
+                      <span style={{ color: labelColor, fontSize: 9, fontWeight: 600 }}>
+                        {p.platform === 'apple' ? ' Apple Wallet' : '● Google Wallet'}
+                      </span>
+                      <span style={{ color: labelColor, fontSize: 9 }}>{new Date(p.issued_at).toLocaleDateString(locale)}</span>
+                    </div>
+
+                    {/* QR code */}
+                    <div className="flex flex-col items-center" style={{ padding: '10px 14px 14px', borderTop: `1px solid ${fg}15` }}>
+                      <div style={{ backgroundColor: '#fff', borderRadius: 10, padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 120, height: 120, background: `repeating-conic-gradient(${color} 0% 25%, #fff 0% 50%) 0 0 / 8px 8px`, borderRadius: 4 }} />
+                      </div>
+                      <p style={{ color: fg, opacity: 0.4, fontSize: 10, marginTop: 6 }}>
+                        Présentez ce code au comptoir
+                      </p>
                     </div>
                   </div>
                 </div>
