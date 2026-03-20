@@ -80,10 +80,12 @@ export async function GET(request: Request) {
   const guard = await requireOwner(request);
   if (guard instanceof NextResponse) return guard;
 
+  if (!guard.restaurantId) return NextResponse.json({ error: 'Restaurant introuvable' }, { status: 404 });
+
   const { data: restaurant } = await supabaseAdmin
     .from('restaurants')
     .select('id, name, primary_color, logo_url, plan')
-    .eq('owner_id', guard.userId)
+    .eq('id', guard.restaurantId)
     .single();
 
   if (!restaurant) return NextResponse.json({ error: 'Restaurant introuvable' }, { status: 404 });
