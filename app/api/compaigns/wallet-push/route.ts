@@ -21,8 +21,8 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Restaurant introuvable' }, { status: 404 });
   }
 
-  // Feature gate: wallet_apple required
-  const featureGate = requireFeature(guard, 'wallet_apple', 'Apple Wallet');
+  // Feature gate: wallet_studio covers Apple + Google Wallet
+  const featureGate = requireFeature(guard, 'wallet_studio', 'Wallet');
   if (featureGate) return featureGate;
 
   // Plan limit: counts toward same monthly campaign quota
