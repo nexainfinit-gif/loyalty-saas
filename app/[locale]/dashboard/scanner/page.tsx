@@ -69,12 +69,14 @@ export default function ScannerPage() {
       if (!session) { router.replace('/dashboard/login'); return; }
       setSession(session);
 
-      const { data: resto } = await supabase
+      const { data: restos } = await supabase
         .from('restaurants')
         .select('scanner_token')
         .eq('owner_id', session.user.id)
-        .maybeSingle();
+        .order('created_at', { ascending: true })
+        .limit(1);
 
+      const resto = restos?.[0];
       if (resto?.scanner_token) {
         const base = typeof window !== 'undefined' ? window.location.origin : '';
         setScannerUrl(`${base}/scan/${resto.scanner_token}`);
