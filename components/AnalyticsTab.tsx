@@ -327,14 +327,14 @@ export default function AnalyticsTab({
       </div>
 
       {/* Row 2: secondary KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
         {[
           { label: t('analytics.completedCards'), value: kpis.completedCards.toString() },
           { label: t('analytics.rewards'), value: kpis.rewardsEarned.toString() },
           { label: t('analytics.avgVisitsPerClient'), value: kpis.avgVisits },
-          { label: t('analytics.estimatedRevenue'), value: kpis.estimatedRevenue !== null ? `${kpis.estimatedRevenue.toLocaleString(locale)} \u20AC` : '--' },
+          { label: t('analytics.estimatedRevenue'), value: kpis.estimatedRevenue && kpis.estimatedRevenue > 0 ? `${kpis.estimatedRevenue.toLocaleString(locale)} \u20AC` : '--' },
           { label: t('analytics.averageBasket'), value: kpis.avgTicket > 0 ? `${kpis.avgTicket.toFixed(2)} \u20AC` : '--' },
-          { label: t('analytics.rewardCost'), value: kpis.estimatedRewardCost !== null ? `${kpis.estimatedRewardCost.toLocaleString(locale)} \u20AC` : '--' },
+          { label: t('analytics.rewardCost'), value: kpis.estimatedRewardCost && kpis.estimatedRewardCost > 0 ? `${kpis.estimatedRewardCost.toLocaleString(locale)} \u20AC` : '--' },
         ].map((kpi, i) => (
           <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <p className="text-xs text-gray-500 font-medium mb-1">{kpi.label}</p>
@@ -349,7 +349,12 @@ export default function AnalyticsTab({
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('analytics.clientDistribution')}</h3>
           {distribution.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">{t('analytics.notEnoughData')}</p>
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-3">
+                <svg className="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" /><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" /></svg>
+              </div>
+              <p className="text-sm text-gray-400">{t('analytics.notEnoughData')}</p>
+            </div>
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
               <ResponsiveContainer width="100%" height={160} className="sm:!w-1/2">
@@ -452,7 +457,12 @@ export default function AnalyticsTab({
         <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('analytics.insightsTitle')}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {insights.length === 0 && (
-            <p className="text-sm text-gray-400 py-4 col-span-2 text-center">{t('analytics.insightsNoData')}</p>
+            <div className="flex items-center gap-3 col-span-2 py-2">
+              <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" /></svg>
+              </div>
+              <p className="text-sm text-gray-400">{t('analytics.insightsNoData')}</p>
+            </div>
           )}
           {insights.map((insight, i) => {
             const colorMap = {
