@@ -1,7 +1,7 @@
 'use client';
 import { useTranslation } from '@/lib/i18n';
 
-type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings';
+type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings' | 'wallet';
 
 interface Props {
   activeTab: Tab;

@@ -3,7 +3,7 @@ import { useEffect, useCallback } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import LocaleLink from '@/components/LocaleLink';
 
-type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings';
+type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings' | 'wallet';
 
 interface Props {
   restaurantName: string;
