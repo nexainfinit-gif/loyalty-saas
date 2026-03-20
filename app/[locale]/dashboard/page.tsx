@@ -347,9 +347,10 @@ export default function DashboardPage() {
         // If proxy fails, fall through to normal loading
       }
 
-      const { data: resto } = await supabase
+      const { data: restos } = await supabase
         .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
-        .eq('owner_id', session.user.id).eq('is_demo', false).maybeSingle();
+        .eq('owner_id', session.user.id).eq('is_demo', false).order('created_at', { ascending: true }).limit(1);
+      const resto = restos?.[0] ?? null;
       if (!resto) { router.replace('/onboarding'); return; }
 
       // Gate: require active subscription
