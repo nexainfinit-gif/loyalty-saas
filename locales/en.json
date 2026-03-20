@@ -1233,6 +1233,7 @@
     "simpleStatusActive": "Active",
     "simpleStatusRevoked": "Revoked",
     "simpleStatusExpired": "Expired",
+    "simpleVisits": "visits",
     "errorTitle": "Error",
     "backDashboard": "← Back to dashboard",
     "planBlockedTitle": "Wallet Studio — Pro Plan required",

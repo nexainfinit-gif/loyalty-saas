@@ -18,16 +18,18 @@ interface WalletPass {
   platform: 'apple' | 'google';
   status: 'active' | 'revoked' | 'expired';
   issued_at: string;
-  customer: { first_name: string; last_name: string; email: string } | null;
+  customer: { first_name: string; last_name: string; email: string; total_points: number; stamps_count: number; total_visits: number } | null;
 }
 
 interface Props {
   restaurantId: string;
+  restaurantName?: string;
+  restaurantColor?: string;
   locale: string;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }
 
-export default function WalletTab({ restaurantId, locale, t }: Props) {
+export default function WalletTab({ restaurantId, restaurantName, restaurantColor, locale, t }: Props) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalPasses, setTotalPasses] = useState(0);
@@ -42,7 +44,7 @@ export default function WalletTab({ restaurantId, locale, t }: Props) {
     const [tmplRes, passesRes] = await Promise.all([
       fetch('/api/wallet/templates', { headers: { Authorization: `Bearer ${session.access_token}` } }),
       supabase.from('wallet_passes')
-        .select('id, platform, status, issued_at, customer:customers(first_name, last_name, email)')
+        .select('id, platform, status, issued_at, customer:customers(first_name, last_name, email, total_points, stamps_count, total_visits)')
         .eq('restaurant_id', restaurantId)
         .order('issued_at', { ascending: false })
         .limit(100),
@@ -120,44 +122,67 @@ export default function WalletTab({ restaurantId, locale, t }: Props) {
         </div>
       )}
 
-      {/* Issued passes list */}
+      {/* Issued passes — visual cards */}
       {passList.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('wallet.simplePassList')}</h3>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/60">
-                  {[t('wallet.simplePassClient'), t('wallet.simplePassPlatform'), t('wallet.simplePassStatus'), t('wallet.simplePassDate')].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {passList.map(p => {
-                  const cust = p.customer as unknown as { first_name: string; last_name: string; email: string } | null;
-                  return (
-                    <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900">{cust ? `${cust.first_name} ${cust.last_name}` : '—'}</p>
-                        <p className="text-xs text-gray-400">{cust?.email ?? ''}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${p.platform === 'apple' ? 'bg-gray-100 text-gray-700' : 'bg-blue-50 text-blue-700'}`}>
-                          {p.platform === 'apple' ? '' : '🟢'} {p.platform === 'apple' ? 'Apple' : 'Google'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${p.status === 'active' ? 'bg-success-50 text-success-700' : p.status === 'revoked' ? 'bg-danger-50 text-danger-700' : 'bg-gray-100 text-gray-500'}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {passList.map(p => {
+              const cust = p.customer as unknown as { first_name: string; last_name: string; email: string; total_points: number; stamps_count: number; total_visits: number } | null;
+              const color = restaurantColor ?? '#4F6BED';
+              const name = cust ? `${cust.first_name} ${cust.last_name ?? ''}`.trim() : '—';
+
+              return (
+                <div key={p.id} className={`rounded-[16px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.08)] ${p.status !== 'active' ? 'opacity-50' : ''}`}>
+                  {/* Pass header */}
+                  <div className="px-4 pt-3.5 pb-2" style={{ background: color }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-white text-[10px] font-bold">
+                          {(restaurantName ?? 'R').charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-white text-[11px] font-semibold leading-tight">{restaurantName ?? ''}</p>
+                          <p className="text-white/50 text-[8px] uppercase tracking-wider">{t('wallet.simplePoints')}</p>
+                        </div>
+                      </div>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${p.platform === 'apple' ? 'bg-white/15 text-white' : 'bg-white/15 text-white'}`}>
+                        {p.platform === 'apple' ? '' : '●'} {p.platform === 'apple' ? 'Apple' : 'Google'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Pass body */}
+                  <div className="bg-white px-4 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{name}</p>
+                        <p className="text-[10px] text-gray-400">{cust?.email ?? ''}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-gray-900 tabular-nums">{cust?.total_points ?? 0}</p>
+                        <p className="text-[10px] text-gray-400">points</p>
+                      </div>
+                    </div>
+
+                    {/* Mini stats */}
+                    <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                      <div className="flex items-center gap-1">
+                        <svg className="w-3 h-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        <span className="text-[10px] text-gray-400">{cust?.total_visits ?? 0} {t('wallet.simpleVisits')}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${p.status === 'active' ? 'bg-success-500' : 'bg-gray-300'}`} />
+                        <span className="text-[10px] text-gray-400">
                           {p.status === 'active' ? t('wallet.simpleStatusActive') : p.status === 'revoked' ? t('wallet.simpleStatusRevoked') : t('wallet.simpleStatusExpired')}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{new Date(p.issued_at).toLocaleDateString(locale)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                      <span className="text-[10px] text-gray-300 ml-auto">{new Date(p.issued_at).toLocaleDateString(locale)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

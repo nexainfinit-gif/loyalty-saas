@@ -1216,6 +1216,7 @@
     "simpleStatusActive": "Attivo",
     "simpleStatusRevoked": "Revocato",
     "simpleStatusExpired": "Scaduto",
+    "simpleVisits": "visite",
     "errorTitle": "Errore",
     "backDashboard": "← Torna alla dashboard",
     "planBlockedTitle": "Wallet Studio — Piano Pro richiesto",

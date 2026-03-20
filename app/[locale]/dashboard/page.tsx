@@ -2232,7 +2232,7 @@ export default function DashboardPage() {
 
           {/* ══ WALLET ══════════════════════════════════════ */}
           {activeTab === 'wallet' && (
-            <WalletTab restaurantId={restaurant?.id ?? ''} locale={locale} t={t} />
+            <WalletTab restaurantId={restaurant?.id ?? ''} restaurantName={restaurant?.name} restaurantColor={restaurant?.primary_color} locale={locale} t={t} />
           )}
 
         </main>

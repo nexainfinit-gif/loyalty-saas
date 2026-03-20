@@ -1214,6 +1214,7 @@
     "simpleStatusActive": "Actief",
     "simpleStatusRevoked": "Ingetrokken",
     "simpleStatusExpired": "Verlopen",
+    "simpleVisits": "bezoeken",
     "errorTitle": "Fout",
     "backDashboard": "← Terug naar dashboard",
     "planBlockedTitle": "Wallet Studio — Pro-abonnement vereist",
