@@ -2074,6 +2074,24 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                        {t('settings.avgRewardCostLabel')} <span className="text-gray-300">{t('settings.avgRewardCostUnit')}</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mb-1.5">{t('settings.avgRewardCostHint')}</p>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={restaurantSettings['average_reward_cost'] ?? ''}
+                        onChange={(e) => {
+                          setRestaurantSettings((prev) => ({ ...prev, average_reward_cost: e.target.value }));
+                          setRestaurantSettingsMsg('');
+                        }}
+                        placeholder={t('settings.avgRewardCostPlaceholder')}
+                        className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5">
                         {t('settings.graceDaysLabel')} <span className="text-gray-300">{t('settings.graceDaysUnit')}</span>
                       </label>
                       <p className="text-xs text-gray-400 mb-1.5">{t('settings.graceDaysHint')}</p>

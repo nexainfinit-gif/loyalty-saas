@@ -153,6 +153,10 @@ export default function AnalyticsTab({
     const avgTicket = parseFloat(restaurantSettings['average_ticket'] || '0');
     const estimatedRevenue = avgTicket > 0 ? visitsThisPeriod * avgTicket : null;
 
+    // Reward cost
+    const avgRewardCost = parseFloat(restaurantSettings['average_reward_cost'] || '0');
+    const estimatedRewardCost = avgRewardCost > 0 ? rewardsEarned * avgRewardCost : null;
+
     // Average visits per customer
     const avgVisits = totalCustomers > 0 ? (customers.reduce((sum, c) => sum + c.total_visits, 0) / totalCustomers).toFixed(1) : '0';
 
@@ -188,6 +192,8 @@ export default function AnalyticsTab({
       avgVisits,
       avgCardDays,
       rewardUtilRate,
+      avgRewardCost,
+      estimatedRewardCost,
     };
   }, [customers, transactions, totalCustomers, periodMs, loyaltySettings, restaurantSettings]);
 
@@ -328,6 +334,7 @@ export default function AnalyticsTab({
           { label: t('analytics.avgVisitsPerClient'), value: kpis.avgVisits },
           { label: t('analytics.estimatedRevenue'), value: kpis.estimatedRevenue !== null ? `${kpis.estimatedRevenue.toLocaleString(locale)} \u20AC` : '--' },
           { label: t('analytics.averageBasket'), value: kpis.avgTicket > 0 ? `${kpis.avgTicket.toFixed(2)} \u20AC` : '--' },
+          { label: t('analytics.rewardCost'), value: kpis.estimatedRewardCost !== null ? `${kpis.estimatedRewardCost.toLocaleString(locale)} \u20AC` : '--' },
         ].map((kpi, i) => (
           <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <p className="text-xs text-gray-500 font-medium mb-1">{kpi.label}</p>
