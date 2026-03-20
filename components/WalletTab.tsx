@@ -18,7 +18,8 @@ interface WalletPass {
   platform: 'apple' | 'google';
   status: 'active' | 'revoked' | 'expired';
   issued_at: string;
-  customer: { first_name: string; last_name: string; email: string; total_points: number; stamps_count: number; total_visits: number } | null;
+  customer: { first_name: string; last_name: string; email: string; total_points: number; stamps_count: number; total_visits: number; referral_code: string | null } | null;
+  template: { name: string; primary_color: string | null; config_json: Record<string, unknown>; pass_kind: string } | null;
 }
 
 interface Props {
@@ -44,7 +45,7 @@ export default function WalletTab({ restaurantId, restaurantName, restaurantColo
     const [tmplRes, passesRes] = await Promise.all([
       fetch('/api/wallet/templates', { headers: { Authorization: `Bearer ${session.access_token}` } }),
       supabase.from('wallet_passes')
-        .select('id, platform, status, issued_at, customer:customers(first_name, last_name, email, total_points, stamps_count, total_visits)')
+        .select('id, platform, status, issued_at, customer:customers(first_name, last_name, email, total_points, stamps_count, total_visits, referral_code), template:wallet_pass_templates(name, primary_color, config_json, pass_kind)')
         .eq('restaurant_id', restaurantId)
         .order('issued_at', { ascending: false })
         .limit(100),
@@ -122,106 +123,12 @@ export default function WalletTab({ restaurantId, restaurantName, restaurantColo
         </div>
       )}
 
-      {/* Issued passes — Apple Wallet style */}
+      {/* Issued passes — real Apple Wallet preview */}
       {passList.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('wallet.simplePassList')}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {passList.map(p => {
-              const cust = p.customer as unknown as { first_name: string; last_name: string; email: string; total_points: number; stamps_count: number; total_visits: number } | null;
-              const color = restaurantColor ?? '#4F6BED';
-              const fg = '#ffffff';
-              const labelColor = 'rgba(255,255,255,0.6)';
-              const name = cust ? `${cust.first_name} ${cust.last_name ?? ''}`.trim() : '—';
-              const points = cust?.total_points ?? 0;
-              const stamps = cust?.stamps_count ?? 0;
-              const visits = cust?.total_visits ?? 0;
-              const stampsTotal = 10;
-              const filled = Math.min(stamps, stampsTotal);
-
-              return (
-                <div key={p.id} className={`${p.status !== 'active' ? 'opacity-50' : ''}`}>
-                  <div
-                    className="w-full mx-auto overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.15)] select-none"
-                    style={{ background: color, borderRadius: 13, maxWidth: 340, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}
-                  >
-                    {/* Logo row */}
-                    <div className="flex items-center justify-between" style={{ padding: '12px 14px 8px' }}>
-                      <div className="flex items-center gap-1.5">
-                        <div className="flex-shrink-0 flex items-center justify-center font-bold"
-                          style={{ color: fg, width: 30, height: 30, borderRadius: 8, backgroundColor: `${fg}22`, fontSize: 14 }}>
-                          {(restaurantName ?? 'R').charAt(0).toUpperCase()}
-                        </div>
-                        <span className="truncate" style={{ color: fg, fontSize: 15, fontWeight: 600 }}>
-                          {restaurantName ?? ''}
-                        </span>
-                      </div>
-                      <div className="text-right flex-shrink-0 ml-2">
-                        <p style={{ color: labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500 }}>VISITES</p>
-                        <p style={{ color: fg, fontSize: 13, fontWeight: 500 }}>{visits}</p>
-                      </div>
-                    </div>
-
-                    {/* Primary field — stamps or points */}
-                    <div style={{ padding: '10px 14px 6px' }}>
-                      <p style={{ color: labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500 }}>TAMPONS</p>
-                      <p style={{ color: fg, fontSize: 26, fontWeight: 700, lineHeight: 1.1 }}>{filled} / {stampsTotal}</p>
-                    </div>
-
-                    {/* Stamp grid */}
-                    <div style={{ padding: '4px 14px 8px' }}>
-                      {(() => {
-                        const row1 = Math.ceil(stampsTotal / 2);
-                        const row2 = stampsTotal - row1;
-                        const sz = 24;
-                        const renderStamp = (idx: number) => (
-                          <div key={idx} className="flex items-center justify-center"
-                            style={{ width: sz, height: sz, borderRadius: '50%', border: `1.5px solid ${idx < filled ? fg : `${fg}55`}`, backgroundColor: idx < filled ? fg : 'transparent' }}>
-                            {idx < filled && <span style={{ fontSize: sz * 0.4, fontWeight: 700, color: color, lineHeight: 1 }}>✓</span>}
-                          </div>
-                        );
-                        return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>{Array.from({ length: row1 }, (_, i) => renderStamp(i))}</div>
-                            {row2 > 0 && <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>{Array.from({ length: row2 }, (_, i) => renderStamp(row1 + i))}</div>}
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Secondary fields */}
-                    <div className="flex" style={{ padding: '4px 14px 6px' }}>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ color: labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500 }}>CLIENT</p>
-                        <p className="truncate" style={{ color: fg, fontSize: 13, fontWeight: 500 }}>{name}</p>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ color: labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500 }}>POINTS</p>
-                        <p style={{ color: fg, fontSize: 13, fontWeight: 500 }}>{points}</p>
-                      </div>
-                    </div>
-
-                    {/* Platform badge + status */}
-                    <div className="flex items-center justify-between" style={{ padding: '4px 14px 8px' }}>
-                      <span style={{ color: labelColor, fontSize: 9, fontWeight: 600 }}>
-                        {p.platform === 'apple' ? ' Apple Wallet' : '● Google Wallet'}
-                      </span>
-                      <span style={{ color: labelColor, fontSize: 9 }}>{new Date(p.issued_at).toLocaleDateString(locale)}</span>
-                    </div>
-
-                    {/* QR code */}
-                    <div className="flex flex-col items-center" style={{ padding: '10px 14px 14px', borderTop: `1px solid ${fg}15` }}>
-                      <div style={{ backgroundColor: '#fff', borderRadius: 10, padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: 120, height: 120, background: `repeating-conic-gradient(${color} 0% 25%, #fff 0% 50%) 0 0 / 8px 8px`, borderRadius: 4 }} />
-                      </div>
-                      <p style={{ color: fg, opacity: 0.4, fontSize: 10, marginTop: 6 }}>
-                        Présentez ce code au comptoir
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {passList.map(p => <RealPassPreview key={p.id} pass={p} restaurantName={restaurantName} restaurantColor={restaurantColor} locale={locale} t={t} />)}
           </div>
         </div>
       )}
@@ -323,6 +230,140 @@ function WalletCardPreview({ template, t, isDraft }: { template: Template; t: (k
           <span className="bg-black/60 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">{t('wallet.simpleDraft')}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Real Apple Wallet pass preview ──────────────────────── */
+
+function RealPassPreview({ pass: p, restaurantName, restaurantColor, locale, t }: {
+  pass: WalletPass; restaurantName?: string; restaurantColor?: string; locale: string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+}) {
+  const cust = p.customer as unknown as { first_name: string; last_name: string; email: string; total_points: number; stamps_count: number; total_visits: number; referral_code: string | null } | null;
+  const tmpl = p.template as unknown as { name: string; primary_color: string | null; config_json: Record<string, unknown>; pass_kind: string } | null;
+  const cfg = (tmpl?.config_json ?? {}) as Record<string, unknown>;
+
+  const bgColor = (cfg.bgColor as string) ?? tmpl?.primary_color ?? restaurantColor ?? '#1a5e2a';
+  const fg = (cfg.foregroundColor as string) ?? '#ffffff';
+  const labelColor = (cfg.labelColor as string) ?? `${fg}99`;
+  const logoUrl = cfg.logoImageUrl as string | undefined;
+  const logoText = (cfg.logoText as string) ?? (cfg.merchantName as string) ?? restaurantName ?? '';
+  const stampFilledUrl = cfg.stampFilledUrl as string | undefined;
+  const stampEmptyUrl = cfg.stampEmptyUrl as string | undefined;
+  const rewardText = (cfg.rewardText as string) ?? '';
+
+  const stampsTotal = (cfg.stampsTotal as number) ?? 10;
+  const stamps = cust?.stamps_count ?? 0;
+  const filled = Math.min(stamps, stampsTotal);
+  const remaining = Math.max(0, stampsTotal - filled);
+  const name = cust ? `${cust.first_name} ${cust.last_name ?? ''}`.trim() : '—';
+  const refCode = cust?.referral_code ?? p.id.slice(0, 6).toUpperCase();
+
+  const labelSty: React.CSSProperties = { color: labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 500, lineHeight: 1.2 };
+  const valueSty: React.CSSProperties = { color: fg, fontSize: 13, fontWeight: 500, lineHeight: 1.3 };
+
+  return (
+    <div className={`${p.status !== 'active' ? 'opacity-50' : ''}`}>
+      <div
+        className="w-full mx-auto overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.15)] select-none"
+        style={{ background: bgColor, borderRadius: 13, maxWidth: 340, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}
+      >
+        {/* ── Logo row + N° ── */}
+        <div className="flex items-center justify-between" style={{ padding: '12px 14px 8px' }}>
+          <div className="flex items-center gap-1.5 min-w-0">
+            {logoUrl ? (
+              <img src={logoUrl} alt="" className="flex-shrink-0 object-cover" style={{ width: 30, height: 30, borderRadius: 8 }} />
+            ) : (
+              <div className="flex-shrink-0 flex items-center justify-center font-bold"
+                style={{ color: fg, width: 30, height: 30, borderRadius: 8, backgroundColor: `${fg}22`, fontSize: 14 }}>
+                {logoText.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="truncate" style={{ color: fg, fontSize: 15, fontWeight: 600 }}>{logoText}</span>
+          </div>
+          <div className="text-right flex-shrink-0 ml-2">
+            <p style={labelSty}>N°</p>
+            <p style={{ ...valueSty, fontWeight: 700, fontSize: 15 }}>{refCode}</p>
+          </div>
+        </div>
+
+        {/* ── Strip image ── */}
+        {cfg.stripImageUrl && (
+          <div className="w-full overflow-hidden" style={{ height: 98 }}>
+            <img src={cfg.stripImageUrl as string} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        {/* ── Stamp grid (images or circles) ── */}
+        <div style={{ padding: '12px 14px 8px' }}>
+          {(() => {
+            const row1 = Math.ceil(stampsTotal / 2);
+            const row2 = stampsTotal - row1;
+            const sz = stampFilledUrl ? 48 : 26;
+            const gap = stampFilledUrl ? 8 : 4;
+
+            const renderStamp = (idx: number) => {
+              const isFilled = idx < filled;
+              if (stampFilledUrl || stampEmptyUrl) {
+                const url = isFilled ? (stampFilledUrl ?? '') : (stampEmptyUrl ?? '');
+                return url ? (
+                  <img key={idx} src={url} alt="" style={{ width: sz, height: sz, objectFit: 'contain' }} />
+                ) : (
+                  <div key={idx} style={{ width: sz, height: sz, borderRadius: '50%', border: `1.5px solid ${fg}55` }} />
+                );
+              }
+              return (
+                <div key={idx} className="flex items-center justify-center"
+                  style={{ width: sz, height: sz, borderRadius: '50%', border: `1.5px solid ${isFilled ? fg : `${fg}55`}`, backgroundColor: isFilled ? fg : 'transparent' }}>
+                  {isFilled && <span style={{ fontSize: sz * 0.4, fontWeight: 700, color: bgColor, lineHeight: 1 }}>✓</span>}
+                </div>
+              );
+            };
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap }}>{Array.from({ length: row1 }, (_, i) => renderStamp(i))}</div>
+                {row2 > 0 && <div style={{ display: 'flex', justifyContent: 'center', gap }}>{Array.from({ length: row2 }, (_, i) => renderStamp(row1 + i))}</div>}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* ── Secondary fields: CLIENT + RÉCOMPENSE + RESTANTS ── */}
+        <div className="flex" style={{ padding: '4px 14px 6px', gap: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={labelSty}>CLIENT</p>
+            <p className="truncate" style={valueSty}>{name}</p>
+          </div>
+          <div style={{ flex: 2, minWidth: 0 }}>
+            <p style={labelSty}>RÉCOMPENSE</p>
+            <p className="truncate" style={valueSty}>{rewardText || '—'}</p>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={labelSty}>RESTANTS</p>
+            <p className="truncate" style={valueSty}>{remaining} tampons</p>
+          </div>
+        </div>
+
+        {/* ── QR code area ── */}
+        <div className="flex flex-col items-center" style={{ padding: '12px 14px 14px', borderTop: `1px solid ${fg}15` }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: 10, padding: 8 }}>
+            <div style={{ width: 120, height: 120, background: `repeating-conic-gradient(${bgColor} 0% 25%, #fff 0% 50%) 0 0 / 6px 6px`, borderRadius: 4 }} />
+          </div>
+          <p style={{ color: fg, opacity: 0.4, fontSize: 10, marginTop: 6 }}>
+            Présentez ce code au comptoir
+          </p>
+        </div>
+      </div>
+
+      {/* Platform + date below the card */}
+      <div className="flex items-center justify-between mt-2 px-1">
+        <span className="text-[10px] text-gray-400 font-medium">
+          {p.platform === 'apple' ? ' Apple Wallet' : '● Google Wallet'}
+        </span>
+        <span className="text-[10px] text-gray-300">{new Date(p.issued_at).toLocaleDateString(locale)}</span>
+      </div>
     </div>
   );
 }
