@@ -16,6 +16,7 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileHeader from '@/components/MobileHeader';
 import CustomerDetailModal from '@/components/CustomerDetailModal';
 import LocaleSwitcher from '@/components/LocaleSwitcher';
+import WalletTab from '@/components/WalletTab';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
 
 /* ─── Design System tokens (CSS vars for inline styles / Recharts) ─ */
@@ -103,7 +104,7 @@ interface Campaign {
   scheduled_at: string | null;
 }
 
-type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings';
+type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings' | 'wallet';
 
 interface GrowthTrigger {
   key:            string;
@@ -1014,14 +1015,14 @@ export default function DashboardPage() {
 
           {/* Wallet Studio — visible when wallet_pass_rate KPI is enabled for this plan */}
           {enabledKpiKeys.includes('wallet_pass_rate') && (
-            <Link
-              href={`/${locale}/dashboard/wallet`}
+            <button
+              onClick={() => setActiveTab('wallet' as Tab)}
               aria-label={t('nav.walletStudio')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all${!sidebarOpen ? ' justify-center px-0' : ''}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${activeTab === 'wallet' ? 'bg-primary-50 text-primary-600' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}${!sidebarOpen ? ' justify-center px-0' : ''}`}
             >
               <span className="flex-shrink-0"><IWallet /></span>
-              {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.walletStudio')}</span>}
-            </Link>
+              {sidebarOpen && <span className={`text-sm whitespace-nowrap ${activeTab === 'wallet' ? 'font-semibold' : 'font-medium'}`}>{t('nav.walletStudio')}</span>}
+            </button>
           )}
 
           {/* Billing */}
@@ -2226,6 +2227,11 @@ export default function DashboardPage() {
                   <LocaleSwitcher />
                 </div>
             </div>
+          )}
+
+          {/* ══ WALLET ══════════════════════════════════════ */}
+          {activeTab === 'wallet' && (
+            <WalletTab restaurantId={restaurant?.id ?? ''} locale={locale} t={t} />
           )}
 
         </main>
