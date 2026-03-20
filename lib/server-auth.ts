@@ -56,13 +56,14 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
   const userId = await resolveUserId(request);
   if (!userId) return null;
 
-  const [{ data: restaurant }, { data: profile }] = await Promise.all([
+  const [{ data: restaurants }, { data: profile }] = await Promise.all([
     supabaseAdmin
       .from('restaurants')
       .select('id, plan, plan_id, wallet_studio_enabled')
       .eq('owner_id', userId)
       .neq('is_demo', true)
-      .maybeSingle(),
+      .order('created_at', { ascending: true })
+      .limit(1),
     supabaseAdmin
       .from('profiles')
       .select('platform_role')
@@ -70,6 +71,7 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
       .maybeSingle(),
   ]);
 
+  const restaurant = restaurants?.[0] ?? null;
   const role = (profile?.platform_role ?? 'restaurant_admin') as PlatformRole;
 
   // ── Impersonation: platform owner can override restaurant context via cookie ──
