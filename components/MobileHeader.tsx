@@ -58,6 +58,7 @@ export default function MobileHeader({
     campaigns: t('nav.campaigns'),
     analytics: t('nav.analytics'),
     settings: t('nav.settings'),
+    wallet: t('nav.walletStudio'),
   };
 
   // Lock body scroll when drawer is open
