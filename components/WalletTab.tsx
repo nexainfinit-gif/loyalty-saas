@@ -45,7 +45,7 @@ export default function WalletTab({ restaurantId, restaurantName, restaurantColo
     const [tmplRes, passesRes] = await Promise.all([
       fetch('/api/wallet/templates', { headers: { Authorization: `Bearer ${session.access_token}` } }),
       supabase.from('wallet_passes')
-        .select('id, platform, status, issued_at, customer:customers(first_name, last_name, email, total_points, stamps_count, total_visits, referral_code), template:wallet_pass_templates(name, primary_color, config_json, pass_kind)')
+        .select('id, platform, status, issued_at, customer:customers!customer_id(first_name, last_name, email, total_points, stamps_count, total_visits, referral_code), template:wallet_pass_templates!template_id(name, primary_color, config_json, pass_kind)')
         .eq('restaurant_id', restaurantId)
         .order('issued_at', { ascending: false })
         .limit(100),
@@ -298,10 +298,13 @@ function RealPassPreview({ pass: p, restaurantName, restaurantColor, locale, t }
         {/* ── Stamp grid (images or circles) ── */}
         <div style={{ padding: '12px 14px 8px' }}>
           {(() => {
-            const row1 = Math.ceil(stampsTotal / 2);
-            const row2 = stampsTotal - row1;
-            const sz = stampFilledUrl ? 48 : 26;
-            const gap = stampFilledUrl ? 8 : 4;
+            const cols = (cfg.stampColumns as number) ?? Math.ceil(stampsTotal / 2);
+            const rows: number[][] = [];
+            for (let i = 0; i < stampsTotal; i += cols) {
+              rows.push(Array.from({ length: Math.min(cols, stampsTotal - i) }, (_, j) => i + j));
+            }
+            const sz = stampFilledUrl ? ((cfg.stampSize as number) ?? 40) : 26;
+            const gap = stampFilledUrl ? 6 : 4;
 
             const renderStamp = (idx: number) => {
               const isFilled = idx < filled;
@@ -322,9 +325,12 @@ function RealPassPreview({ pass: p, restaurantName, restaurantColor, locale, t }
             };
 
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap }}>
-                <div style={{ display: 'flex', justifyContent: 'center', gap }}>{Array.from({ length: row1 }, (_, i) => renderStamp(i))}</div>
-                {row2 > 0 && <div style={{ display: 'flex', justifyContent: 'center', gap }}>{Array.from({ length: row2 }, (_, i) => renderStamp(row1 + i))}</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap, alignItems: 'center' }}>
+                {rows.map((row, ri) => (
+                  <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap }}>
+                    {row.map(idx => renderStamp(idx))}
+                  </div>
+                ))}
               </div>
             );
           })()}
