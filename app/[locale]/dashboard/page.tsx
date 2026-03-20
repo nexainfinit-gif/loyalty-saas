@@ -761,7 +761,7 @@ export default function DashboardPage() {
           scheduled_at: null,
         };
         setSentCampaigns(prev => [newEntry, ...prev]);
-        toast.success(t('dashboard.toastCampaignSent', { count: data.pushed }));
+        toast.success(t('dashboard.toastWalletPushSent', { pushed: data.pushed, total: data.passes }));
       } else {
         toast.error(t('dashboard.toastCampaignError', { error: data.error ?? 'Inconnu' }));
       }

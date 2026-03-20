@@ -81,6 +81,7 @@
     "toastLogoUpdated": "Logo actualizado",
     "toastCampaignScheduled": "¡Campaña programada!",
     "toastCampaignSent": "¡{count} email(s) enviado(s) con éxito!",
+    "toastWalletPushSent": "Notificación Wallet enviada a {pushed}/{total} pase(s)",
     "toastCampaignError": "Error: {error}",
     "toastNetworkError": "Error de red",
     "manualAddLabel": "Añadido manual desde el panel"

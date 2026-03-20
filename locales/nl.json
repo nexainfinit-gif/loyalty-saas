@@ -83,6 +83,7 @@
     "toastLogoUpdated": "Logo bijgewerkt",
     "toastCampaignScheduled": "Campagne ingepland!",
     "toastCampaignSent": "{count} e-mail(s) succesvol verzonden!",
+    "toastWalletPushSent": "Wallet-notificatie verzonden naar {pushed}/{total} pas(sen)",
     "toastCampaignError": "Fout: {error}",
     "toastNetworkError": "Netwerkfout",
     "manualAddLabel": "Handmatige toevoeging dashboard"
