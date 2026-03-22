@@ -53,6 +53,7 @@ interface Props {
   transactions: Transaction[];
   customers: Customer[];
   plan?: string;
+  features?: Record<string, boolean>;
   onUpgrade?: () => void;
 }
 
@@ -81,11 +82,12 @@ export default function LoyaltyTab({
   transactions,
   customers,
   plan,
+  features = {},
   onUpgrade,
 }: Props) {
   const { t, locale } = useTranslation();
   const [activeSection, setActiveSection] = useState<Section>('program');
-  const isPro = plan === 'pro' || plan === 'enterprise';
+  const feat = (key: string) => features[key] ?? false;
   const today = new Date();
 
   const SECTIONS: { id: Section; label: string; icon: string }[] = [
@@ -235,11 +237,11 @@ export default function LoyaltyTab({
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.advancedTitle')}
-              {!isPro && <ProBadge />}
+              {!feat("vip_tiers") && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.advancedSubtitle')}</p>
 
-            {isPro ? (
+            {feat("vip_tiers") ? (
               <div className="space-y-6">
                 {/* VIP Tiers */}
                 <div>
@@ -403,11 +405,11 @@ export default function LoyaltyTab({
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.bonusTitle')}
-              {!isPro && <ProBadge />}
+              {!feat("bonus_points") && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.bonusSubtitle')}</p>
 
-            {isPro ? (
+            {feat("bonus_points") ? (
               <div className="space-y-4">
                 {/* Welcome bonus */}
                 <div className="flex items-start gap-4 rounded-xl border border-gray-200 p-4">
@@ -525,11 +527,11 @@ export default function LoyaltyTab({
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.rewardCatalogTitle')}
-              {!isPro && <ProBadge />}
+              {!feat('reward_catalog') && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.rewardCatalogSubtitle')}</p>
 
-            {isPro ? (
+            {feat('reward_catalog') ? (
               <RewardCatalogManager programType={settings.program_type} t={t} />
             ) : (
               <>
@@ -571,11 +573,11 @@ export default function LoyaltyTab({
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.antifraudTitle')}
-              {!isPro && <ProBadge />}
+              {!feat('antifraud') && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.antifraudSubtitle')}</p>
 
-            {isPro ? (
+            {feat('antifraud') ? (
               <div className="space-y-4">
                 {/* Max scans per day */}
                 <div className="flex items-start gap-4 rounded-xl border border-gray-200 p-4">
@@ -660,11 +662,11 @@ export default function LoyaltyTab({
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.notificationsTitle')}
-              {!isPro && <ProBadge />}
+              {!feat('notifications_auto') && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.notificationsSubtitle')}</p>
 
-            {isPro ? (
+            {feat('notifications_auto') ? (
               <div className="space-y-3">
                 {([
                   { key: 'notify_reward_reached' as const, label: t('loyalty.notifRewardReached'), desc: t('loyalty.notifRewardReachedDesc'), icon: '🏆', color: 'bg-success-50 border-success-200 text-success-700' },
@@ -787,11 +789,11 @@ export default function LoyaltyTab({
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">
               {t('loyalty.customizationAdvancedAppearance')}
-              {!isPro && <ProBadge />}
+              {!feat('appearance') && <ProBadge />}
             </h3>
             <p className="text-xs text-gray-400 mb-5">{t('loyalty.customizationAdvancedDesc')}</p>
 
-            {isPro ? (
+            {feat('appearance') ? (
               <div className="space-y-5">
                 {/* Card color override */}
                 <div>

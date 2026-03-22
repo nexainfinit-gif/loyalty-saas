@@ -271,6 +271,7 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   // KPI keys enabled for this restaurant's plan (from plan_kpis via /api/restaurant-metrics — no hardcoded checks)
   const [enabledKpiKeys, setEnabledKpiKeys] = useState<string[]>([]);
+  const [planFeatures, setPlanFeatures] = useState<Record<string, boolean>>({});
   // Customer IDs that have at least one active wallet pass
   const [walletPassCustomerIds, setWalletPassCustomerIds] = useState<Set<string>>(new Set());
   // First-visit tutorial + plan selection
@@ -381,6 +382,16 @@ export default function DashboardPage() {
       setRestaurant(resto as unknown as Restaurant);
       setEditName(resto.name ?? '');
       setEditSlug(resto.slug ?? '');
+
+      // Fetch plan features
+      if (resto.plan_id) {
+        supabase.from('plan_features').select('feature_key, enabled').eq('plan_id', resto.plan_id)
+          .then(({ data }) => {
+            const feats: Record<string, boolean> = {};
+            for (const f of data ?? []) feats[f.feature_key] = f.enabled;
+            setPlanFeatures(feats);
+          });
+      }
 
       const { data: clients } = await supabase
         .from('customers').select('*')
@@ -1474,6 +1485,7 @@ export default function DashboardPage() {
               transactions={transactions}
               customers={customers}
               plan={restaurant?.plan}
+              features={planFeatures}
               onUpgrade={() => setShowPlanSelection(true)}
             />
           )}
