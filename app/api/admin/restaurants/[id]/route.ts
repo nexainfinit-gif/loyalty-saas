@@ -94,13 +94,15 @@ export async function GET(
       .maybeSingle(),
   ]);
 
-  // 30-day metrics trend (ordered ASC for chart)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400 * 1000).toISOString().slice(0, 10);
+  // Metrics trend (configurable period)
+  const { searchParams } = new URL(request.url);
+  const periodDays = Math.min(365, Math.max(7, parseInt(searchParams.get('period') ?? '30', 10)));
+  const periodStart = new Date(Date.now() - periodDays * 86400 * 1000).toISOString().slice(0, 10);
   const { data: trend } = await supabaseAdmin
     .from('restaurant_metrics_daily')
     .select('date, scans_count, unique_customers_scanned, registrations_count, rewards_triggered_count, active_customers_30d, total_customers, wallet_passes_issued')
     .eq('restaurant_id', id)
-    .gte('date', thirtyDaysAgo)
+    .gte('date', periodStart)
     .order('date', { ascending: true });
 
   // Live totals

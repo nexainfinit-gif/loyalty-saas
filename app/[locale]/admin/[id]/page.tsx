@@ -173,13 +173,14 @@ export default function AdminRestaurantDetailPage() {
   const [planMsg, setPlanMsg]               = useState('');
   const [restaurantActions, setRestaurantActions] = useState<GrowthAction[]>([]);
   const [dismissingId, setDismissingId]           = useState<string | null>(null);
+  const [period, setPeriod] = useState<number>(30);
 
   useEffect(() => {
     if (!restaurantId) return;
     setLoading(true);
 
     Promise.all([
-      fetch(`/api/admin/restaurants/${restaurantId}`),
+      fetch(`/api/admin/restaurants/${restaurantId}?period=${period}`),
       fetch('/api/admin/plans'),
       fetch(`/api/admin/growth/actions?restaurant_id=${restaurantId}&limit=50`),
     ])
@@ -200,7 +201,7 @@ export default function AdminRestaurantDetailPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [restaurantId, router]);
+  }, [restaurantId, router, period]);
 
   async function handleUpdatePlan() {
     if (!selectedPlanId || !restaurantId) return;
@@ -440,14 +441,32 @@ export default function AdminRestaurantDetailPage() {
           </div>
         )}
 
-        {/* 30-day trend chart */}
+        {/* Trend chart with period selector */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-6">Activité — 30 derniers jours</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-sm font-semibold text-gray-700">
+              Activité — {period === 365 ? '1 an' : `${period} derniers jours`}
+            </h2>
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+              {[
+                { value: 7,   label: '7j' },
+                { value: 30,  label: '30j' },
+                { value: 90,  label: '90j' },
+                { value: 365, label: '1 an' },
+              ].map(p => (
+                <button
+                  key={p.value}
+                  onClick={() => setPeriod(p.value)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                    period === p.value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >{p.label}</button>
+              ))}
+            </div>
+          </div>
           {chartData.length === 0 ? (
             <div className="h-48 flex items-center justify-center text-sm text-gray-400">
-              Aucune donnée pour les 30 derniers jours.
-              <br />
-              Le cron doit être exécuté au moins une fois.
+              Aucune donnée pour cette période.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
