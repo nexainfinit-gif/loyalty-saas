@@ -487,7 +487,7 @@ export default function DashboardPage() {
 
   /* Load wallet pass customer IDs when the wallet_pass_rate KPI is enabled for this plan */
   useEffect(() => {
-    if (!session || !enabledKpiKeys.includes('wallet_pass_rate')) return;
+    if (!session || !pf('wallet_studio')) return;
     fetch('/api/restaurant-wallet/active-customers', {
       headers: { Authorization: `Bearer ${session.access_token}` },
     })
@@ -837,12 +837,14 @@ export default function DashboardPage() {
   );
 
   /* ─── Nav items ───────────────────────────────────────── */
+  const pf = (key: string) => planFeatures[key] ?? false;
+
   const navItems: { id: Tab; icon: React.ReactNode; label: string }[] = [
     { id: 'overview',  icon: <IGrid />,     label: t('nav.overview') },
     { id: 'clients',   icon: <IUsers />,    label: t('nav.clients') },
     { id: 'loyalty',   icon: <IGift />,     label: t('nav.loyalty') },
-    { id: 'campaigns', icon: <IMail />,     label: t('nav.campaigns') },
-    { id: 'analytics', icon: <IChart />,    label: t('nav.analytics') },
+    ...(pf('campaigns_email') ? [{ id: 'campaigns' as Tab, icon: <IMail />, label: t('nav.campaigns') }] : []),
+    ...(pf('analytics') ? [{ id: 'analytics' as Tab, icon: <IChart />, label: t('nav.analytics') }] : []),
     { id: 'settings',  icon: <ISettings />, label: t('nav.settings') },
   ];
 
@@ -1025,8 +1027,8 @@ export default function DashboardPage() {
             {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.scannerQr')}</span>}
           </Link>
 
-          {/* Wallet Studio — visible when wallet_pass_rate KPI is enabled for this plan */}
-          {enabledKpiKeys.includes('wallet_pass_rate') && (
+          {/* Wallet Studio */}
+          {pf('wallet_studio') && (
             <button
               onClick={() => setActiveTab('wallet' as Tab)}
               aria-label={t('nav.walletStudio')}
@@ -1049,8 +1051,8 @@ export default function DashboardPage() {
             {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.billing')}</span>}
           </Link>
 
-          {/* Booking Rebites — visible for salons, spas, beauty & wellness */}
-          {BOOKING_ELIGIBLE_TYPES.has(restaurant?.business_type ?? '') && (
+          {/* Booking Rebites — visible when booking feature enabled + eligible business type */}
+          {pf('booking') && BOOKING_ELIGIBLE_TYPES.has(restaurant?.business_type ?? '') && (
             <Link
               href={`/${locale}/dashboard/appointments`}
               aria-label={t('nav.booking')}
@@ -1204,29 +1206,31 @@ export default function DashboardPage() {
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('clients.title')}</h2>
                   <p className="text-sm text-gray-500 mt-0.5">{t('clients.resultCount', { count: filteredCustomers.length })}</p>
                 </div>
-                <button
-                  disabled={busyAction === 'export-csv'}
-                  onClick={async () => {
-                    if (!restaurant || busyAction === 'export-csv') return;
-                    setBusyAction('export-csv');
-                    const { data: { session: s } } = await supabase.auth.getSession();
-                    if (!s) { setBusyAction(null); return; }
-                    const res = await fetch('/api/export-csv', {
-                      headers: { Authorization: `Bearer ${s.access_token}` },
-                    });
-                    if (!res.ok) { toast.error(t('clients.exportError')); setBusyAction(null); return; }
-                    const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url; a.download = 'clients.csv'; a.click();
-                    URL.revokeObjectURL(url);
-                    setBusyAction(null);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  <span className="hidden sm:inline">{t('clients.exportCsv')}</span>
-                </button>
+                {pf('export_csv') && (
+                  <button
+                    disabled={busyAction === 'export-csv'}
+                    onClick={async () => {
+                      if (!restaurant || busyAction === 'export-csv') return;
+                      setBusyAction('export-csv');
+                      const { data: { session: s } } = await supabase.auth.getSession();
+                      if (!s) { setBusyAction(null); return; }
+                      const res = await fetch('/api/export-csv', {
+                        headers: { Authorization: `Bearer ${s.access_token}` },
+                      });
+                      if (!res.ok) { toast.error(t('clients.exportError')); setBusyAction(null); return; }
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url; a.download = 'clients.csv'; a.click();
+                      URL.revokeObjectURL(url);
+                      setBusyAction(null);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span className="hidden sm:inline">{t('clients.exportCsv')}</span>
+                  </button>
+                )}
               </div>
 
               {/* Search + filters */}
@@ -1333,7 +1337,7 @@ export default function DashboardPage() {
                         onClick={() => addPoint(c.id, -1)}
                         className="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-200 transition-colors tap-target"
                       >−1</button>
-                      {enabledKpiKeys.includes('wallet_pass_rate') && (
+                      {pf('wallet_studio') && (
                         walletPassCustomerIds.has(c.id)
                           ? <span className="text-xs font-semibold text-success-700 bg-success-50 px-2.5 py-2 rounded-xl">🎫</span>
                           : <button
@@ -1355,7 +1359,7 @@ export default function DashboardPage() {
                         t('clients.headerName'), t('clients.headerEmail'),
                         loyaltySettings.program_type === 'stamps' ? t('clients.stamps') : t('clients.points'),
                         t('clients.visits'), t('clients.lastVisit'), t('clients.headerStatus'),
-                        ...(enabledKpiKeys.includes('wallet_pass_rate') ? [t('clients.headerWallet')] : []),
+                        ...(pf('wallet_studio') ? [t('clients.headerWallet')] : []),
                         t('clients.headerActions'),
                       ].map(h => (
                         <th key={h} className="px-4 py-3.5 text-left text-xs font-medium text-gray-500 whitespace-nowrap">
@@ -1367,7 +1371,7 @@ export default function DashboardPage() {
                   <tbody>
                     {filteredCustomers.length === 0 && (
                       <tr>
-                        <td colSpan={enabledKpiKeys.includes('wallet_pass_rate') ? 8 : 7} className="px-4 py-16 text-center">
+                        <td colSpan={pf('wallet_studio') ? 8 : 7} className="px-4 py-16 text-center">
                           <div className="text-3xl mb-3">🔍</div>
                           <p className="text-sm text-gray-400 font-medium">{t('clients.noClientFound')}</p>
                         </td>
@@ -1408,7 +1412,7 @@ export default function DashboardPage() {
                           {c.last_visit_at ? new Date(c.last_visit_at).toLocaleDateString(locale) : '—'}
                         </td>
                         <td className="px-4 py-3.5"><StatusBadge status={getCustomerStatus(c, loyaltySettings.program_type, loyaltySettings.program_type === 'stamps' ? loyaltySettings.vip_threshold_stamps : loyaltySettings.vip_threshold_points)} t={t} /></td>
-                        {enabledKpiKeys.includes('wallet_pass_rate') && (
+                        {pf('wallet_studio') && (
                           <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                             {walletPassCustomerIds.has(c.id)
                               ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-success-700 bg-success-50 px-2 py-1 rounded-full">{t('clients.walletActive')}</span>
