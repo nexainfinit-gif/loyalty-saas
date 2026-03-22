@@ -69,20 +69,7 @@ interface KpiMetrics {
   last_computed_at:      string;
 }
 
-interface GrowthAction {
-  id:            string;
-  trigger_key:   string;
-  action_type:   string;
-  payload:       {
-    type:           string;
-    severity:       string;
-    title:          string;
-    message:        string;
-    suggested_plan?: string | null;
-  };
-  status:      string;
-  created_at:  string;
-}
+
 
 /* ── Score ring ─────────────────────────────────────────────────────────────── */
 
@@ -171,8 +158,6 @@ export default function AdminRestaurantDetailPage() {
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [savingPlan, setSavingPlan]         = useState(false);
   const [planMsg, setPlanMsg]               = useState('');
-  const [restaurantActions, setRestaurantActions] = useState<GrowthAction[]>([]);
-  const [dismissingId, setDismissingId]           = useState<string | null>(null);
   const [period, setPeriod] = useState<number>(30);
 
   useEffect(() => {
@@ -182,22 +167,19 @@ export default function AdminRestaurantDetailPage() {
     Promise.all([
       fetch(`/api/admin/restaurants/${restaurantId}?period=${period}`),
       fetch('/api/admin/plans'),
-      fetch(`/api/admin/growth/actions?restaurant_id=${restaurantId}&limit=50`),
     ])
-      .then(async ([restRes, plansRes, actionsRes]) => {
+      .then(async ([restRes, plansRes]) => {
         if (restRes.status === 401 || restRes.status === 403) { router.replace('/dashboard'); return; }
         if (restRes.status === 404) { setError(t('admin.detailNotFound')); return; }
         if (!restRes.ok) throw new Error(t('api.serverError'));
         const restJson    = await restRes.json();
         const plansJson   = plansRes.ok    ? await plansRes.json()    : { plans: [] };
-        const actionsJson = actionsRes.ok  ? await actionsRes.json()  : { actions: [] };
         setRestaurant(restJson.restaurant);
         setTotals(restJson.totals);
         setTrend(restJson.trend ?? []);
         setKpiMetrics(restJson.kpiMetrics ?? null);
         setPlans(plansJson.plans ?? []);
         setSelectedPlanId(restJson.restaurant?.plan_id ?? '');
-        setRestaurantActions(actionsJson.actions ?? []);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -219,22 +201,6 @@ export default function AdminRestaurantDetailPage() {
       setPlanMsg(t('admin.planUpdated'));
     } finally {
       setSavingPlan(false);
-    }
-  }
-
-  async function handleDismissAction(actionId: string) {
-    setDismissingId(actionId);
-    try {
-      const res = await fetch(`/api/admin/growth/actions/${actionId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'dismissed' }),
-      });
-      if (res.ok) {
-        setRestaurantActions((prev) => prev.filter((a) => a.id !== actionId));
-      }
-    } catch {/* ignore */} finally {
-      setDismissingId(null);
     }
   }
 
@@ -395,46 +361,6 @@ export default function AdminRestaurantDetailPage() {
           </div>
         )}
 
-        {/* Growth actions for this restaurant */}
-        {restaurantActions.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {restaurantActions.map((action) => {
-              const type = action.payload.type;
-              const sev = action.payload.severity;
-              const config = type === 'risk'
-                ? { border: sev === 'high' ? 'border-l-red-500' : 'border-l-amber-500', icon: '⚠️', bg: sev === 'high' ? 'bg-red-50/50' : 'bg-amber-50/50' }
-                : type === 'upgrade'
-                ? { border: 'border-l-blue-500', icon: '⬆️', bg: 'bg-blue-50/50' }
-                : { border: 'border-l-emerald-500', icon: '💡', bg: 'bg-emerald-50/50' };
-
-              return (
-                <div key={action.id} className={`${config.bg} rounded-xl border border-gray-100 border-l-4 ${config.border} p-4`}>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="text-sm">{config.icon}</span>
-                    <button
-                      onClick={() => handleDismissAction(action.id)}
-                      disabled={dismissingId === action.id}
-                      className="text-gray-300 hover:text-gray-500 text-xs disabled:opacity-50"
-                    >✕</button>
-                  </div>
-                  <p className="text-xs font-bold text-gray-900 mb-1">{action.payload.title}</p>
-                  <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{action.payload.message}</p>
-                  {action.payload.suggested_plan && (
-                    <button
-                      onClick={() => {
-                        const target = plans.find(p => p.key === action.payload.suggested_plan);
-                        if (target) { setSelectedPlanId(target.id); }
-                      }}
-                      className="mt-2 text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-                    >
-                      Upgrader vers {action.payload.suggested_plan} →
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {/* Trend chart with period selector */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
