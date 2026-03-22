@@ -348,16 +348,27 @@ export default function DashboardPage() {
         // If proxy fails, fall through to normal loading
       }
 
-      const { data: restos } = await supabase
-        .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
-        .eq('owner_id', session.user.id).eq('is_demo', false).order('created_at', { ascending: true }).limit(1);
-      const resto = restos?.[0] ?? null;
+      // Check for impersonation cookie (admin demo mode)
+      const impersonateId = document.cookie.match(/(?:^|;\s*)x-admin-impersonate=([^;]+)/)?.[1]?.trim() || null;
+
+      let resto: Record<string, unknown> | null = null;
+      if (impersonateId) {
+        const { data } = await supabase
+          .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
+          .eq('id', impersonateId).maybeSingle();
+        resto = data;
+      }
+      if (!resto) {
+        const { data: restos } = await supabase
+          .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
+          .eq('owner_id', session.user.id).eq('is_demo', false).order('created_at', { ascending: true }).limit(1);
+        resto = restos?.[0] ?? null;
+      }
       if (!resto) { router.replace('/onboarding'); return; }
 
-      // Gate: require active subscription
-      // After Stripe checkout, the webhook may not have fired yet — poll for up to 10s
+      // Gate: require active subscription (skip for impersonated demo restaurants)
       const isBillingReturn = new URLSearchParams(window.location.search).has('billing');
-      if (resto.subscription_status !== 'active') {
+      if (!impersonateId && resto.subscription_status !== 'active') {
         if (isBillingReturn) {
           let attempts = 0;
           while (attempts < 10) {
