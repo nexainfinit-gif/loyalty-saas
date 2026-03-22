@@ -102,8 +102,8 @@ export default function WalletTab({ restaurantId, restaurantName, restaurantColo
         </div>
       </div>
 
-      {/* Card templates visual */}
-      {published.length === 0 && drafts.length === 0 ? (
+      {/* Template previews — real Apple Wallet style */}
+      {templates.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-12 text-center">
           <div className="text-4xl mb-4">🎴</div>
           <h3 className="text-base font-semibold text-gray-900 mb-1">{t('wallet.simpleNoTemplates')}</h3>
@@ -112,23 +112,10 @@ export default function WalletTab({ restaurantId, restaurantName, restaurantColo
       ) : (
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('wallet.simpleTemplates')}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {published.map(tmpl => (
-              <WalletCardPreview key={tmpl.id} template={tmpl} t={t} />
-            ))}
-            {drafts.map(tmpl => (
-              <WalletCardPreview key={tmpl.id} template={tmpl} t={t} isDraft />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Issued passes — real Apple Wallet preview */}
-      {passList.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('wallet.simplePassList')}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {passList.map(p => <RealPassPreview key={p.id} pass={p} restaurantName={restaurantName} restaurantColor={restaurantColor} locale={locale} t={t} />)}
+            {templates.map(tmpl => (
+              <TemplatePassPreview key={tmpl.id} template={tmpl} restaurantName={restaurantName} t={t} />
+            ))}
           </div>
         </div>
       )}
@@ -230,6 +217,140 @@ function WalletCardPreview({ template, t, isDraft }: { template: Template; t: (k
           <span className="bg-black/60 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">{t('wallet.simpleDraft')}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Template pass preview (one per model, example data) ── */
+
+function TemplatePassPreview({ template: tmpl, restaurantName, t }: {
+  template: Template; restaurantName?: string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+}) {
+  const cfg = (tmpl.config_json ?? {}) as Record<string, unknown>;
+  const bgColor = (cfg.bgColor as string) ?? tmpl.primary_color ?? '#4F6BED';
+  const fg = (cfg.foregroundColor as string) ?? '#ffffff';
+  const labelColor = (cfg.labelColor as string) ?? `${fg}99`;
+  const logoUrl = toPublicUrl(cfg.logoImageUrl as string | undefined);
+  const logoText = (cfg.logoText as string) ?? (cfg.merchantName as string) ?? restaurantName ?? '';
+  const stampFilledUrl = cfg.stampFilledUrl as string | undefined;
+  const stampEmptyUrl = cfg.stampEmptyUrl as string | undefined;
+  const rewardText = (cfg.rewardText as string) ?? '';
+  const stampsTotal = (cfg.stampsTotal as number) ?? 10;
+  const exampleFilled = Math.min(4, stampsTotal);
+  const remaining = stampsTotal - exampleFilled;
+  const isDraft = tmpl.status === 'draft';
+
+  const labelSty: React.CSSProperties = { color: labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 500, lineHeight: 1.2 };
+  const valueSty: React.CSSProperties = { color: fg, fontSize: 13, fontWeight: 500, lineHeight: 1.3 };
+
+  return (
+    <div className={isDraft ? 'opacity-50' : ''}>
+      <div
+        className="w-full mx-auto overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.15)] select-none"
+        style={{ background: bgColor, borderRadius: 13, maxWidth: 340, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}
+      >
+        {/* Logo row */}
+        <div className="flex items-center justify-between" style={{ padding: '12px 14px 8px' }}>
+          <div className="flex items-center gap-1.5 min-w-0">
+            {logoUrl ? (
+              <img src={logoUrl} alt="" className="flex-shrink-0 object-cover" style={{ width: 30, height: 30, borderRadius: 8 }} />
+            ) : (
+              <div className="flex-shrink-0 flex items-center justify-center font-bold"
+                style={{ color: fg, width: 30, height: 30, borderRadius: 8, backgroundColor: `${fg}22`, fontSize: 14 }}>
+                {logoText.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="truncate" style={{ color: fg, fontSize: 15, fontWeight: 600 }}>{logoText}</span>
+          </div>
+          <div className="text-right flex-shrink-0 ml-2">
+            <p style={labelSty}>N°</p>
+            <p style={{ ...valueSty, fontWeight: 700, fontSize: 15 }}>DEMO</p>
+          </div>
+        </div>
+
+        {/* Strip image */}
+        {cfg.stripImageUrl && (
+          <div className="w-full overflow-hidden" style={{ height: 98 }}>
+            <img src={toPublicUrl(cfg.stripImageUrl as string) ?? ''} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        {/* Primary field */}
+        <div style={{ padding: '10px 14px 6px' }}>
+          <p style={labelSty}>TAMPONS</p>
+          <p style={{ color: fg, fontSize: 26, fontWeight: 700, lineHeight: 1.1 }}>{exampleFilled} / {stampsTotal}</p>
+        </div>
+
+        {/* Stamp grid */}
+        <div style={{ padding: '4px 14px 8px' }}>
+          {(() => {
+            const cols = (cfg.stampColumns as number) ?? Math.ceil(stampsTotal / 2);
+            const rows: number[][] = [];
+            for (let i = 0; i < stampsTotal; i += cols) {
+              rows.push(Array.from({ length: Math.min(cols, stampsTotal - i) }, (_, j) => i + j));
+            }
+            const sz = stampFilledUrl ? ((cfg.stampSize as number) ?? 40) : 26;
+            const gap = stampFilledUrl ? 6 : 4;
+
+            const renderStamp = (idx: number) => {
+              const isFilled = idx < exampleFilled;
+              if (stampFilledUrl || stampEmptyUrl) {
+                const url = isFilled ? (stampFilledUrl ?? '') : (stampEmptyUrl ?? '');
+                return url ? <img key={idx} src={url} alt="" style={{ width: sz, height: sz, objectFit: 'contain' }} /> : <div key={idx} style={{ width: sz, height: sz, borderRadius: '50%', border: `1.5px solid ${fg}55` }} />;
+              }
+              return (
+                <div key={idx} className="flex items-center justify-center"
+                  style={{ width: sz, height: sz, borderRadius: '50%', border: `1.5px solid ${isFilled ? fg : `${fg}55`}`, backgroundColor: isFilled ? fg : 'transparent' }}>
+                  {isFilled && <span style={{ fontSize: sz * 0.4, fontWeight: 700, color: bgColor, lineHeight: 1 }}>✓</span>}
+                </div>
+              );
+            };
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap, alignItems: 'center' }}>
+                {rows.map((row, ri) => (
+                  <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap }}>{row.map(idx => renderStamp(idx))}</div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Secondary fields */}
+        <div className="flex" style={{ padding: '4px 14px 6px', gap: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={labelSty}>CLIENT</p>
+            <p className="truncate" style={valueSty}>Marie Dupont</p>
+          </div>
+          <div style={{ flex: 2, minWidth: 0 }}>
+            <p style={labelSty}>RÉCOMPENSE</p>
+            <p className="truncate" style={valueSty}>{rewardText || '—'}</p>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={labelSty}>RESTANTS</p>
+            <p className="truncate" style={valueSty}>{remaining} tampons</p>
+          </div>
+        </div>
+
+        {/* QR code */}
+        <div className="flex flex-col items-center" style={{ padding: '12px 14px 14px', borderTop: `1px solid ${fg}15` }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: 10, padding: 8 }}>
+            <div style={{ width: 120, height: 120, background: `repeating-conic-gradient(${bgColor} 0% 25%, #fff 0% 50%) 0 0 / 6px 6px`, borderRadius: 4 }} />
+          </div>
+          <p style={{ color: fg, opacity: 0.4, fontSize: 10, marginTop: 6 }}>Présentez ce code au comptoir</p>
+        </div>
+      </div>
+
+      {/* Info below card */}
+      <div className="flex items-center justify-between mt-2.5 px-1">
+        <div>
+          <p className="text-xs font-semibold text-gray-900">{tmpl.name}</p>
+          <p className="text-[10px] text-gray-400">{tmpl.active_passes} {t('wallet.simplePasses')}</p>
+        </div>
+        {tmpl.is_default && <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-100 text-primary-700">{t('wallet.simpleDefault')}</span>}
+        {isDraft && <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{t('wallet.simpleDraft')}</span>}
+      </div>
     </div>
   );
 }
