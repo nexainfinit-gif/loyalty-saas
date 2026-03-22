@@ -805,6 +805,18 @@ export default function DashboardPage() {
   // Set mounted on first client render — must come after all other hooks
   useEffect(() => { setMounted(true); }, []);
 
+  /* ─── Feature gate helper (must be before any early return) ── */
+  const pf = (key: string) => planFeatures[key] ?? false;
+
+  const navItems: { id: Tab; icon: React.ReactNode; label: string; locked?: boolean }[] = [
+    { id: 'overview',  icon: <IGrid />,     label: t('nav.overview') },
+    { id: 'clients',   icon: <IUsers />,    label: t('nav.clients') },
+    { id: 'loyalty',   icon: <IGift />,     label: t('nav.loyalty') },
+    { id: 'campaigns', icon: <IMail />,     label: t('nav.campaigns'), locked: !pf('campaigns_email') },
+    { id: 'analytics', icon: <IChart />,    label: t('nav.analytics'), locked: !pf('analytics') },
+    { id: 'settings',  icon: <ISettings />, label: t('nav.settings') },
+  ];
+
   /* ─── SSR guard — returns null on server, client takes over immediately ─ */
   if (!mounted) return null;
 
@@ -848,18 +860,6 @@ export default function DashboardPage() {
       </div>
     </div>
   );
-
-  /* ─── Nav items ───────────────────────────────────────── */
-  const pf = (key: string) => planFeatures[key] ?? false;
-
-  const navItems: { id: Tab; icon: React.ReactNode; label: string; locked?: boolean }[] = [
-    { id: 'overview',  icon: <IGrid />,     label: t('nav.overview') },
-    { id: 'clients',   icon: <IUsers />,    label: t('nav.clients') },
-    { id: 'loyalty',   icon: <IGift />,     label: t('nav.loyalty') },
-    { id: 'campaigns', icon: <IMail />,     label: t('nav.campaigns'), locked: !pf('campaigns_email') },
-    { id: 'analytics', icon: <IChart />,    label: t('nav.analytics'), locked: !pf('analytics') },
-    { id: 'settings',  icon: <ISettings />, label: t('nav.settings') },
-  ];
 
   /* ─── Campaign templates ──────────────────────────────── */
   const campaignTemplates = [
