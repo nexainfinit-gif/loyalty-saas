@@ -342,22 +342,25 @@ export default function DashboardPage() {
           setSentCampaigns(data.campaigns ?? []);
           setRestaurantSettings(data.restaurantSettings ?? {});
           if (data.templateCount === 0) setHasTemplates(false);
+          // Fetch plan features for impersonated restaurant
+          if (data.restaurant?.plan_id) {
+            supabase.from('plan_features').select('feature_key, enabled').eq('plan_id', data.restaurant.plan_id)
+              .then(({ data: pfs }) => {
+                const feats: Record<string, boolean> = {};
+                for (const f of pfs ?? []) feats[f.feature_key] = f.enabled;
+                setPlanFeatures(feats);
+              });
+          }
           setLoading(false);
           return;
         }
         // If proxy fails, fall through to normal loading
       }
 
-      // Load restaurant — impersonated (demo) or own
+      // Load own restaurant (impersonation already handled above with return)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let resto: any = null;
-      if (impersonateId) {
-        const { data } = await supabase
-          .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
-          .eq('id', impersonateId).maybeSingle();
-        resto = data;
-      }
-      if (!resto) {
+      {
         const { data: restos } = await supabase
           .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
           .eq('owner_id', session.user.id).eq('is_demo', false).order('created_at', { ascending: true }).limit(1);
@@ -367,7 +370,7 @@ export default function DashboardPage() {
 
       // Gate: require active subscription (skip for impersonated demo restaurants)
       const isBillingReturn = new URLSearchParams(window.location.search).has('billing');
-      if (!impersonateId && resto.subscription_status !== 'active') {
+      if (resto.subscription_status !== 'active') {
         if (isBillingReturn) {
           let attempts = 0;
           while (attempts < 10) {
