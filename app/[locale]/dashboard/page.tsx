@@ -349,7 +349,8 @@ export default function DashboardPage() {
       }
 
       // Load restaurant — impersonated (demo) or own
-      let resto: Record<string, unknown> | null = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let resto: any = null;
       if (impersonateId) {
         const { data } = await supabase
           .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
@@ -388,7 +389,7 @@ export default function DashboardPage() {
           return;
         }
       }
-      setRestaurant(resto as unknown as Restaurant);
+      setRestaurant(resto as Restaurant);
       setEditName(resto.name ?? '');
       setEditSlug(resto.slug ?? '');
 
