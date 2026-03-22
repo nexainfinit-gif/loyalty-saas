@@ -88,13 +88,14 @@ function PlanBadge({ plan }: { plan: string }) {
 
 function SortTh({
   label, field, currentSort, currentOrder,
-  onSort,
+  onSort, tooltip,
 }: {
   label: string;
   field: SortKey;
   currentSort: SortKey;
   currentOrder: 'asc' | 'desc';
   onSort: (f: SortKey) => void;
+  tooltip?: string;
 }) {
   const active = currentSort === field;
   return (
@@ -104,6 +105,14 @@ function SortTh({
     >
       <span className="inline-flex items-center gap-1">
         {label}
+        {tooltip && (
+          <span className="relative group/tip">
+            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[9px] font-bold cursor-help">?</span>
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 rounded-lg bg-gray-900 text-white text-[10px] font-normal normal-case tracking-normal whitespace-normal w-48 text-center opacity-0 pointer-events-none group-hover/tip:opacity-100 transition-opacity z-20">
+              {tooltip}
+            </span>
+          </span>
+        )}
         {active ? (
           <span className="text-primary-600">{currentOrder === 'desc' ? '↓' : '↑'}</span>
         ) : (
@@ -376,8 +385,8 @@ export default function AdminPage() {
                     <tr>
                       <SortTh label={t('admin.headerRestaurant')} field="name" currentSort={sort} currentOrder={order} onSort={handleSort} />
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">{t('admin.headerPlan')}</th>
-                      <SortTh label={t('admin.headerHealth')} field="health" currentSort={sort} currentOrder={order} onSort={handleSort} />
-                      <SortTh label={t('admin.headerChurn')} field="churn" currentSort={sort} currentOrder={order} onSort={handleSort} />
+                      <SortTh label={t('admin.headerHealth')} field="health" currentSort={sort} currentOrder={order} onSort={handleSort} tooltip={t('admin.tooltipHealth')} />
+                      <SortTh label={t('admin.headerChurn')} field="churn" currentSort={sort} currentOrder={order} onSort={handleSort} tooltip={t('admin.tooltipChurn')} />
                       <SortTh label={t('admin.headerClients')} field="customers" currentSort={sort} currentOrder={order} onSort={handleSort} />
                       <SortTh label={t('admin.headerScans')} field="scans" currentSort={sort} currentOrder={order} onSort={handleSort} />
                       <th className="px-4 py-3" />
