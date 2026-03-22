@@ -329,63 +329,20 @@ export default function AdminPage() {
 
       <main className="max-w-7xl mx-auto px-6 py-6 space-y-5">
 
-        {/* ══ KPI BAR — single row, 6 metrics ═══════════════════ */}
+        {/* ══ 4 KPIs ═══════════════════════════════════════════ */}
         {!loading && !error && (
-          <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: t('admin.totalRestaurants'), value: restaurants.length, color: 'text-gray-900' },
               { label: t('admin.scansYesterday'),   value: totalScans,         color: 'text-gray-900' },
-              { label: t('admin.freePlans'),         value: freeCount,          color: 'text-gray-900' },
               { label: t('admin.churnRiskHigh'),     value: churnHighCount,     color: churnHighCount > 0 ? 'text-red-600' : 'text-gray-900' },
               { label: t('admin.readyToUpgrade'),    value: growthSummary?.upgrade_ready_count ?? 0, color: (growthSummary?.upgrade_ready_count ?? 0) > 0 ? 'text-blue-600' : 'text-gray-900' },
-              { label: t('admin.pendingActions'),     value: actionsLoading ? '…' : pendingActions.length, color: pendingActions.length > 0 ? 'text-amber-600' : 'text-gray-900' },
             ].map((kpi) => (
               <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-4 py-3">
                 <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">{kpi.label}</p>
                 <p className={`text-xl font-bold mt-0.5 tabular-nums ${kpi.color}`}>{kpi.value}</p>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* ══ ACTIONS — visual cards grid ════════════════════════ */}
-        {pendingActions.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('admin.pendingActionsTitle')} ({pendingActions.length})</p>
-              <button onClick={fetchActions} className="text-xs text-primary-600 hover:text-primary-700 font-medium">{t('common.refresh')}</button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {pendingActions.slice(0, 9).map((action) => {
-                const sev = action.payload.severity;
-                const border = sev === 'high' ? 'border-l-red-500' : sev === 'medium' ? 'border-l-amber-500' : 'border-l-gray-300';
-                const icon = action.payload.type === 'risk' ? '🔴' : action.payload.type === 'upgrade' ? '🔵' : '🟢';
-                return (
-                  <div key={action.id}
-                    className={`bg-white rounded-xl border border-gray-100 border-l-4 ${border} shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-3.5 cursor-pointer hover:shadow-md transition-shadow`}
-                    onClick={() => router.push(`/admin/${action.restaurant_id}`)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-xs">{icon}</span>
-                          <p className="text-xs font-bold text-gray-900 truncate">{action.restaurants?.name ?? '—'}</p>
-                        </div>
-                        <p className="text-xs font-medium text-gray-700 leading-snug">{action.payload.title}</p>
-                      </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDismissAction(action.id); }}
-                        disabled={dismissingId === action.id}
-                        className="text-gray-300 hover:text-gray-500 text-xs flex-shrink-0 disabled:opacity-50"
-                      >✕</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {pendingActions.length > 9 && (
-              <p className="text-xs text-gray-400 text-center mt-2">+ {pendingActions.length - 9} {t('admin.moreActions')}</p>
-            )}
           </div>
         )}
 
