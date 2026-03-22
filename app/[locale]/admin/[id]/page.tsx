@@ -397,47 +397,42 @@ export default function AdminRestaurantDetailPage() {
 
         {/* Growth actions for this restaurant */}
         {restaurantActions.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <p className="text-sm font-semibold text-gray-900">{t('admin.detailPendingActions')}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{restaurantActions.length} — {t('admin.detailActionsBy')}</p>
-            </div>
-            <div className="divide-y divide-gray-50">
-              {restaurantActions.map((action) => {
-                const sev = action.payload.severity;
-                const sevColor =
-                  sev === 'high'   ? 'text-red-600 bg-red-50' :
-                  sev === 'medium' ? 'text-amber-700 bg-amber-50' :
-                                     'text-gray-500 bg-gray-100';
-                return (
-                  <div key={action.id} className="px-5 py-4 flex items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${sevColor}`}>
-                          {sev}
-                        </span>
-                        <span className="text-xs text-gray-400">{action.action_type.replace(/_/g, ' ')}</span>
-                        <span className="text-xs text-gray-300">· {action.trigger_key}</span>
-                      </div>
-                      <p className="text-sm font-semibold text-gray-900">{action.payload.title}</p>
-                      <p className="text-sm text-gray-500 mt-0.5">{action.payload.message}</p>
-                      {action.payload.suggested_plan && (
-                        <p className="text-xs text-primary-600 font-medium mt-1">
-                          Plan suggéré : {action.payload.suggested_plan}
-                        </p>
-                      )}
-                    </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {restaurantActions.map((action) => {
+              const type = action.payload.type;
+              const sev = action.payload.severity;
+              const config = type === 'risk'
+                ? { border: sev === 'high' ? 'border-l-red-500' : 'border-l-amber-500', icon: '⚠️', bg: sev === 'high' ? 'bg-red-50/50' : 'bg-amber-50/50' }
+                : type === 'upgrade'
+                ? { border: 'border-l-blue-500', icon: '⬆️', bg: 'bg-blue-50/50' }
+                : { border: 'border-l-emerald-500', icon: '💡', bg: 'bg-emerald-50/50' };
+
+              return (
+                <div key={action.id} className={`${config.bg} rounded-xl border border-gray-100 border-l-4 ${config.border} p-4`}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span className="text-sm">{config.icon}</span>
                     <button
                       onClick={() => handleDismissAction(action.id)}
                       disabled={dismissingId === action.id}
-                      className="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors disabled:opacity-50"
-                    >
-                      {dismissingId === action.id ? '…' : 'Ignorer'}
-                    </button>
+                      className="text-gray-300 hover:text-gray-500 text-xs disabled:opacity-50"
+                    >✕</button>
                   </div>
-                );
-              })}
-            </div>
+                  <p className="text-xs font-bold text-gray-900 mb-1">{action.payload.title}</p>
+                  <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{action.payload.message}</p>
+                  {action.payload.suggested_plan && (
+                    <button
+                      onClick={() => {
+                        const target = plans.find(p => p.key === action.payload.suggested_plan);
+                        if (target) { setSelectedPlanId(target.id); }
+                      }}
+                      className="mt-2 text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      Upgrader vers {action.payload.suggested_plan} →
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
