@@ -446,6 +446,7 @@ export default function AdminRestaurantDetailPage() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-sm font-semibold text-gray-700">
               Activité — {period === 365 ? '1 an' : `${period} derniers jours`}
+              {trend.length > 0 && <span className="text-xs text-gray-400 font-normal ml-2">({trend.length}j de données)</span>}
             </h2>
             <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
               {[
@@ -453,7 +454,12 @@ export default function AdminRestaurantDetailPage() {
                 { value: 30,  label: '30j' },
                 { value: 90,  label: '90j' },
                 { value: 365, label: '1 an' },
-              ].map(p => (
+              ].filter(p => {
+                // Hide periods that have no more data than the previous option
+                const dataSpan = trend.length;
+                if (p.value === 7) return true;
+                return dataSpan >= p.value * 0.5; // show if at least 50% of the period has data
+              }).map(p => (
                 <button
                   key={p.value}
                   onClick={() => setPeriod(p.value)}
