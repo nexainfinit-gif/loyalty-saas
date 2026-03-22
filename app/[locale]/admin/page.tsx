@@ -281,356 +281,202 @@ export default function AdminPage() {
     { key: 'free',    label: t('admin.filterFree') },
   ];
 
+  const totalScans = restaurants.reduce((s, r) => s + r.scans_yesterday, 0);
+  const churnHighCount = restaurants.filter((r) => r.churn_risk_score >= 60).length;
+  const freeCount = restaurants.filter((r) => r.plan === 'starter').length;
+
   return (
     <div className="min-h-screen bg-surface">
-      {/* Top bar */}
-      <header className="bg-white border-b border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{t('admin.title')}</h1>
-            {date && (
-              <p className="text-sm text-gray-400 mt-0.5">
-                {t('admin.metricsDate', { date: new Date(date).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-              </p>
+      {/* ══ HEADER — compact, dark ═══════════════════════════════ */}
+      <header className="bg-gray-900 text-white">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1 className="text-sm font-bold tracking-wide uppercase">{t('admin.title')}</h1>
+            {growthSummary?.kpiFreshness && (
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                growthSummary.kpiFreshness === 'fresh' ? 'bg-emerald-500/20 text-emerald-400' :
+                growthSummary.kpiFreshness === 'stale' ? 'bg-amber-500/20 text-amber-400' :
+                'bg-gray-700 text-gray-400'
+              }`}>
+                {growthSummary.kpiFreshness === 'fresh' ? t('admin.statusFresh') : growthSummary.kpiFreshness === 'stale' ? t('admin.statusStale') : t('admin.statusMissing')}
+              </span>
             )}
           </div>
-          <div className="flex items-center gap-4">
-            <a
-              href={`/${locale}/admin/plans`}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
-            >
-              {t('admin.plans')}
-            </a>
-            <a
-              href={`/${locale}/admin/kpis`}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
-            >
-              {t('admin.kpis')}
-            </a>
-            <a
-              href={`/${locale}/admin/wallet`}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
-            >
-              {t('admin.walletStudio')}
-            </a>
-            <button
-              onClick={handleSeedDemo}
-              disabled={seeding}
-              className="text-sm bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg font-medium hover:bg-amber-200 transition-colors disabled:opacity-50"
-            >
+          <div className="flex items-center gap-3">
+            <button onClick={handleRecompute} disabled={recomputing}
+              className="text-xs font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50">
+              {recomputing ? t('admin.computing') : t('admin.recomputeKpis')}
+            </button>
+            <span className="w-px h-4 bg-gray-700" />
+            <a href={`/${locale}/admin/plans`} className="text-xs text-gray-400 hover:text-white transition-colors">{t('admin.plans')}</a>
+            <a href={`/${locale}/admin/kpis`} className="text-xs text-gray-400 hover:text-white transition-colors">{t('admin.kpis')}</a>
+            <a href={`/${locale}/admin/wallet`} className="text-xs text-gray-400 hover:text-white transition-colors">{t('admin.walletStudio')}</a>
+            <span className="w-px h-4 bg-gray-700" />
+            <button onClick={handleSeedDemo} disabled={seeding} className="text-xs text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50">
               {seeding ? t('demo.seeding') : t('demo.seedBtn')}
             </button>
-            <a
-              href={`/${locale}/dashboard`}
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              {t('admin.backToDashboard')}
-            </a>
+            <a href={`/${locale}/dashboard`} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">{t('admin.backToDashboard')}</a>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-
-        {/* KPI freshness warning banner */}
-        {growthSummary && (growthSummary.kpiFreshness === 'stale' || growthSummary.kpiFreshness === 'missing') && (
-          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${
-            growthSummary.kpiFreshness === 'missing'
-              ? 'bg-gray-50 border border-gray-200 text-gray-600'
-              : 'bg-amber-50 border border-amber-200 text-amber-800'
-          }`}>
-            <span className="text-base flex-shrink-0">
-              {growthSummary.kpiFreshness === 'missing' ? '⚙️' : '⚠️'}
-            </span>
-            <p className="flex-1">
-              {growthSummary.kpiFreshness === 'missing'
-                ? t('admin.noKpiData')
-                : t('admin.kpiStale', { date: new Date(growthSummary.kpiLastComputedAt!).toLocaleString(locale) })}
-            </p>
-            <button
-              onClick={handleRecompute}
-              disabled={recomputing}
-              className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-xl bg-white border border-current transition-opacity disabled:opacity-50"
-            >
-              {recomputing ? t('admin.computing') : t('admin.recompute')}
-            </button>
-          </div>
-        )}
-
-        {/* Metrics Engine card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{t('admin.metricsEngine')}</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {growthSummary?.kpiLastComputedAt
-                  ? t('admin.lastComputed', { date: new Date(growthSummary.kpiLastComputedAt).toLocaleString(locale) })
-                  : t('admin.noComputation')}
-                {growthSummary?.kpiFreshness && (
-                  <span className={`ml-2 inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                    growthSummary.kpiFreshness === 'fresh'
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : growthSummary.kpiFreshness === 'stale'
-                      ? 'bg-amber-50 text-amber-700'
-                      : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {growthSummary.kpiFreshness === 'fresh' ? t('admin.statusFresh') : growthSummary.kpiFreshness === 'stale' ? t('admin.statusStale') : t('admin.statusMissing')}
-                  </span>
-                )}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {recomputeMsg && (
-                <p className={`text-xs font-medium ${recomputeMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {recomputeMsg.text}
-                </p>
-              )}
-              <button
-                onClick={handleRecompute}
-                disabled={recomputing}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {recomputing ? (
-                  <>
-                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    {t('admin.computing')}
-                  </>
-                ) : (
-                  t('admin.recomputeKpis')
-                )}
-              </button>
-            </div>
-          </div>
+      {/* ══ RECOMPUTE TOAST ══════════════════════════════════════ */}
+      {recomputeMsg && (
+        <div className={`text-center py-2 text-xs font-medium ${recomputeMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+          {recomputeMsg.text}
         </div>
+      )}
 
-        {/* KPI summary row */}
+      <main className="max-w-7xl mx-auto px-6 py-6 space-y-5">
+
+        {/* ══ KPI BAR — single row, 6 metrics ═══════════════════ */}
         {!loading && !error && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
             {[
-              { label: t('admin.totalRestaurants'), value: restaurants.length },
-              { label: t('admin.freePlans'), value: restaurants.filter((r) => r.plan === 'starter').length },
-              { label: t('admin.scansYesterday'), value: restaurants.reduce((s, r) => s + r.scans_yesterday, 0) },
-              { label: t('admin.churnRiskHigh'), value: restaurants.filter((r) => r.churn_risk_score >= 60).length },
+              { label: t('admin.totalRestaurants'), value: restaurants.length, color: 'text-gray-900' },
+              { label: t('admin.scansYesterday'),   value: totalScans,         color: 'text-gray-900' },
+              { label: t('admin.freePlans'),         value: freeCount,          color: 'text-gray-900' },
+              { label: t('admin.churnRiskHigh'),     value: churnHighCount,     color: churnHighCount > 0 ? 'text-red-600' : 'text-gray-900' },
+              { label: t('admin.readyToUpgrade'),    value: growthSummary?.upgrade_ready_count ?? 0, color: (growthSummary?.upgrade_ready_count ?? 0) > 0 ? 'text-blue-600' : 'text-gray-900' },
+              { label: t('admin.pendingActions'),     value: actionsLoading ? '…' : pendingActions.length, color: pendingActions.length > 0 ? 'text-amber-600' : 'text-gray-900' },
             ].map((kpi) => (
-              <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
-                <p className="text-xs text-gray-500 font-medium">{kpi.label}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{kpi.value}</p>
+              <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-4 py-3">
+                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">{kpi.label}</p>
+                <p className={`text-xl font-bold mt-0.5 tabular-nums ${kpi.color}`}>{kpi.value}</p>
               </div>
             ))}
           </div>
         )}
 
-        {/* Growth summary row */}
-        {growthSummary && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
-              <p className="text-xs text-gray-500 font-medium">{t('admin.churnRiskTitle')}</p>
-              <p className={`text-2xl font-bold mt-1 ${growthSummary.churn_risk_count > 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                {growthSummary.churn_risk_count}
-              </p>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
-              <p className="text-xs text-gray-500 font-medium">{t('admin.readyToUpgrade')}</p>
-              <p className={`text-2xl font-bold mt-1 ${growthSummary.upgrade_ready_count > 0 ? 'text-blue-600' : 'text-gray-900'}`}>
-                {growthSummary.upgrade_ready_count}
-              </p>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
-              <p className="text-xs text-gray-500 font-medium">{t('admin.freePlanRestaurants')}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{growthSummary.free_count}</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4">
-              <p className="text-xs text-gray-500 font-medium">{t('admin.pendingActions')}</p>
-              <p className={`text-2xl font-bold mt-1 ${pendingActions.length > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
-                {actionsLoading ? '…' : pendingActions.length}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Growth Actions panel */}
+        {/* ══ ACTIONS — visual cards grid ════════════════════════ */}
         {pendingActions.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{t('admin.pendingActionsTitle')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{pendingActions.length} action{pendingActions.length > 1 ? 's' : ''}</p>
-              </div>
-              <button
-                onClick={fetchActions}
-                className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors"
-              >
-                {t('common.refresh')}
-              </button>
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('admin.pendingActionsTitle')} ({pendingActions.length})</p>
+              <button onClick={fetchActions} className="text-xs text-primary-600 hover:text-primary-700 font-medium">{t('common.refresh')}</button>
             </div>
-            <div className="divide-y divide-gray-50">
-              {pendingActions.slice(0, 20).map((action) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {pendingActions.slice(0, 9).map((action) => {
                 const sev = action.payload.severity;
-                const sevColor =
-                  sev === 'high'   ? 'text-red-600 bg-red-50' :
-                  sev === 'medium' ? 'text-amber-700 bg-amber-50' :
-                                     'text-gray-500 bg-gray-100';
-                const typeColor =
-                  action.payload.type === 'risk'        ? 'text-red-600' :
-                  action.payload.type === 'upgrade'     ? 'text-blue-600' :
-                                                          'text-emerald-600';
+                const border = sev === 'high' ? 'border-l-red-500' : sev === 'medium' ? 'border-l-amber-500' : 'border-l-gray-300';
+                const icon = action.payload.type === 'risk' ? '🔴' : action.payload.type === 'upgrade' ? '🔵' : '🟢';
                 return (
-                  <div key={action.id} className="px-5 py-3.5 flex items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          onClick={() => router.push(`/admin/${action.restaurant_id}`)}
-                          className="text-sm font-semibold text-gray-900 hover:text-primary-600 transition-colors truncate"
-                        >
-                          {action.restaurants?.name ?? action.restaurant_id.slice(0, 8)}
-                        </button>
-                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${sevColor}`}>
-                          {sev}
-                        </span>
-                        <span className={`text-xs font-medium ${typeColor}`}>
-                          {action.payload.type}
-                        </span>
+                  <div key={action.id}
+                    className={`bg-white rounded-xl border border-gray-100 border-l-4 ${border} shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-3.5 cursor-pointer hover:shadow-md transition-shadow`}
+                    onClick={() => router.push(`/admin/${action.restaurant_id}`)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-xs">{icon}</span>
+                          <p className="text-xs font-bold text-gray-900 truncate">{action.restaurants?.name ?? '—'}</p>
+                        </div>
+                        <p className="text-xs font-medium text-gray-700 leading-snug">{action.payload.title}</p>
                       </div>
-                      <p className="text-xs font-medium text-gray-700 mt-0.5">{action.payload.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{action.payload.message}</p>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDismissAction(action.id); }}
+                        disabled={dismissingId === action.id}
+                        className="text-gray-300 hover:text-gray-500 text-xs flex-shrink-0 disabled:opacity-50"
+                      >✕</button>
                     </div>
-                    <button
-                      onClick={() => handleDismissAction(action.id)}
-                      disabled={dismissingId === action.id}
-                      className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 mt-0.5"
-                      title="Ignorer"
-                    >
-                      ✕
-                    </button>
                   </div>
                 );
               })}
-              {pendingActions.length > 20 && (
-                <p className="px-5 py-3 text-xs text-gray-400 text-center">
-                  + {pendingActions.length - 20} {t('admin.moreActions')}
-                </p>
-              )}
             </div>
+            {pendingActions.length > 9 && (
+              <p className="text-xs text-gray-400 text-center mt-2">+ {pendingActions.length - 9} {t('admin.moreActions')}</p>
+            )}
           </div>
         )}
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2">
+        {/* ══ FILTERS + TABLE ═══════════════════════════════════ */}
+        <div className="flex items-center gap-2">
           {filters.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                filter === f.key
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
-              }`}
-            >
-              {f.label}
-            </button>
+            <button key={f.key} onClick={() => setFilter(f.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                filter === f.key ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'
+              }`}>{f.label}</button>
           ))}
-          <button
-            onClick={fetchData}
-            className="ml-auto px-4 py-2 rounded-xl text-sm font-medium bg-white border border-gray-200 text-gray-600 hover:border-gray-300 transition-colors"
-          >
-            {t('common.refresh')}
-          </button>
+          <button onClick={fetchData} className="ml-auto text-xs text-gray-400 hover:text-gray-600 transition-colors">{t('common.refresh')}</button>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {error && <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">{error}</div>}
 
-        {/* Loading */}
         {loading && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-12 text-center">
-            <div className="inline-block w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-gray-400 mt-3">{t('admin.loadingData')}</p>
+            <div className="inline-block w-5 h-5 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
-        {/* Table */}
         {!loading && !error && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
             {restaurants.length === 0 ? (
-              <div className="p-12 text-center text-sm text-gray-400">
-                {t('admin.noMatch')}
-              </div>
+              <div className="p-12 text-center text-sm text-gray-400">{t('admin.noMatch')}</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
+                  <thead className="bg-gray-50/80 border-b border-gray-100">
                     <tr>
-                      <SortTh label={t('admin.headerRestaurant')}  field="name"      currentSort={sort} currentOrder={order} onSort={handleSort} />
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">{t('admin.headerPlan')}</th>
-                      <SortTh label={t('admin.headerHealth')}      field="health"    currentSort={sort} currentOrder={order} onSort={handleSort} />
-                      <SortTh label={t('admin.headerUpgrade')}     field="upgrade"   currentSort={sort} currentOrder={order} onSort={handleSort} />
-                      <SortTh label={t('admin.headerChurn')}       field="churn"     currentSort={sort} currentOrder={order} onSort={handleSort} />
-                      <SortTh label={t('admin.headerClients')}     field="customers" currentSort={sort} currentOrder={order} onSort={handleSort} />
-                      <SortTh label={t('admin.headerScans')}       field="scans"     currentSort={sort} currentOrder={order} onSort={handleSort} />
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">{t('admin.headerActive30d')}</th>
+                      <SortTh label={t('admin.headerRestaurant')} field="name" currentSort={sort} currentOrder={order} onSort={handleSort} />
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">{t('admin.headerPlan')}</th>
+                      <SortTh label={t('admin.headerHealth')} field="health" currentSort={sort} currentOrder={order} onSort={handleSort} />
+                      <SortTh label={t('admin.headerChurn')} field="churn" currentSort={sort} currentOrder={order} onSort={handleSort} />
+                      <SortTh label={t('admin.headerClients')} field="customers" currentSort={sort} currentOrder={order} onSort={handleSort} />
+                      <SortTh label={t('admin.headerScans')} field="scans" currentSort={sort} currentOrder={order} onSort={handleSort} />
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {restaurants.map((r) => (
-                      <tr
-                        key={r.id}
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => router.push(`/admin/${r.id}`)}
-                      >
-                        <td className="px-4 py-3.5">
-                          <p className="font-semibold text-gray-900">{r.name}</p>
-                          <p className="text-xs text-gray-400">{r.slug}</p>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <PlanBadge plan={r.plan} />
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <ScoreBadge value={r.health_score} type="health" />
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <ScoreBadge value={r.upgrade_score} type="upgrade" />
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <ScoreBadge value={r.churn_risk_score} type="churn" />
-                        </td>
-                        <td className="px-4 py-3.5 text-gray-700 tabular-nums">
-                          {r.total_customers.toLocaleString(locale)}
-                        </td>
-                        <td className="px-4 py-3.5 text-gray-700 tabular-nums">
-                          {r.scans_yesterday}
-                        </td>
-                        <td className="px-4 py-3.5 text-gray-700 tabular-nums">
-                          {r.active_30d}
-                        </td>
-                        <td className="px-4 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                    {restaurants.map((r) => {
+                      const healthColor = r.health_score >= 70 ? 'bg-emerald-500' : r.health_score >= 40 ? 'bg-amber-500' : 'bg-red-500';
+                      const churnColor = r.churn_risk_score >= 70 ? 'bg-red-500' : r.churn_risk_score >= 40 ? 'bg-amber-500' : 'bg-gray-200';
+                      const isAtRisk = r.churn_risk_score >= 60;
+                      return (
+                        <tr key={r.id}
+                          className={`cursor-pointer transition-colors ${isAtRisk ? 'bg-red-50/40 hover:bg-red-50/70' : 'hover:bg-gray-50'}`}
+                          onClick={() => router.push(`/admin/${r.id}`)}
+                        >
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-gray-900">{r.name}</p>
+                            <p className="text-[10px] text-gray-400">{r.slug}</p>
+                          </td>
+                          <td className="px-4 py-3"><PlanBadge plan={r.plan} /></td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${healthColor}`} style={{ width: `${r.health_score}%` }} />
+                              </div>
+                              <span className="text-xs font-semibold text-gray-600 tabular-nums w-6">{r.health_score}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-12 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${churnColor}`} style={{ width: `${r.churn_risk_score}%` }} />
+                              </div>
+                              <span className="text-xs font-semibold text-gray-600 tabular-nums w-6">{r.churn_risk_score}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-700 tabular-nums text-xs font-medium">{r.total_customers.toLocaleString(locale)}</td>
+                          <td className="px-4 py-3 text-gray-700 tabular-nums text-xs font-medium">{r.scans_yesterday}</td>
+                          <td className="px-4 py-3 text-right">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleImpersonate(r.id); }}
-                              className="text-amber-600 hover:text-amber-800 text-xs font-medium px-2 py-1 rounded-lg hover:bg-amber-50 transition-colors"
+                              className="text-gray-400 hover:text-amber-600 transition-colors p-1"
                               title={t('demo.impersonateBtn')}
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                             </button>
-                            <span className="text-primary-600 text-xs font-medium">{t('admin.viewBtn')}</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
         )}
-
-        <p className="text-xs text-gray-400 text-center">
-          {t('admin.footerNote')}
-        </p>
       </main>
     </div>
   );
