@@ -839,12 +839,12 @@ export default function DashboardPage() {
   /* ─── Nav items ───────────────────────────────────────── */
   const pf = (key: string) => planFeatures[key] ?? false;
 
-  const navItems: { id: Tab; icon: React.ReactNode; label: string }[] = [
+  const navItems: { id: Tab; icon: React.ReactNode; label: string; locked?: boolean }[] = [
     { id: 'overview',  icon: <IGrid />,     label: t('nav.overview') },
     { id: 'clients',   icon: <IUsers />,    label: t('nav.clients') },
     { id: 'loyalty',   icon: <IGift />,     label: t('nav.loyalty') },
-    ...(pf('campaigns_email') ? [{ id: 'campaigns' as Tab, icon: <IMail />, label: t('nav.campaigns') }] : []),
-    ...(pf('analytics') ? [{ id: 'analytics' as Tab, icon: <IChart />, label: t('nav.analytics') }] : []),
+    { id: 'campaigns', icon: <IMail />,     label: t('nav.campaigns'), locked: !pf('campaigns_email') },
+    { id: 'analytics', icon: <IChart />,    label: t('nav.analytics'), locked: !pf('analytics') },
     { id: 'settings',  icon: <ISettings />, label: t('nav.settings') },
   ];
 
@@ -993,6 +993,7 @@ export default function DashboardPage() {
         <nav className="flex-1 p-2 flex flex-col gap-0.5 overflow-y-auto">
           {navItems.map(item => {
             const isActive = activeTab === item.id;
+            const locked = item.locked;
             return (
               <button
                 key={item.id}
@@ -1001,16 +1002,17 @@ export default function DashboardPage() {
                 aria-label={item.label}
                 className={[
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150',
-                  isActive
-                    ? 'bg-primary-50 text-primary-600'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700',
+                  locked ? 'text-gray-300' :
+                  isActive ? 'bg-primary-50 text-primary-600' :
+                  'text-gray-500 hover:bg-gray-50 hover:text-gray-700',
                   !sidebarOpen && 'justify-center px-0',
                 ].join(' ')}
               >
                 <span className="flex-shrink-0">{item.icon}</span>
                 {sidebarOpen && (
-                  <span className={`text-sm whitespace-nowrap ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                  <span className={`text-sm whitespace-nowrap flex items-center gap-1.5 ${isActive && !locked ? 'font-semibold' : 'font-medium'}`}>
                     {item.label}
+                    {locked && <svg className="w-3 h-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>}
                   </span>
                 )}
               </button>
@@ -1497,8 +1499,8 @@ export default function DashboardPage() {
           {/* ══ CAMPAIGNS ══════════════════════════════════ */}
           {activeTab === 'campaigns' && (
             <div className="space-y-5 animate-fade-up">
-              {/* Upgrade gate for free plans */}
-              {!isPaidPlan && (
+              {/* Upgrade gate */}
+              {!pf('campaigns_email') && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-8 text-center">
                   <div className="text-4xl mb-4">📧</div>
                   <h3 className="text-lg font-bold text-gray-900 mb-2">{t('campaigns.emailTitle')}</h3>
@@ -1924,7 +1926,19 @@ export default function DashboardPage() {
           )}
 
           {/* ══ ANALYTICS ══════════════════════════════════ */}
-          {activeTab === 'analytics' && (
+          {activeTab === 'analytics' && !pf('analytics') && (
+            <div className="animate-fade-up">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-8 text-center">
+                <div className="text-4xl mb-4">📊</div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{t('analytics.title')}</h3>
+                <p className="text-sm text-gray-500 mb-5 max-w-md mx-auto">{t('nav.upgradeSubtitle')}</p>
+                <button onClick={() => setShowPlanSelection(true)} className="bg-gradient-to-r from-purple-600 to-primary-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+                  {t('nav.upgradeBtn')}
+                </button>
+              </div>
+            </div>
+          )}
+          {activeTab === 'analytics' && pf('analytics') && (
             <AnalyticsTab
               customers={customers}
               transactions={transactions}
@@ -2247,7 +2261,19 @@ export default function DashboardPage() {
           )}
 
           {/* ══ WALLET ══════════════════════════════════════ */}
-          {activeTab === 'wallet' && (
+          {activeTab === 'wallet' && !pf('wallet_studio') && (
+            <div className="animate-fade-up">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-8 text-center">
+                <div className="text-4xl mb-4">💳</div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{t('nav.walletStudio')}</h3>
+                <p className="text-sm text-gray-500 mb-5 max-w-md mx-auto">{t('nav.upgradeSubtitle')}</p>
+                <button onClick={() => setShowPlanSelection(true)} className="bg-gradient-to-r from-purple-600 to-primary-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+                  {t('nav.upgradeBtn')}
+                </button>
+              </div>
+            </div>
+          )}
+          {activeTab === 'wallet' && pf('wallet_studio') && (
             <WalletTab restaurantId={restaurant?.id ?? ''} restaurantName={restaurant?.name} restaurantColor={restaurant?.primary_color} locale={locale} t={t} />
           )}
 
