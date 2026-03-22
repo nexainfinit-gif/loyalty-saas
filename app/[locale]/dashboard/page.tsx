@@ -348,14 +348,12 @@ export default function DashboardPage() {
         // If proxy fails, fall through to normal loading
       }
 
-      // Check for impersonation cookie (admin demo mode)
-      const impersonateCookie = document.cookie.match(/(?:^|;\s*)x-admin-impersonate=([^;]+)/)?.[1]?.trim() || null;
-
+      // Load restaurant — impersonated (demo) or own
       let resto: Record<string, unknown> | null = null;
-      if (impersonateCookie) {
+      if (impersonateId) {
         const { data } = await supabase
           .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
-          .eq('id', impersonateCookie).maybeSingle();
+          .eq('id', impersonateId).maybeSingle();
         resto = data;
       }
       if (!resto) {
@@ -368,7 +366,7 @@ export default function DashboardPage() {
 
       // Gate: require active subscription (skip for impersonated demo restaurants)
       const isBillingReturn = new URLSearchParams(window.location.search).has('billing');
-      if (!impersonateCookie && resto.subscription_status !== 'active') {
+      if (!impersonateId && resto.subscription_status !== 'active') {
         if (isBillingReturn) {
           let attempts = 0;
           while (attempts < 10) {
