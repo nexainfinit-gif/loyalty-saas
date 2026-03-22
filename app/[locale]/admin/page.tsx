@@ -106,11 +106,12 @@ function SortTh({
       <span className="inline-flex items-center gap-1">
         {label}
         {tooltip && (
-          <span
-            title={tooltip}
-            className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[9px] font-bold cursor-help"
-            onClick={e => e.stopPropagation()}
-          >?</span>
+          <span className="relative group/tip" onClick={e => e.stopPropagation()}>
+            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[9px] font-bold cursor-help">?</span>
+            <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2.5 py-1.5 rounded-lg bg-gray-900 text-white text-[10px] font-normal normal-case tracking-normal whitespace-normal w-48 text-center opacity-0 pointer-events-none group-hover/tip:opacity-100 transition-opacity z-50 shadow-lg">
+              {tooltip}
+            </span>
+          </span>
         )}
         {active ? (
           <span className="text-primary-600">{currentOrder === 'desc' ? '↓' : '↑'}</span>
@@ -374,7 +375,7 @@ export default function AdminPage() {
         )}
 
         {!loading && !error && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             {restaurants.length === 0 ? (
               <div className="p-12 text-center text-sm text-gray-400">{t('admin.noMatch')}</div>
             ) : (
