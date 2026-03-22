@@ -268,9 +268,19 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Also refresh restaurant_metrics (the aggregate table used by admin detail)
+  let batchOk = false;
+  try {
+    const { runMetricsBatch } = await import('@/lib/metrics-batch');
+    await runMetricsBatch();
+    batchOk = true;
+  } catch (batchErr) {
+    errors.push(`[batch] ${(batchErr as Error).message}`);
+  }
+
   console.log(
     `[cron/metrics-daily] date=${yDate} restaurants=${restaurants.length}` +
-    ` upserted=${upserted} snapshots=${snapshotsUpdated} errors=${errors.length}`
+    ` upserted=${upserted} snapshots=${snapshotsUpdated} batch=${batchOk} errors=${errors.length}`
   );
 
   return NextResponse.json({
@@ -279,6 +289,7 @@ export async function GET(req: NextRequest) {
     restaurants_total:  restaurants.length,
     metrics_upserted:   upserted,
     snapshots_updated:  snapshotsUpdated,
+    batch_refreshed:    batchOk,
     errors,
   });
 }
