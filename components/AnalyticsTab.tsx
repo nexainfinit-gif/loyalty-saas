@@ -316,12 +316,10 @@ export default function AnalyticsTab({
           { key: 'retention_rate_90d', label: t('analytics.returnRate'), value: `${kpis.returnRate}%`, icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15', bg: 'bg-warning-50', iconColor: 'text-warning-600' },
           { key: 'total_scans', label: t('analytics.visitsScans'), value: kpis.visitsThisPeriod.toLocaleString(locale), icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z', bg: 'bg-gray-50', iconColor: 'text-gray-600' },
         ].filter(c => enabledKpiKeys.includes(c.key));
-        const n = allCards.length;
-        const cols = n <= 2 ? `grid-cols-${n}` : n === 3 ? 'grid-cols-3' : n === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-5';
-        return n > 0 ? (
-          <div className={`grid ${cols} gap-3`}>
+        return allCards.length > 0 ? (
+          <div className="flex flex-wrap gap-3">
             {allCards.map((kpi, i) => (
-              <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              <div key={i} className="flex-1 min-w-[160px] bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs text-gray-500 font-medium">{kpi.label}</p>
                   <div className={`w-7 h-7 rounded-lg ${kpi.bg} flex items-center justify-center`}>
@@ -345,12 +343,10 @@ export default function AnalyticsTab({
           enabledKpiKeys.includes('avg_ticket') && { label: t('analytics.averageBasket'), value: kpis.avgTicket > 0 ? `${kpis.avgTicket.toFixed(2)} \u20AC` : '--' },
           enabledKpiKeys.includes('rewards_issued') && { label: t('analytics.rewardCost'), value: kpis.estimatedRewardCost && kpis.estimatedRewardCost > 0 ? `${kpis.estimatedRewardCost.toLocaleString(locale)} \u20AC` : '--' },
         ].filter(Boolean) as { label: string; value: string }[];
-        const n = sec.length;
-        const cols = n <= 3 ? `grid-cols-${n}` : n <= 4 ? 'grid-cols-2 sm:grid-cols-4' : n <= 5 ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-6';
-        return n > 0 ? (
-          <div className={`grid ${cols} gap-3`}>
+        return sec.length > 0 ? (
+          <div className="flex flex-wrap gap-3">
             {sec.map((kpi, i) => (
-              <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              <div key={i} className="flex-1 min-w-[140px] bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                 <p className="text-xs text-gray-500 font-medium mb-1">{kpi.label}</p>
                 <p className="text-lg font-bold text-gray-900 tabular-nums">{kpi.value}</p>
               </div>

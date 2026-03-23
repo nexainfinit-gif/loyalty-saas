@@ -521,10 +521,9 @@ export default function OverviewTab({
           enabledKpiKeys.includes('retention_rate_90d') && { label: t('overview.kpiLoyaltyRate'), value: `${kpis.returnRate}%`, icon: ICONS.refresh, iconBg: 'bg-warning-50', iconColor: 'text-warning-600', sub: t('overview.kpiReturnSub') },
           enabledKpiKeys.includes('rewards_issued') && { label: t('overview.kpiRewards'), value: kpis.rewardsThisPeriod, trend: kpis.trendRewards, icon: ICONS.gift, iconBg: 'bg-purple-50', iconColor: 'text-purple-600' },
         ].filter(Boolean) as { label: string; value: string | number; trend?: number | null; icon: string; iconBg: string; iconColor: string; sub?: string }[];
-        const cols = cards.length <= 2 ? 'grid-cols-2' : cards.length === 3 ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-4';
         return cards.length > 0 ? (
-          <div className={`grid ${cols} gap-4`}>
-            {cards.map((c, i) => <KpiCard key={i} {...c} />)}
+          <div className="flex flex-wrap gap-4">
+            {cards.map((c, i) => <div key={i} className="flex-1 min-w-[200px]"><KpiCard {...c} /></div>)}
           </div>
         ) : null;
       })()}
