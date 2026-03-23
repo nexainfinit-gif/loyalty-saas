@@ -308,42 +308,56 @@ export default function AnalyticsTab({
       </div>
 
       {/* ═══ A. KPI Grid (gated by plan_kpis) ═══ */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
-        {[
+      {(() => {
+        const allCards = [
           { key: 'total_customers', label: t('analytics.totalClients'), value: totalCustomers.toLocaleString(locale), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', bg: 'bg-primary-50', iconColor: 'text-primary-600' },
           { key: 'active_customers_30d', label: t('analytics.activeClients'), value: kpis.activeCustomers.toString(), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', bg: 'bg-success-50', iconColor: 'text-success-600' },
           { key: 'new_customers_30d', label: t('analytics.newClients'), value: kpis.newCustomers.toString(), icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z', bg: 'bg-purple-50', iconColor: 'text-purple-600' },
           { key: 'retention_rate_90d', label: t('analytics.returnRate'), value: `${kpis.returnRate}%`, icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15', bg: 'bg-warning-50', iconColor: 'text-warning-600' },
           { key: 'total_scans', label: t('analytics.visitsScans'), value: kpis.visitsThisPeriod.toLocaleString(locale), icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z', bg: 'bg-gray-50', iconColor: 'text-gray-600' },
-        ].filter(kpi => enabledKpiKeys.includes(kpi.key)).map((kpi, i) => (
-          <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-gray-500 font-medium">{kpi.label}</p>
-              <div className={`w-7 h-7 rounded-lg ${kpi.bg} flex items-center justify-center`}>
-                <SIcon d={kpi.icon} className={`w-3.5 h-3.5 ${kpi.iconColor}`} />
+        ].filter(c => enabledKpiKeys.includes(c.key));
+        const n = allCards.length;
+        const cols = n <= 2 ? `grid-cols-${n}` : n === 3 ? 'grid-cols-3' : n === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-5';
+        return n > 0 ? (
+          <div className={`grid ${cols} gap-3`}>
+            {allCards.map((kpi, i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-gray-500 font-medium">{kpi.label}</p>
+                  <div className={`w-7 h-7 rounded-lg ${kpi.bg} flex items-center justify-center`}>
+                    <SIcon d={kpi.icon} className={`w-3.5 h-3.5 ${kpi.iconColor}`} />
+                  </div>
+                </div>
+                <p className="text-xl font-bold text-gray-900 tabular-nums">{kpi.value}</p>
               </div>
-            </div>
-            <p className="text-xl font-bold text-gray-900 tabular-nums">{kpi.value}</p>
+            ))}
           </div>
-        ))}
-      </div>
+        ) : null;
+      })()}
 
       {/* Row 2: secondary KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-        {[
-          { label: t('analytics.completedCards'), value: kpis.completedCards.toString() },
-          { label: t('analytics.rewards'), value: kpis.rewardsEarned.toString() },
+      {(() => {
+        const sec = [
+          enabledKpiKeys.includes('rewards_issued') && { label: t('analytics.completedCards'), value: kpis.completedCards.toString() },
+          enabledKpiKeys.includes('rewards_issued') && { label: t('analytics.rewards'), value: kpis.rewardsEarned.toString() },
           { label: t('analytics.avgVisitsPerClient'), value: kpis.avgVisits },
-          { label: t('analytics.estimatedRevenue'), value: kpis.estimatedRevenue && kpis.estimatedRevenue > 0 ? `${kpis.estimatedRevenue.toLocaleString(locale)} \u20AC` : '--' },
-          { label: t('analytics.averageBasket'), value: kpis.avgTicket > 0 ? `${kpis.avgTicket.toFixed(2)} \u20AC` : '--' },
-          { label: t('analytics.rewardCost'), value: kpis.estimatedRewardCost && kpis.estimatedRewardCost > 0 ? `${kpis.estimatedRewardCost.toLocaleString(locale)} \u20AC` : '--' },
-        ].map((kpi, i) => (
-          <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-            <p className="text-xs text-gray-500 font-medium mb-1">{kpi.label}</p>
-            <p className="text-lg font-bold text-gray-900 tabular-nums">{kpi.value}</p>
+          enabledKpiKeys.includes('revenue_estimate') && { label: t('analytics.estimatedRevenue'), value: kpis.estimatedRevenue && kpis.estimatedRevenue > 0 ? `${kpis.estimatedRevenue.toLocaleString(locale)} \u20AC` : '--' },
+          enabledKpiKeys.includes('avg_ticket') && { label: t('analytics.averageBasket'), value: kpis.avgTicket > 0 ? `${kpis.avgTicket.toFixed(2)} \u20AC` : '--' },
+          enabledKpiKeys.includes('rewards_issued') && { label: t('analytics.rewardCost'), value: kpis.estimatedRewardCost && kpis.estimatedRewardCost > 0 ? `${kpis.estimatedRewardCost.toLocaleString(locale)} \u20AC` : '--' },
+        ].filter(Boolean) as { label: string; value: string }[];
+        const n = sec.length;
+        const cols = n <= 3 ? `grid-cols-${n}` : n <= 4 ? 'grid-cols-2 sm:grid-cols-4' : n <= 5 ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-6';
+        return n > 0 ? (
+          <div className={`grid ${cols} gap-3`}>
+            {sec.map((kpi, i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                <p className="text-xs text-gray-500 font-medium mb-1">{kpi.label}</p>
+                <p className="text-lg font-bold text-gray-900 tabular-nums">{kpi.value}</p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        ) : null;
+      })()}
 
       {/* ═══ B. Distribution + D. Loyalty Performance ═══ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
