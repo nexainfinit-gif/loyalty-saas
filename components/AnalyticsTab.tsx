@@ -72,6 +72,7 @@ interface Props {
   isPaidPlan: boolean;
   restaurantSettings: Record<string, string>;
   onUpgrade: () => void;
+  enabledKpiKeys?: string[];
 }
 
 type Period = '7d' | '30d' | '90d';
@@ -114,6 +115,7 @@ export default function AnalyticsTab({
   isPaidPlan,
   restaurantSettings,
   onUpgrade,
+  enabledKpiKeys = [],
 }: Props) {
   const { t, locale } = useTranslation();
   const [period, setPeriod] = useState<Period>('30d');
@@ -305,15 +307,15 @@ export default function AnalyticsTab({
         </div>
       </div>
 
-      {/* ═══ A. KPI Grid ═══ */}
+      {/* ═══ A. KPI Grid (gated by plan_kpis) ═══ */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
-          { label: t('analytics.totalClients'), value: totalCustomers.toLocaleString(locale), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', bg: 'bg-primary-50', iconColor: 'text-primary-600' },
-          { label: t('analytics.activeClients'), value: kpis.activeCustomers.toString(), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', bg: 'bg-success-50', iconColor: 'text-success-600' },
-          { label: t('analytics.newClients'), value: kpis.newCustomers.toString(), icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z', bg: 'bg-purple-50', iconColor: 'text-purple-600' },
-          { label: t('analytics.returnRate'), value: `${kpis.returnRate}%`, icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15', bg: 'bg-warning-50', iconColor: 'text-warning-600' },
-          { label: t('analytics.visitsScans'), value: kpis.visitsThisPeriod.toLocaleString(locale), icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z', bg: 'bg-gray-50', iconColor: 'text-gray-600' },
-        ].map((kpi, i) => (
+          { key: 'total_customers', label: t('analytics.totalClients'), value: totalCustomers.toLocaleString(locale), icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', bg: 'bg-primary-50', iconColor: 'text-primary-600' },
+          { key: 'active_customers_30d', label: t('analytics.activeClients'), value: kpis.activeCustomers.toString(), icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', bg: 'bg-success-50', iconColor: 'text-success-600' },
+          { key: 'new_customers_30d', label: t('analytics.newClients'), value: kpis.newCustomers.toString(), icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z', bg: 'bg-purple-50', iconColor: 'text-purple-600' },
+          { key: 'retention_rate_90d', label: t('analytics.returnRate'), value: `${kpis.returnRate}%`, icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15', bg: 'bg-warning-50', iconColor: 'text-warning-600' },
+          { key: 'total_scans', label: t('analytics.visitsScans'), value: kpis.visitsThisPeriod.toLocaleString(locale), icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z', bg: 'bg-gray-50', iconColor: 'text-gray-600' },
+        ].filter(kpi => enabledKpiKeys.includes(kpi.key)).map((kpi, i) => (
           <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs text-gray-500 font-medium">{kpi.label}</p>

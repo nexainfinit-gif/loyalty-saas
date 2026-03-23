@@ -1209,6 +1209,7 @@ export default function DashboardPage() {
               onCampaignOpen={() => { setActiveTab('campaigns'); setCampaignModal(true); }}
               restaurantSlug={restaurant?.slug}
               businessType={restaurant?.business_type}
+              enabledKpiKeys={enabledKpiKeys}
             />
           )}
 
@@ -1960,6 +1961,7 @@ export default function DashboardPage() {
               isPaidPlan={isPaidPlan}
               restaurantSettings={restaurantSettings}
               onUpgrade={() => setShowPlanSelection(true)}
+              enabledKpiKeys={enabledKpiKeys}
             />
           )}
 

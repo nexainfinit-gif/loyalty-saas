@@ -88,6 +88,7 @@ interface Props {
   restaurantSlug?: string;
   referralEnabled?: boolean;
   businessType?: string | null;
+  enabledKpiKeys?: string[];
 }
 
 /**
@@ -167,6 +168,7 @@ export default function OverviewTab({
   restaurantSlug,
   referralEnabled,
   businessType,
+  enabledKpiKeys = [],
 }: Props) {
   const { t, locale } = useTranslation();
   const [period, setPeriod] = useState<Period>('30d');
@@ -511,39 +513,46 @@ export default function OverviewTab({
         </div>
       )}
 
-      {/* ═══ C. 4 KPI CARDS ══════════════════════════════════════ */}
+      {/* ═══ C. KPI CARDS (gated by plan_kpis) ═══════════════════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          label={t('overview.kpiActiveClients')}
-          value={kpis.activeThisPeriod}
-          trend={kpis.trendActive}
-          icon={ICONS.users}
-          iconBg="bg-primary-50"
-          iconColor="text-primary-600"
-        />
-        <KpiCard
-          label={t('overview.kpiNewClients')}
-          value={kpis.newCustomers}
-          trend={kpis.trendNew}
-          icon={ICONS.userPlus}
-          iconBg="bg-success-50"
-          iconColor="text-success-600"
-        />
-        <KpiCard
-          label={t('overview.kpiLoyaltyRate')}
-          value={`${kpis.returnRate}%`}
-          icon={ICONS.refresh}
-          iconBg="bg-warning-50"
-          iconColor="text-warning-600"
-          sub={t('overview.kpiReturnSub')}
-        />
-        <KpiCard
-          label={t('overview.kpiRewards')}
-          value={kpis.rewardsThisPeriod}
-          trend={kpis.trendRewards}
-          icon={ICONS.gift}
-          iconBg="bg-purple-50"
-          iconColor="text-purple-600"
+        {enabledKpiKeys.includes('active_customers_30d') && (
+          <KpiCard
+            label={t('overview.kpiActiveClients')}
+            value={kpis.activeThisPeriod}
+            trend={kpis.trendActive}
+            icon={ICONS.users}
+            iconBg="bg-primary-50"
+            iconColor="text-primary-600"
+          />
+        )}
+        {enabledKpiKeys.includes('new_customers_30d') && (
+          <KpiCard
+            label={t('overview.kpiNewClients')}
+            value={kpis.newCustomers}
+            trend={kpis.trendNew}
+            icon={ICONS.userPlus}
+            iconBg="bg-success-50"
+            iconColor="text-success-600"
+          />
+        )}
+        {enabledKpiKeys.includes('retention_rate_90d') && (
+          <KpiCard
+            label={t('overview.kpiLoyaltyRate')}
+            value={`${kpis.returnRate}%`}
+            icon={ICONS.refresh}
+            iconBg="bg-warning-50"
+            iconColor="text-warning-600"
+            sub={t('overview.kpiReturnSub')}
+          />
+        )}
+        {enabledKpiKeys.includes('rewards_issued') && (
+          <KpiCard
+            label={t('overview.kpiRewards')}
+            value={kpis.rewardsThisPeriod}
+            trend={kpis.trendRewards}
+            icon={ICONS.gift}
+            iconBg="bg-purple-50"
+            iconColor="text-purple-600"
         />
       </div>
 
