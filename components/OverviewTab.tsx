@@ -553,7 +553,8 @@ export default function OverviewTab({
             icon={ICONS.gift}
             iconBg="bg-purple-50"
             iconColor="text-purple-600"
-        />
+          />
+        )}
       </div>
 
       {/* ═══ D. ACTIVITY + SMART ACTIONS ═════════════════════════ */}
