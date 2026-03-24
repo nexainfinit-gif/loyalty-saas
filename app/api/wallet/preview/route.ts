@@ -82,10 +82,13 @@ export async function GET(request: Request) {
 
   if (!guard.restaurantId) return NextResponse.json({ error: 'Restaurant introuvable' }, { status: 404 });
 
+  // Admin can preview any restaurant via ?restaurantId= (platform owner only)
+  const targetRestaurantId = searchParams.get('restaurantId') ?? guard.restaurantId;
+
   const { data: restaurant } = await supabaseAdmin
     .from('restaurants')
     .select('id, name, primary_color, logo_url, plan')
-    .eq('id', guard.restaurantId)
+    .eq('id', targetRestaurantId)
     .single();
 
   if (!restaurant) return NextResponse.json({ error: 'Restaurant introuvable' }, { status: 404 });

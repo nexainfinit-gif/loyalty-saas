@@ -1370,22 +1370,47 @@ function WalletPreviewInner() {
 
   /* ── Auto-load template from ?templateId query param ───────────────── */
   useEffect(() => {
-    if (!preloadTemplateId || !accessToken || !data?.meta.restaurantId || !controls) return;
-    const rid = data.meta.restaurantId;
-    fetch(`/api/wallet/templates?restaurantId=${rid}`, {
+    if (!preloadTemplateId || !accessToken || !controls) return;
+
+    // Use admin API to fetch templates (cross-restaurant)
+    fetch('/api/admin/wallet/templates', {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
       .then(r => r.json())
-      .then(json => {
+      .then(async (json) => {
         const templates = json.templates ?? [];
         const target = templates.find((t: { id: string }) => t.id === preloadTemplateId);
-        if (target?.config_json) {
+        if (!target) { setPreloadTemplateId(null); return; }
+
+        // If template belongs to a different restaurant, reload preview meta for that restaurant
+        const templateRid = target.restaurant_id;
+        if (templateRid && templateRid !== data?.meta.restaurantId) {
+          const previewRes = await fetch(`/api/wallet/preview?restaurantId=${templateRid}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (previewRes.ok) {
+            const previewJson = await previewRes.json();
+            setData(previewJson);
+            const freshBase = metaToControls(previewJson.meta);
+            const merged = target.config_json
+              ? configJsonToControls(freshBase, target.config_json)
+              : freshBase;
+            setControls(merged);
+            setDefaults(freshBase);
+            setPreloadTemplateId(null);
+            return;
+          }
+        }
+
+        // Same restaurant — just apply config_json
+        if (target.config_json) {
           setControls(prev => prev ? configJsonToControls(prev, target.config_json) : prev);
         }
         setPreloadTemplateId(null);
       })
       .catch(() => setPreloadTemplateId(null));
-  }, [preloadTemplateId, accessToken, data?.meta.restaurantId, controls]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preloadTemplateId, accessToken]);
 
   /* ── Loading ──────────────────────────────────────────────────────────── */
   if (loading) return (
