@@ -209,7 +209,7 @@ function configJsonToControls(base: Controls, cfg: Record<string, unknown>): Con
     barcodeFormat:   (cfg.barcodeFormat as BarcodeFormat) ?? base.barcodeFormat,
     barcodeAltText:  (cfg.barcodeAltText as string) ?? base.barcodeAltText,
     stripImageUrl:   (cfg.stripImageUrl as string) ?? base.stripImageUrl,
-    logoImageUrl:    (cfg.logoImageUrl as string) ?? base.logoImageUrl,
+    logoImageUrl:    (cfg.logoImageUrl as string) || base.logoImageUrl,
     logoSize:        typeof cfg.logoSize === 'number' ? cfg.logoSize : base.logoSize,
     showLogoText:    typeof cfg.showLogoText === 'boolean' ? cfg.showLogoText : base.showLogoText,
     isVip:           typeof cfg.isVip === 'boolean' ? cfg.isVip : base.isVip,
@@ -251,10 +251,10 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
   const cardBg  = c.bgColor;
 
   /* Apple Wallet uses SF Pro. Label style = uppercase, ~8pt, tracking wide.
-     Value style = ~13pt regular. Primary = ~26pt bold. */
-  const labelSty: React.CSSProperties = { color: c.labelColor, fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500, lineHeight: 1.2 };
+     Value style = ~13pt regular. Header value = ~20pt bold (like N° code). */
+  const labelSty: React.CSSProperties = { color: c.labelColor, fontSize: 9, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 500, lineHeight: 1.2 };
   const valueSty: React.CSSProperties = { color: c.foregroundColor, fontSize: 13, fontWeight: 500, lineHeight: 1.3 };
-  const primaryValSty: React.CSSProperties = { color: c.foregroundColor, fontSize: 26, fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.01em' };
+  const headerValSty: React.CSSProperties = { color: c.foregroundColor, fontSize: 20, fontWeight: 700, lineHeight: 1.2 };
 
   return (
     <div
@@ -269,16 +269,16 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
               src={c.logoImageUrl}
               alt=""
               className="object-cover flex-shrink-0"
-              style={{ width: 30, height: 30, borderRadius: 8 }}
+              style={{ width: 44, height: 44, borderRadius: 10 }}
             />
           ) : (
             <div className="flex-shrink-0 flex items-center justify-center font-bold"
-                 style={{ color: c.foregroundColor, width: 30, height: 30, borderRadius: 8, backgroundColor: `${c.foregroundColor}22`, fontSize: 14 }}>
+                 style={{ color: c.foregroundColor, width: 44, height: 44, borderRadius: 10, backgroundColor: `${c.foregroundColor}22`, fontSize: 18 }}>
               {c.merchantName.charAt(0).toUpperCase()}
             </div>
           )}
           {c.showLogoText && (
-            <span className="truncate" style={{ color: c.foregroundColor, fontSize: 15, fontWeight: 600 }}>
+            <span className="truncate" style={{ color: c.foregroundColor, fontSize: 18, fontWeight: 700 }}>
               {c.logoText || c.merchantName}
             </span>
           )}
@@ -294,7 +294,7 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
           {(c.headerFields.length > 0 ? c.headerFields : [{ key: 'memberNo', label: 'N°', value: 'A1B2C3' }]).map((f, i) => (
             <div key={i}>
               <p style={labelSty}>{f.label}</p>
-              <p style={valueSty}>{f.value}</p>
+              <p style={headerValSty}>{f.value}</p>
             </div>
           ))}
         </div>
@@ -357,8 +357,8 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
         })()}
       </div>
 
-      {/* ══ SECONDARY FIELDS — CLIENT + REWARD (auto) + custom ════════ */}
-      <div className="flex" style={{ padding: '4px 14px 6px', gap: 0 }}>
+      {/* ══ FIELDS — CLIENT + RÉCOMPENSE + RESTANTS on one row (like real Apple Wallet) ══ */}
+      <div className="flex" style={{ padding: '6px 14px 10px', gap: 0 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={labelSty}>CLIENT</p>
           <p className="truncate" style={valueSty}>Marie Dupont</p>
@@ -367,22 +367,18 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
           <p style={labelSty}>RÉCOMPENSE</p>
           <p className="truncate" style={valueSty}>{c.rewardText}</p>
         </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={labelSty}>RESTANTS</p>
+          <p className="truncate" style={valueSty}>{Math.max(0, c.stampsTotal - filled)} tampons</p>
+        </div>
         {c.secondaryFields.map((f, i) => (
           <div key={i} style={{ flex: 1, minWidth: 0 }}>
             <p style={labelSty}>{f.label}</p>
             <p className="truncate" style={valueSty}>{f.value}</p>
           </div>
         ))}
-      </div>
-
-      {/* ══ AUXILIARY FIELDS — RESTANTS (auto) + custom ═══════════════ */}
-      <div className="flex" style={{ padding: '4px 14px 10px', gap: 0 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={labelSty}>RESTANTS</p>
-          <p className="truncate" style={valueSty}>{Math.max(0, c.stampsTotal - filled)} tampons</p>
-        </div>
         {c.auxiliaryFields.map((f, i) => (
-          <div key={i} style={{ flex: 1, minWidth: 0 }}>
+          <div key={`aux-${i}`} style={{ flex: 1, minWidth: 0 }}>
             <p style={labelSty}>{f.label}</p>
             <p className="truncate" style={valueSty}>{f.value}</p>
           </div>
@@ -390,7 +386,7 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
       </div>
 
       {/* ══ BARCODE — centered, white bg, like real Apple Wallet ══════ */}
-      <div className="flex flex-col items-center" style={{ padding: '10px 14px 14px', borderTop: `1px solid ${c.foregroundColor}15` }}>
+      <div className="flex flex-col items-center" style={{ padding: '16px 14px 14px' }}>
         <div style={{ backgroundColor: '#fff', borderRadius: 10, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <QRCode value={c.barcodePayload || 'EXAMPLE_QR_TOKEN'} size={140} />
         </div>
@@ -1425,7 +1421,7 @@ function WalletPreviewInner() {
               <p className="text-danger-600 font-semibold mb-2">{t('walletPreview.errorTitle')}</p>
               <p className="text-sm text-gray-500">{error || t('walletPreview.errorDefault')}</p>
               <button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => router.push('/admin/wallet')}
                 className="mt-5 text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
               >
                 {t('walletPreview.backDashboard')}
@@ -1448,13 +1444,13 @@ function WalletPreviewInner() {
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-20 bg-white border-b border-gray-100 h-14 flex items-center px-6 gap-4 shadow-[0_1px_0_rgba(17,24,39,0.04)]">
         <button
-          onClick={() => router.push('/dashboard')}
+          onClick={() => router.push('/admin/wallet')}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          {t('auth.dashboardTitle')}
+          {t('admin.walletBack')}
         </button>
         <div className="h-4 w-px bg-gray-200" />
         <h1 className="text-sm font-semibold text-gray-900">{t('walletPreview.pageTitle')}</h1>
