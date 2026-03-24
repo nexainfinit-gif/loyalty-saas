@@ -99,6 +99,30 @@ export async function GET(request: Request) {
     .eq('restaurant_id', restaurant.id)
     .single();
 
+  /* ── Resolve a browser-accessible logo URL ─────────────────────────────── */
+  let resolvedLogoUrl: string | null = restaurant.logo_url ?? null;
+  if (resolvedLogoUrl) {
+    // If the URL points to Supabase storage, try to generate a signed URL
+    // so the browser can load it even from a private bucket.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+    if (resolvedLogoUrl.includes(supabaseUrl) && resolvedLogoUrl.includes('/storage/')) {
+      // Extract bucket + path from the public URL
+      const storageMarker = '/storage/v1/object/public/';
+      const idx = resolvedLogoUrl.indexOf(storageMarker);
+      if (idx !== -1) {
+        const fullPath = resolvedLogoUrl.slice(idx + storageMarker.length);
+        const bucket = fullPath.split('/')[0];
+        const filePath = fullPath.split('/').slice(1).join('/');
+        const { data: signed } = await supabaseAdmin.storage
+          .from(bucket)
+          .createSignedUrl(filePath, 3600); // 1 hour
+        if (signed?.signedUrl) {
+          resolvedLogoUrl = signed.signedUrl;
+        }
+      }
+    }
+  }
+
   /* ── Preview values ─────────────────────────────────────────────────────── */
   const primaryColor    = restaurant.primary_color ?? '#4f6bed';
   const programType     = loyalty?.program_type ?? 'points';
@@ -214,7 +238,7 @@ export async function GET(request: Request) {
       restaurantId:     restaurant.id,
       restaurantName:   restaurant.name,
       primaryColor,
-      logoUrl:          restaurant.logo_url,
+      logoUrl:          resolvedLogoUrl,
       plan:             restaurant.plan,
       programType,
       stampsTotal,
