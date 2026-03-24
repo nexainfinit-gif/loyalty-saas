@@ -178,7 +178,7 @@ function metaToControls(meta: PassMeta): Controls {
     isVip:           false,
     isPro:           meta.plan === 'pro',
     stripImageUrl:   '',
-    logoImageUrl:    '',
+    logoImageUrl:    meta.logoUrl ?? '',
     logoSize:        36,
     showLogoText:    true,
     stampMode:       'default',
@@ -248,9 +248,7 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
   useEffect(() => { setStampErr(false); }, [stampUrl]);
 
   const filled  = Math.min(c.currentStamps, c.stampsTotal);
-  const cardBg  = c.isPro
-    ? `linear-gradient(135deg, ${c.bgColor}, #7c3aed)`
-    : c.bgColor;
+  const cardBg  = c.bgColor;
 
   /* Apple Wallet uses SF Pro. Label style = uppercase, ~8pt, tracking wide.
      Value style = ~13pt regular. Primary = ~26pt bold. */
@@ -291,9 +289,9 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
             </span>
           )}
         </div>
-        {/* headerFields — Apple puts them top-right (auto VISITES or custom) */}
+        {/* headerFields — Apple puts them top-right (N° member code or custom) */}
         <div className="flex gap-3 flex-shrink-0 ml-2 text-right">
-          {(c.headerFields.length > 0 ? c.headerFields : [{ key: 'visits', label: 'VISITES', value: String(c.currentStamps) }]).map((f, i) => (
+          {(c.headerFields.length > 0 ? c.headerFields : [{ key: 'memberNo', label: 'N°', value: 'A1B2C3' }]).map((f, i) => (
             <div key={i}>
               <p style={labelSty}>{f.label}</p>
               <p style={valueSty}>{f.value}</p>
@@ -309,32 +307,33 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
         </div>
       )}
 
-      {/* ══ PRIMARY FIELDS — stamps/points counter, large ═════════════ */}
-      <div style={{ padding: '10px 14px 6px' }}>
-        <p style={labelSty}>TAMPONS</p>
-        <p style={primaryValSty}>{filled} / {c.stampsTotal}</p>
-      </div>
-
-      {/* ══ STAMP GRID — visual progression (via strip in real pass) ══ */}
-      <div style={{ padding: '4px 14px 8px' }}>
+      {/* ══ STAMP STRIP — full-width visual like real Apple Wallet strip ══ */}
+      <div style={{ padding: '8px 10px 10px' }}>
         {c.stampMode === 'custom' && stampUrl && !stampErr ? (
           <img
             src={stampUrl}
             alt={`${filled} / ${c.stampsTotal}`}
             onError={() => setStampErr(true)}
-            style={{ maxWidth: '100%', imageRendering: 'crisp-edges', borderRadius: 6 }}
+            style={{ width: '100%', imageRendering: 'crisp-edges', borderRadius: 6 }}
           />
         ) : (() => {
+          // Match real generateStampStrip(): 2-row centered layout, generous sizes
           const row1 = Math.ceil(c.stampsTotal / 2);
           const row2 = c.stampsTotal - row1;
-          const sz = Math.min(26, Math.floor((312 - (Math.max(row1, row2) - 1) * 4) / Math.max(row1, row2)));
+          const maxPerRow = Math.max(row1, row2);
+          const stripW = 312; // match real strip width
+          const gap = Math.max(10, Math.floor(stripW * 0.03));
+          const sz = Math.min(
+            Math.floor((stripW * 0.92 - (maxPerRow - 1) * gap) / maxPerRow),
+            48,
+          );
           const renderStamp = (idx: number) => (
             <div
               key={idx}
               className="flex items-center justify-center"
               style={{
                 width: sz, height: sz, borderRadius: '50%',
-                border: `1.5px solid ${idx < filled ? c.foregroundColor : `${c.foregroundColor}55`}`,
+                border: `2px solid ${idx < filled ? c.foregroundColor : `${c.foregroundColor}40`}`,
                 backgroundColor: idx < filled ? c.foregroundColor : 'transparent',
               }}
             >
@@ -344,12 +343,12 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
             </div>
           );
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap, alignItems: 'center', padding: '6px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap }}>
                 {Array.from({ length: row1 }, (_, i) => renderStamp(i))}
               </div>
               {row2 > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap }}>
                   {Array.from({ length: row2 }, (_, i) => renderStamp(row1 + i))}
                 </div>
               )}
