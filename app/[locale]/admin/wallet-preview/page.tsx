@@ -1301,6 +1301,9 @@ function WalletPreviewInner() {
   const [stampUrl, setStampUrl]   = useState('');
   const [accessToken, setToken]   = useState('');
   const [preloadTemplateId, setPreloadTemplateId] = useState<string | null>(initialTemplateId);
+  const [restaurants, setRestaurants] = useState<{ id: string; name: string }[]>([]);
+  const [merchantMode, setMerchantMode] = useState<'restaurant' | 'draft'>('restaurant');
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
 
   // Debounce stamp URL
   useEffect(() => {
@@ -1352,6 +1355,43 @@ function WalletPreviewInner() {
         .finally(() => setLoading(false));
     });
   }, [router, t]);
+
+  // Fetch all restaurants for the merchant selector
+  useEffect(() => {
+    fetch('/api/admin/restaurants?filter=all&sort=name&order=asc')
+      .then(r => r.json())
+      .then(json => {
+        const list = (json.restaurants ?? []).map((r: { id: string; name: string }) => ({
+          id: r.id, name: r.name,
+        }));
+        setRestaurants(list);
+      })
+      .catch(() => {});
+  }, []);
+
+  // When data loads, auto-select the current restaurant
+  useEffect(() => {
+    if (data?.meta.restaurantId && restaurants.length > 0) {
+      setSelectedRestaurantId(data.meta.restaurantId);
+    }
+  }, [data?.meta.restaurantId, restaurants]);
+
+  // Switch restaurant: reload preview meta (logo, color, name, etc.)
+  const handleRestaurantSwitch = useCallback(async (restaurantId: string) => {
+    if (!accessToken || !restaurantId) return;
+    setSelectedRestaurantId(restaurantId);
+    try {
+      const res = await fetch(`/api/wallet/preview?restaurantId=${restaurantId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      setData(json);
+      const fresh = metaToControls(json.meta);
+      setControls(fresh);
+      setDefaults(fresh);
+    } catch { /* ignore */ }
+  }, [accessToken]);
 
   const handleChange = useCallback(<K extends keyof Controls>(key: K, val: Controls[K]) => {
     setControls(prev => prev ? { ...prev, [key]: val } : prev);
@@ -1583,7 +1623,50 @@ function WalletPreviewInner() {
             {/* ── Carte ──────────────────────────────────────────────────── */}
             <Section title={t('walletPreview.sectionCard')}>
               <Field label={t('walletPreview.fieldMerchantName')}>
-                <input type="text" value={controls.merchantName} onChange={e => handleChange('merchantName', e.target.value)} className={inputCls} />
+                <div className="flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setMerchantMode('restaurant')}
+                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                      merchantMode === 'restaurant'
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                  >
+                    Commerce existant
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMerchantMode('draft')}
+                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                      merchantMode === 'draft'
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                  >
+                    Brouillon
+                  </button>
+                </div>
+                {merchantMode === 'restaurant' ? (
+                  <select
+                    value={selectedRestaurantId}
+                    onChange={e => handleRestaurantSwitch(e.target.value)}
+                    className={inputCls}
+                  >
+                    <option value="">— Sélectionner un commerce —</option>
+                    {restaurants.map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={controls.merchantName}
+                    onChange={e => handleChange('merchantName', e.target.value)}
+                    placeholder="Nom du commerce (brouillon)"
+                    className={inputCls}
+                  />
+                )}
               </Field>
 
               {/* Logo */}
