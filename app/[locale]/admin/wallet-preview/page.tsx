@@ -1410,47 +1410,43 @@ function WalletPreviewInner() {
 
   /* ── Auto-load template from ?templateId query param ───────────────── */
   useEffect(() => {
-    if (!preloadTemplateId || !accessToken || !controls) return;
+    if (!preloadTemplateId || !accessToken || loading) return;
 
-    // Use admin API to fetch templates (cross-restaurant)
-    fetch('/api/admin/wallet/templates', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-      .then(r => r.json())
-      .then(async (json) => {
-        const templates = json.templates ?? [];
+    (async () => {
+      try {
+        // 1. Fetch all templates via admin API (cross-restaurant)
+        const tmplRes = await fetch('/api/admin/wallet/templates', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const tmplJson = await tmplRes.json();
+        const templates = tmplJson.templates ?? [];
         const target = templates.find((t: { id: string }) => t.id === preloadTemplateId);
         if (!target) { setPreloadTemplateId(null); return; }
 
-        // If template belongs to a different restaurant, reload preview meta for that restaurant
+        // 2. Always reload preview meta for the template's restaurant
+        //    This ensures logo, color, name, loyalty settings match the right restaurant
         const templateRid = target.restaurant_id;
-        if (templateRid && templateRid !== data?.meta.restaurantId) {
+        if (templateRid) {
           const previewRes = await fetch(`/api/wallet/preview?restaurantId=${templateRid}`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
           if (previewRes.ok) {
             const previewJson = await previewRes.json();
             setData(previewJson);
+            setSelectedRestaurantId(templateRid);
             const freshBase = metaToControls(previewJson.meta);
             const merged = target.config_json
               ? configJsonToControls(freshBase, target.config_json)
               : freshBase;
             setControls(merged);
             setDefaults(freshBase);
-            setPreloadTemplateId(null);
-            return;
           }
         }
-
-        // Same restaurant — just apply config_json
-        if (target.config_json) {
-          setControls(prev => prev ? configJsonToControls(prev, target.config_json) : prev);
-        }
-        setPreloadTemplateId(null);
-      })
-      .catch(() => setPreloadTemplateId(null));
+      } catch { /* ignore */ }
+      setPreloadTemplateId(null);
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preloadTemplateId, accessToken]);
+  }, [preloadTemplateId, accessToken, loading]);
 
   /* ── Loading ──────────────────────────────────────────────────────────── */
   if (loading) return (
