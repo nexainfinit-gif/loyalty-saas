@@ -335,201 +335,6 @@ function CreateTemplateModal({ token, restaurantId, loyaltySettings, onCreated, 
   );
 }
 
-/* ── Edit Template Modal ──────────────────────────────────────────────────── */
-
-interface EditTemplateModalProps {
-  template:        Template;
-  token:           string;
-  loyaltySettings: LoyaltySettings | null;
-  onUpdated:       (t: Template) => void;
-  onClose:         () => void;
-}
-
-function EditTemplateModal({ template, token, loyaltySettings, onUpdated, onClose }: EditTemplateModalProps) {
-  const { t } = useTranslation();
-  const cfg = template.config_json ?? {};
-  const [name,            setName]            = useState(template.name);
-  const [color,           setColor]           = useState(template.primary_color ?? '#4f6bed');
-  const [repeatable,      setRepeatable]      = useState(template.is_repeatable);
-  const [validFrom,       setValidFrom]       = useState(template.valid_from?.slice(0, 10) ?? '');
-  const [validTo,         setValidTo]         = useState(template.valid_to?.slice(0, 10) ?? '');
-  const [stampsTotal,     setStampsTotal]     = useState(Number(cfg.stamps_total     ?? loyaltySettings?.stamps_total     ?? 10));
-  const [rewardMessage,   setRewardMessage]   = useState(String(cfg.reward_message   ?? loyaltySettings?.reward_message   ?? 'Café offert'));
-  const [rewardThreshold, setRewardThreshold] = useState(Number(cfg.reward_threshold ?? loyaltySettings?.reward_threshold ?? 500));
-  const [pointsPerScan,   setPointsPerScan]   = useState(Number(cfg.points_per_scan  ?? loyaltySettings?.points_per_scan  ?? 10));
-  const [eventName,       setEventName]       = useState(String(cfg.event_name ?? ''));
-  const [eventDate,       setEventDate]       = useState(String(cfg.event_date ?? ''));
-  const [isDefault,       setIsDefault]       = useState(template.is_default ?? false);
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState('');
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
-
-    const config_json: Record<string, unknown> =
-      template.pass_kind === 'stamps' ? { stamps_total: stampsTotal, reward_message: rewardMessage } :
-      template.pass_kind === 'points' ? { reward_threshold: rewardThreshold, points_per_scan: pointsPerScan, reward_message: rewardMessage } :
-                                         { event_name: eventName, event_date: eventDate };
-
-    const res = await fetch(`/api/wallet/templates/${template.id}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({
-        name,
-        primary_color: color,
-        is_repeatable: repeatable,
-        is_default: isDefault,
-        valid_from: validFrom || null,
-        valid_to:   validTo   || null,
-        config_json,
-      }),
-    });
-
-    const json = await res.json();
-    if (!res.ok) { setError(json.error ?? t('wallet.unknownError')); setSaving(false); return; }
-    onUpdated({ ...template, ...json.template });
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">{t('wallet.editModalTitle')}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
-        </div>
-
-        <form onSubmit={submit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.templateNameLabel')}</label>
-            <input
-              required value={name} onChange={e => setName(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            />
-          </div>
-
-          {/* Type is read-only on edit */}
-          <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl">
-            <KindBadge kind={template.pass_kind} />
-            <span className="text-xs text-gray-500">{t('wallet.typeReadonly')}</span>
-          </div>
-
-          {template.pass_kind === 'stamps' && (
-            <div className="p-4 bg-indigo-50 rounded-xl space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('wallet.stampsTotal')}</label>
-                  <input type="number" min={1} max={20} value={stampsTotal} onChange={e => setStampsTotal(Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('wallet.reward')}</label>
-                  <input value={rewardMessage} onChange={e => setRewardMessage(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                </div>
-              </div>
-            </div>
-          )}
-          {template.pass_kind === 'points' && (
-            <div className="p-4 bg-emerald-50 rounded-xl space-y-3">
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('wallet.pointsPerScan')}</label>
-                  <input type="number" min={1} value={pointsPerScan} onChange={e => setPointsPerScan(Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('wallet.rewardThreshold')}</label>
-                  <input type="number" min={1} value={rewardThreshold} onChange={e => setRewardThreshold(Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('wallet.reward')}</label>
-                  <input value={rewardMessage} onChange={e => setRewardMessage(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                </div>
-              </div>
-            </div>
-          )}
-          {template.pass_kind === 'event' && (
-            <div className="grid grid-cols-2 gap-3 p-4 bg-purple-50 rounded-xl">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('wallet.eventName')}</label>
-                <input value={eventName} onChange={e => setEventName(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('common.date')}</label>
-                <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.colorLabel')}</label>
-              <div className="flex items-center gap-2">
-                <input type="color" value={color} onChange={e => setColor(e.target.value)}
-                  className="h-9 w-16 rounded-lg border border-gray-200 cursor-pointer p-0.5" />
-                <span className="text-sm text-gray-500 font-mono">{color}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 pt-6">
-              <input type="checkbox" id="edit-repeatable" checked={repeatable} onChange={e => setRepeatable(e.target.checked)}
-                className="rounded" />
-              <label htmlFor="edit-repeatable" className="text-sm text-gray-700">{t('wallet.repeatableLabel2')}</label>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.validFromLabel2')} <span className="text-gray-400 font-normal">{t('common.optional')}</span></label>
-              <input type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.expiresLabel')} <span className="text-gray-400 font-normal">{t('common.optional')}</span></label>
-              <input type="date" value={validTo} onChange={e => setValidTo(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
-            <input
-              type="checkbox"
-              id="edit-isDefault"
-              checked={isDefault}
-              onChange={e => setIsDefault(e.target.checked)}
-              className="rounded mt-0.5"
-            />
-            <div>
-              <label htmlFor="edit-isDefault" className="text-sm text-gray-700 font-medium cursor-pointer inline-flex items-center">
-                {t('wallet.isDefaultLabel2')}<InfoTooltip text={t('wallet.isDefaultTooltip')} />
-              </label>
-              <p className="text-xs text-gray-500 mt-0.5">{t('wallet.isDefaultHint')}</p>
-            </div>
-          </div>
-
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 border border-gray-200 text-gray-700 rounded-lg py-2 text-sm font-medium hover:bg-gray-50 transition-colors">
-              {t('common.cancel')}
-            </button>
-            <button type="submit" disabled={saving}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg py-2 text-sm font-semibold transition-colors">
-              {saving ? t('wallet.editSaving') : t('common.save')}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 /* ── Issue Pass Modal ─────────────────────────────────────────────────────── */
 
 interface IssuePassModalProps {
@@ -697,7 +502,6 @@ interface TemplatesTableProps {
   token:        string;
   onIssue:      (templateId: string) => void;
   onSetDefault: (templateId: string) => void;
-  onEdit:       (template: Template) => void;
   onArchive:    (templateId: string) => void;
 }
 
@@ -716,7 +520,7 @@ interface TemplatePassEntry {
   } | null;
 }
 
-function TemplatesTable({ templates, token, onIssue, onSetDefault, onEdit, onArchive }: TemplatesTableProps) {
+function TemplatesTable({ templates, token, onIssue, onSetDefault, onArchive }: TemplatesTableProps) {
   const { t, locale } = useTranslation();
   const [settingDefault, setSettingDefault] = useState<string | null>(null);
   const [archiving,      setArchiving]      = useState<string | null>(null);
@@ -877,12 +681,6 @@ function TemplatesTable({ templates, token, onIssue, onSetDefault, onEdit, onArc
                         {settingDefault === tmpl.id ? '…' : t('wallet.setDefault')}
                       </button>
                     )}
-                    <button
-                      onClick={() => onEdit(tmpl)}
-                      className="text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 px-2.5 py-1 rounded-full transition-colors"
-                    >
-                      {t('common.edit')}
-                    </button>
                     {tmpl.active_passes === 0 && (
                       <button
                         onClick={() => handleArchive(tmpl)}
@@ -1360,7 +1158,6 @@ export default function WalletStudioPage() {
   const [showIssue,    setShowIssue]    = useState(false);
   const [issueTemplateId, setIssueTemplateId] = useState<string | undefined>(undefined);
   const [issuedCount,  setIssuedCount]  = useState(0);
-  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Silence unused var warning for restaurantId
@@ -1591,12 +1388,7 @@ export default function WalletStudioPage() {
             <span className="text-xs text-gray-500">{restaurantName}</span>
           )}
         </div>
-        <div className="ml-auto flex items-center gap-3">
-          <button onClick={() => router.push('/admin/wallet-preview')}
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-            {t('wallet.cardEditorLink')}
-          </button>
-        </div>
+        <div className="ml-auto" />
       </header>
 
       {/* ── Body ── */}
@@ -1636,7 +1428,6 @@ export default function WalletStudioPage() {
             token={token}
             onIssue={(id) => { setIssueTemplateId(id); setShowIssue(true); }}
             onSetDefault={() => fetchTemplates(token).then(tmpl => setTemplates(tmpl)).catch(() => {})}
-            onEdit={(t) => setEditingTemplate(t)}
             onArchive={(id) => setTemplates(prev => prev.filter(t => t.id !== id))}
           />
         </section>
@@ -1758,18 +1549,6 @@ export default function WalletStudioPage() {
         />
       )}
 
-      {editingTemplate && (
-        <EditTemplateModal
-          template={editingTemplate}
-          token={token}
-          loyaltySettings={loyaltySettings}
-          onUpdated={(updated) => {
-            setTemplates(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t));
-            setEditingTemplate(null);
-          }}
-          onClose={() => setEditingTemplate(null)}
-        />
-      )}
 
     </div>
   );

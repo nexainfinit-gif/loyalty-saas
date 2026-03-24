@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
@@ -1034,12 +1035,14 @@ function TemplateSaver({
   accessToken,
   restaurantId,
   onLoadTemplate,
+  initialTemplateId,
 }: {
   controls:       Controls;
   defaults:       Controls;
   accessToken:    string;
   restaurantId:   string;
   onLoadTemplate: (cfg: Record<string, unknown>) => void;
+  initialTemplateId?: string | null;
 }) {
   const { t } = useTranslation();
   const [templates, setTemplates]   = useState<TemplateOption[]>([]);
@@ -1063,7 +1066,13 @@ function TemplateSaver({
             id: t.id, name: t.name, pass_kind: t.pass_kind,
             config_json: t.config_json ?? null,
           })));
-          if (json.templates.length > 0) setSelectedId(json.templates[0].id);
+          // Auto-select the template from ?templateId if provided
+          const hasInitial = initialTemplateId && json.templates.some((t: any) => t.id === initialTemplateId);
+          if (hasInitial) {
+            setSelectedId(initialTemplateId);
+          } else if (json.templates.length > 0) {
+            setSelectedId(json.templates[0].id);
+          }
         }
       })
       .catch(() => {})
@@ -1273,7 +1282,21 @@ function TemplateSaver({
 /* ── Page ─────────────────────────────────────────────────────────────────── */
 
 export default function WalletPreviewPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-ds-spin" />
+      </div>
+    }>
+      <WalletPreviewInner />
+    </Suspense>
+  );
+}
+
+function WalletPreviewInner() {
   const router = useLocaleRouter();
+  const searchParams = useSearchParams();
+  const initialTemplateId = searchParams.get('templateId');
   const { t } = useTranslation();
   const [data, setData]         = useState<PreviewData | null>(null);
   const [loading, setLoading]   = useState(true);
@@ -1282,6 +1305,7 @@ export default function WalletPreviewPage() {
   const [defaults, setDefaults]   = useState<Controls | null>(null);
   const [stampUrl, setStampUrl]   = useState('');
   const [accessToken, setToken]   = useState('');
+  const [preloadTemplateId, setPreloadTemplateId] = useState<string | null>(initialTemplateId);
 
   // Debounce stamp URL
   useEffect(() => {
@@ -1348,6 +1372,25 @@ export default function WalletPreviewPage() {
       return configJsonToControls(prev, cfg);
     });
   }, []);
+
+  /* ── Auto-load template from ?templateId query param ───────────────── */
+  useEffect(() => {
+    if (!preloadTemplateId || !accessToken || !data?.meta.restaurantId || !controls) return;
+    const rid = data.meta.restaurantId;
+    fetch(`/api/wallet/templates?restaurantId=${rid}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then(r => r.json())
+      .then(json => {
+        const templates = json.templates ?? [];
+        const target = templates.find((t: { id: string }) => t.id === preloadTemplateId);
+        if (target?.config_json) {
+          setControls(prev => prev ? configJsonToControls(prev, target.config_json) : prev);
+        }
+        setPreloadTemplateId(null);
+      })
+      .catch(() => setPreloadTemplateId(null));
+  }, [preloadTemplateId, accessToken, data?.meta.restaurantId, controls]);
 
   /* ── Loading ──────────────────────────────────────────────────────────── */
   if (loading) return (
@@ -1835,6 +1878,7 @@ export default function WalletPreviewPage() {
               accessToken={accessToken}
               restaurantId={rid}
               onLoadTemplate={handleLoadTemplate}
+              initialTemplateId={initialTemplateId}
             />
 
           </div>

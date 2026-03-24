@@ -515,7 +515,7 @@ export default function AdminWalletPage() {
                                 {t('admin.walletIssue')}
                               </button>
                               <button
-                                onClick={() => openEdit(tmpl)}
+                                onClick={() => router.push(`/admin/wallet-preview?templateId=${tmpl.id}`)}
                                 className="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
                               >
                                 {t('admin.walletEdit')}
