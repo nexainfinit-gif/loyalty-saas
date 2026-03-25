@@ -221,14 +221,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: insertErr.message }, { status: 500 });
     }
 
-    // Send notification email (fire-and-forget)
-    sendPassEmail({
-      to: (customer as { email?: string }).email ?? '',
-      firstName: customer.first_name ?? '',
-      restaurantName,
-      platform: 'google',
-      walletUrl: saveUrl,
-    }).catch(err => console.error('[admin/wallet/issue] email error:', err));
+    // Send notification email (awaited — Vercel kills fire-and-forget)
+    try {
+      await sendPassEmail({
+        to: (customer as { email?: string }).email ?? '',
+        firstName: customer.first_name ?? '',
+        restaurantName,
+        platform: 'google',
+        walletUrl: saveUrl,
+      });
+    } catch (err) {
+      console.error('[admin/wallet/issue] email error:', err);
+    }
 
     return NextResponse.json({ pass: newPass, saveUrl }, { status: 201 });
   }
@@ -268,14 +272,18 @@ export async function POST(request: Request) {
   const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.rebites.be';
   const pkpassUrl = `${appUrl}/api/wallet/passes/${applePassId}/pkpass?token=${appleAuthToken}`;
 
-  // Send notification email (fire-and-forget)
-  sendPassEmail({
-    to: (customer as { email?: string }).email ?? '',
-    firstName: customer.first_name ?? '',
-    restaurantName,
-    platform: 'apple',
-    walletUrl: pkpassUrl,
-  }).catch(err => console.error('[admin/wallet/issue] email error:', err));
+  // Send notification email (awaited — Vercel kills fire-and-forget)
+  try {
+    await sendPassEmail({
+      to: (customer as { email?: string }).email ?? '',
+      firstName: customer.first_name ?? '',
+      restaurantName,
+      platform: 'apple',
+      walletUrl: pkpassUrl,
+    });
+  } catch (err) {
+    console.error('[admin/wallet/issue] email error:', err);
+  }
 
   return NextResponse.json({ pass: newPass }, { status: 201 });
 }
