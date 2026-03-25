@@ -46,6 +46,7 @@ type BarcodeFormat = 'PKBarcodeFormatQR' | 'PKBarcodeFormatPDF417' | 'PKBarcodeF
 
 /** All fields that drive the live preview */
 interface Controls {
+  passKind:       'stamps' | 'points' | 'event';
   merchantName:   string;
   logoText:       string;
   bgColor:        string;
@@ -54,6 +55,8 @@ interface Controls {
   // Fields
   stampsTotal:    number;
   currentStamps:  number;
+  currentPoints:  number;
+  rewardThreshold: number;
   rewardText:     string;
   headerFields:    PassField[];
   secondaryFields: PassField[];
@@ -159,6 +162,7 @@ function buildPassJson(c: Controls): object {
 
 function metaToControls(meta: PassMeta): Controls {
   return {
+    passKind:        (meta.programType === 'points' ? 'points' : 'stamps') as 'stamps' | 'points' | 'event',
     merchantName:    meta.restaurantName,
     logoText:        meta.restaurantName,
     bgColor:         meta.primaryColor,
@@ -166,6 +170,8 @@ function metaToControls(meta: PassMeta): Controls {
     labelColor:      '#c8d7ff',
     stampsTotal:     meta.stampsTotal,
     currentStamps:   meta.exampleStamps,
+    currentPoints:   meta.examplePoints,
+    rewardThreshold: meta.rewardThreshold,
     rewardText:      meta.rewardMessage,
     headerFields:    [],
     secondaryFields: [],
@@ -194,7 +200,10 @@ function metaToControls(meta: PassMeta): Controls {
 function configJsonToControls(base: Controls, cfg: Record<string, unknown>): Controls {
   return {
     ...base,
+    passKind:        (cfg.passKind as Controls['passKind']) ?? base.passKind,
     merchantName:    (cfg.merchantName as string) ?? base.merchantName,
+    currentPoints:   typeof cfg.currentPoints === 'number' ? cfg.currentPoints : base.currentPoints,
+    rewardThreshold: typeof cfg.rewardThreshold === 'number' ? cfg.rewardThreshold : base.rewardThreshold,
     logoText:        (cfg.logoText as string) ?? base.logoText,
     bgColor:         (cfg.bgColor as string) ?? base.bgColor,
     foregroundColor: (cfg.foregroundColor as string) ?? base.foregroundColor,
@@ -305,70 +314,93 @@ function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
         </div>
       )}
 
-      {/* ══ STAMP STRIP — full-width visual like real Apple Wallet strip ══ */}
-      <div style={{ padding: '8px 10px 10px' }}>
-        {c.stampMode === 'custom' && stampUrl && !stampErr ? (
-          <img
-            src={stampUrl}
-            alt={`${filled} / ${c.stampsTotal}`}
-            onError={() => setStampErr(true)}
-            style={{ width: '100%', imageRendering: 'crisp-edges', borderRadius: 6 }}
-          />
-        ) : (() => {
-          // Match real generateStampStrip(): 2-row centered layout, generous sizes
-          const row1 = Math.ceil(c.stampsTotal / 2);
-          const row2 = c.stampsTotal - row1;
-          const maxPerRow = Math.max(row1, row2);
-          const stripW = 312; // match real strip width
-          const gap = Math.max(10, Math.floor(stripW * 0.03));
-          const sz = Math.min(
-            Math.floor((stripW * 0.92 - (maxPerRow - 1) * gap) / maxPerRow),
-            48,
-          );
-          const renderStamp = (idx: number) => (
-            <div
-              key={idx}
-              className="flex items-center justify-center"
-              style={{
-                width: sz, height: sz, borderRadius: '50%',
-                border: `2px solid ${idx < filled ? c.foregroundColor : `${c.foregroundColor}40`}`,
-                backgroundColor: idx < filled ? c.foregroundColor : 'transparent',
-              }}
-            >
-              {idx < filled && (
-                <span style={{ fontSize: sz * 0.4, fontWeight: 700, color: c.bgColor, lineHeight: 1 }}>✓</span>
-              )}
-            </div>
-          );
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap, alignItems: 'center', padding: '6px 0' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', gap }}>
-                {Array.from({ length: row1 }, (_, i) => renderStamp(i))}
+      {/* ══ STAMPS — stamp grid (only for stamps kind) ══════════════════ */}
+      {c.passKind === 'stamps' && (
+        <div style={{ padding: '8px 10px 10px' }}>
+          {c.stampMode === 'custom' && stampUrl && !stampErr ? (
+            <img
+              src={stampUrl}
+              alt={`${filled} / ${c.stampsTotal}`}
+              onError={() => setStampErr(true)}
+              style={{ width: '100%', imageRendering: 'crisp-edges', borderRadius: 6 }}
+            />
+          ) : (() => {
+            const row1 = Math.ceil(c.stampsTotal / 2);
+            const row2 = c.stampsTotal - row1;
+            const maxPerRow = Math.max(row1, row2);
+            const stripW = 312;
+            const gap = Math.max(10, Math.floor(stripW * 0.03));
+            const sz = Math.min(
+              Math.floor((stripW * 0.92 - (maxPerRow - 1) * gap) / maxPerRow),
+              48,
+            );
+            const renderStamp = (idx: number) => (
+              <div
+                key={idx}
+                className="flex items-center justify-center"
+                style={{
+                  width: sz, height: sz, borderRadius: '50%',
+                  border: `2px solid ${idx < filled ? c.foregroundColor : `${c.foregroundColor}40`}`,
+                  backgroundColor: idx < filled ? c.foregroundColor : 'transparent',
+                }}
+              >
+                {idx < filled && (
+                  <span style={{ fontSize: sz * 0.4, fontWeight: 700, color: c.bgColor, lineHeight: 1 }}>✓</span>
+                )}
               </div>
-              {row2 > 0 && (
+            );
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap, alignItems: 'center', padding: '6px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', gap }}>
-                  {Array.from({ length: row2 }, (_, i) => renderStamp(row1 + i))}
+                  {Array.from({ length: row1 }, (_, i) => renderStamp(i))}
                 </div>
-              )}
-            </div>
-          );
-        })()}
-      </div>
+                {row2 > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', gap }}>
+                    {Array.from({ length: row2 }, (_, i) => renderStamp(row1 + i))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
-      {/* ══ FIELDS — CLIENT + RÉCOMPENSE + RESTANTS on one row (like real Apple Wallet) ══ */}
+      {/* ══ POINTS — large point counter (only for points kind) ═════════ */}
+      {c.passKind === 'points' && (
+        <div style={{ padding: '12px 14px 8px' }}>
+          <p style={labelSty}>POINTS</p>
+          <p style={{ color: c.foregroundColor, fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>{c.currentPoints}</p>
+          <div style={{ marginTop: 8, height: 4, borderRadius: 2, backgroundColor: `${c.foregroundColor}22`, overflow: 'hidden' }}>
+            <div style={{ height: '100%', borderRadius: 2, backgroundColor: c.foregroundColor, width: `${Math.min(100, (c.currentPoints / c.rewardThreshold) * 100)}%`, transition: 'width 0.3s' }} />
+          </div>
+          <p style={{ ...labelSty, marginTop: 6 }}>{c.currentPoints} / {c.rewardThreshold} pts</p>
+        </div>
+      )}
+
+      {/* ══ FIELDS — adapted per card type ══════════════════════════════ */}
       <div className="flex" style={{ padding: '6px 14px 10px', gap: 0 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={labelSty}>CLIENT</p>
           <p className="truncate" style={valueSty}>Marie Dupont</p>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={labelSty}>RÉCOMPENSE</p>
-          <p className="truncate" style={valueSty}>{c.rewardText}</p>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={labelSty}>RESTANTS</p>
-          <p className="truncate" style={valueSty}>{Math.max(0, c.stampsTotal - filled)} tampons</p>
-        </div>
+        {c.passKind !== 'event' && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={labelSty}>RÉCOMPENSE</p>
+            <p className="truncate" style={valueSty}>{c.rewardText}</p>
+          </div>
+        )}
+        {c.passKind === 'stamps' && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={labelSty}>RESTANTS</p>
+            <p className="truncate" style={valueSty}>{Math.max(0, c.stampsTotal - filled)} tampons</p>
+          </div>
+        )}
+        {c.passKind === 'points' && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={labelSty}>RESTANTS</p>
+            <p className="truncate" style={valueSty}>{Math.max(0, c.rewardThreshold - c.currentPoints)} points</p>
+          </div>
+        )}
         {c.secondaryFields.map((f, i) => (
           <div key={i} style={{ flex: 1, minWidth: 0 }}>
             <p style={labelSty}>{f.label}</p>
@@ -1000,12 +1032,15 @@ interface TemplateOption {
 
 function controlsToConfigJson(c: Controls): Record<string, unknown> {
   return {
+    passKind:        c.passKind,
     merchantName:    c.merchantName,
     logoText:        c.logoText,
     bgColor:         c.bgColor,
     foregroundColor: c.foregroundColor,
     labelColor:      c.labelColor,
     stampsTotal:     c.stampsTotal,
+    currentPoints:   c.currentPoints,
+    rewardThreshold: c.rewardThreshold,
     rewardText:      c.rewardText,
     headerFields:    c.headerFields,
     secondaryFields: c.secondaryFields,
@@ -1056,7 +1091,6 @@ function TemplateSaver({
   const [saving, setSaving]         = useState(false);
   const [feedback, setFeedback]     = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [newName, setNewName]       = useState('');
-  const [newKind, setNewKind]       = useState<'stamps' | 'points' | 'event'>('stamps');
   const [mode, setMode]             = useState<'apply' | 'create'>('apply');
 
   useEffect(() => {
@@ -1150,7 +1184,7 @@ function TemplateSaver({
         body: JSON.stringify({
           ...(!isDraft && restaurantId ? { restaurant_id: restaurantId } : {}),
           name:          newName.trim(),
-          pass_kind:     newKind,
+          pass_kind:     controls.passKind,
           status:        isDraft ? 'draft' : 'published',
           primary_color: controls.bgColor,
           config_json:   controlsToConfigJson(controls),
@@ -1274,26 +1308,6 @@ function TemplateSaver({
               />
             </Field>
 
-            <Field label="Type de carte">
-              <div className="flex gap-2">
-                {(['stamps', 'points', 'event'] as const).map(kind => (
-                  <button
-                    key={kind}
-                    type="button"
-                    onClick={() => setNewKind(kind)}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-colors ${
-                      newKind === kind
-                        ? kind === 'stamps' ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                        : kind === 'points' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-purple-50 text-purple-700 border-purple-200'
-                        : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    {kind === 'stamps' ? 'Tampons' : kind === 'points' ? 'Points' : 'Événement'}
-                  </button>
-                ))}
-              </div>
-            </Field>
 
             <button
               onClick={handleCreate}
@@ -1796,6 +1810,30 @@ function WalletPreviewInner() {
 
             {/* ── Progression ────────────────────────────────────────────── */}
             <Section title={t('walletPreview.sectionProgression')}>
+              {/* Type de carte */}
+              <Field label="Type de carte">
+                <div className="flex gap-2">
+                  {(['stamps', 'points', 'event'] as const).map(kind => (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => handleChange('passKind', kind)}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-colors ${
+                        controls.passKind === kind
+                          ? kind === 'stamps' ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          : kind === 'points' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-purple-50 text-purple-700 border-purple-200'
+                          : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {kind === 'stamps' ? 'Tampons' : kind === 'points' ? 'Points' : 'Événement'}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              {/* Stamps config */}
+              {controls.passKind === 'stamps' && (<>
               <div className="grid grid-cols-2 gap-4">
                 <Field label={t('walletPreview.fieldStampsGoal')}>
                   <input
@@ -1850,8 +1888,9 @@ function WalletPreviewInner() {
                   ))}
                 </div>
               </div>
+              </>)}
 
-              {controls.stampMode === 'custom' && (
+              {controls.passKind === 'stamps' && controls.stampMode === 'custom' && (
                 <>
                   <div className="border-t border-gray-100 pt-4 space-y-4">
                     <p className="text-xs font-medium text-gray-500">{t('walletPreview.stampImages')}</p>
@@ -1907,6 +1946,33 @@ function WalletPreviewInner() {
                     </div>
                   </div>
                 </>
+              )}
+
+              {/* Points config */}
+              {controls.passKind === 'points' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Points actuels (aperçu)">
+                    <input
+                      type="number" min={0}
+                      value={controls.currentPoints}
+                      onChange={e => handleChange('currentPoints', Math.max(0, Number(e.target.value)))}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Seuil récompense">
+                    <input
+                      type="number" min={1}
+                      value={controls.rewardThreshold}
+                      onChange={e => handleChange('rewardThreshold', Math.max(1, Number(e.target.value)))}
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
+              )}
+
+              {/* Event — minimal config */}
+              {controls.passKind === 'event' && (
+                <p className="text-xs text-gray-400 italic">Carte événement — pas de progression.</p>
               )}
             </Section>
 
