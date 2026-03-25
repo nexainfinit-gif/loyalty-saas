@@ -407,7 +407,7 @@ export default function AdminWalletPage() {
           </button>
 
           <button
-            onClick={openCreate}
+            onClick={() => router.push('/admin/wallet-preview')}
             className="ml-auto px-4 py-2 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 transition-colors"
           >
             {t('admin.walletNewTemplate')}
