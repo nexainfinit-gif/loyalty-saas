@@ -65,7 +65,6 @@ interface Controls {
   barcodeAltText: string;
   // States
   isVip:          boolean;
-  isPro:          boolean;
   // Images
   stripImageUrl:  string;
   logoImageUrl:   string;
@@ -176,7 +175,6 @@ function metaToControls(meta: PassMeta): Controls {
     barcodeFormat:   'PKBarcodeFormatQR',
     barcodeAltText:  '',
     isVip:           false,
-    isPro:           meta.plan === 'pro',
     stripImageUrl:   '',
     logoImageUrl:    meta.logoUrl ?? '',
     logoSize:        36,
@@ -1542,13 +1540,6 @@ function WalletPreviewInner() {
           {/* ── Left — Sticky preview ────────────────────────────────────── */}
           <div className="lg:sticky lg:top-20 space-y-6">
 
-            {controls.isPro && (
-              <div className="flex items-center gap-2 bg-purple-50 border border-purple-100 rounded-xl px-4 py-2.5">
-                <span className="text-purple-600 text-sm">✦</span>
-                <span className="text-xs font-semibold text-purple-700">{t('walletPreview.proActive')}</span>
-              </div>
-            )}
-
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{t('walletPreview.cardPreview')}</p>
               <WalletCard c={controls} stampUrl={stampUrl} />
@@ -1720,13 +1711,6 @@ function WalletPreviewInner() {
                     <p className="text-[11px] text-gray-400">{t('walletPreview.stateVipDesc')}</p>
                   </div>
                   <Toggle checked={controls.isVip} onChange={() => handleChange('isVip', !controls.isVip)} colorClass="bg-vip-600" />
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-700">{t('walletPreview.statePro')}</p>
-                    <p className="text-[11px] text-gray-400">{t('walletPreview.stateProDesc')}</p>
-                  </div>
-                  <Toggle checked={controls.isPro} onChange={() => handleChange('isPro', !controls.isPro)} colorClass="bg-purple-600" />
                 </div>
               </div>
             </Section>
