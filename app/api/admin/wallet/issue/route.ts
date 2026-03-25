@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireOwner } from '@/lib/server-auth';
 import { issueGooglePass } from '@/lib/google-wallet';
 import { randomUUID } from 'crypto';
+import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
   // ── Fetch full customer ───────────────────────────────────────────────────
   const { data: customer } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, last_name, qr_token, stamps_count, total_points')
+    .select('id, first_name, last_name, email, qr_token, stamps_count, total_points')
     .eq('id', resolvedCustomerId!)
     .eq('restaurant_id', restaurantId)
     .maybeSingle();
@@ -128,6 +129,15 @@ export async function POST(request: Request) {
   }
 
   const expiresAt = template.valid_to ?? null;
+
+  // ── Fetch restaurant info (needed for both platforms + email) ────────────
+  const { data: restaurantInfo } = await supabaseAdmin
+    .from('restaurants')
+    .select('id, name, primary_color, logo_url')
+    .eq('id', restaurantId)
+    .single();
+
+  const restaurantName = restaurantInfo?.name ?? 'Restaurant';
 
   // ── Google Wallet ─────────────────────────────────────────────────────────
   if (platform === 'google') {
@@ -211,24 +221,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: insertErr.message }, { status: 500 });
     }
 
+    // Send notification email (fire-and-forget)
+    sendPassEmail({
+      to: (customer as { email?: string }).email ?? '',
+      firstName: customer.first_name ?? '',
+      restaurantName,
+      platform: 'google',
+      walletUrl: saveUrl,
+    }).catch(err => console.error('[admin/wallet/issue] email error:', err));
+
     return NextResponse.json({ pass: newPass, saveUrl }, { status: 201 });
   }
 
   // ── Apple Wallet ──────────────────────────────────────────────────────────
   const applePassId    = randomUUID();
   const appleShortCode = applePassId.replace(/-/g, '').slice(0, 8).toUpperCase();
+  const appleAuthToken = randomUUID().replace(/-/g, '');
 
   const { data: newPass, error: insertErr } = await supabaseAdmin
     .from('wallet_passes')
     .insert({
-      id:            applePassId,
-      short_code:    appleShortCode,
-      restaurant_id: restaurantId,
-      customer_id:   resolvedCustomerId!,
-      template_id:   templateId,
-      platform:      'apple',
-      status:        'active',
-      expires_at:    expiresAt,
+      id:                   applePassId,
+      short_code:           appleShortCode,
+      restaurant_id:        restaurantId,
+      customer_id:          resolvedCustomerId!,
+      template_id:          templateId,
+      platform:             'apple',
+      status:               'active',
+      expires_at:           expiresAt,
+      authentication_token: appleAuthToken,
     })
     .select()
     .single();
@@ -244,5 +265,54 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: insertErr.message }, { status: 500 });
   }
 
+  const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.rebites.be';
+  const pkpassUrl = `${appUrl}/api/wallet/passes/${applePassId}/pkpass?token=${appleAuthToken}`;
+
+  // Send notification email (fire-and-forget)
+  sendPassEmail({
+    to: (customer as { email?: string }).email ?? '',
+    firstName: customer.first_name ?? '',
+    restaurantName,
+    platform: 'apple',
+    walletUrl: pkpassUrl,
+  }).catch(err => console.error('[admin/wallet/issue] email error:', err));
+
   return NextResponse.json({ pass: newPass }, { status: 201 });
+}
+
+/* ── Email helper ──────────────────────────────────────────────────────────── */
+
+async function sendPassEmail(opts: {
+  to: string;
+  firstName: string;
+  restaurantName: string;
+  platform: 'apple' | 'google';
+  walletUrl: string;
+}) {
+  if (!opts.to || !process.env.RESEND_API_KEY) return;
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const platformLabel = opts.platform === 'apple' ? 'Apple Wallet' : 'Google Wallet';
+
+  await resend.emails.send({
+    from: `${opts.restaurantName} <noreply@rebites.be>`,
+    to: opts.to,
+    subject: `Votre carte ${platformLabel} – ${opts.restaurantName}`,
+    html: `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#1a1a1a;font-size:20px;margin-bottom:8px">Bonjour ${opts.firstName.replace(/</g, '&lt;')} 👋</h2>
+        <p style="color:#555;font-size:15px;line-height:1.6">
+          Votre carte de fidélité <strong>${opts.restaurantName.replace(/</g, '&lt;')}</strong> est prête !
+        </p>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${opts.walletUrl}" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:600;font-size:15px">
+            Ajouter à ${platformLabel}
+          </a>
+        </div>
+        <p style="color:#999;font-size:12px;text-align:center">
+          Présentez votre carte à chaque visite pour cumuler vos récompenses.
+        </p>
+      </div>
+    `,
+  });
 }
