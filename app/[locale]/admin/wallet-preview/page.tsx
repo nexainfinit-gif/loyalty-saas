@@ -1028,6 +1028,7 @@ function TemplateSaver({
   accessToken,
   restaurantId,
   onLoadTemplate,
+  onReset,
   initialTemplateId,
 }: {
   controls:       Controls;
@@ -1035,6 +1036,7 @@ function TemplateSaver({
   accessToken:    string;
   restaurantId:   string;
   onLoadTemplate: (cfg: Record<string, unknown>) => void;
+  onReset:        () => void;
   initialTemplateId?: string | null;
 }) {
   const { t } = useTranslation();
@@ -1178,7 +1180,10 @@ function TemplateSaver({
         {([['apply', t('walletPreview.tabApply')], ['create', t('walletPreview.tabNew')]] as [string, string][]).map(([key, label]) => (
           <button
             key={key}
-            onClick={() => setMode(key as 'apply' | 'create')}
+            onClick={() => {
+              setMode(key as 'apply' | 'create');
+              if (key === 'create') onReset();
+            }}
             className={[
               'flex-1 py-2.5 text-xs font-semibold transition-colors',
               mode === key
@@ -1958,6 +1963,7 @@ function WalletPreviewInner() {
               accessToken={accessToken}
               restaurantId={rid}
               onLoadTemplate={handleLoadTemplate}
+              onReset={handleReset}
               initialTemplateId={initialTemplateId}
             />
 
