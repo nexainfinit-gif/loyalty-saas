@@ -75,6 +75,15 @@ export async function GET(
     return NextResponse.json({ error: t('api.passNotFound') }, { status: 404 });
   }
 
+  // ── Download token — prevents access without the signed link ────────────
+  // The authentication_token is a shared secret between the pass and the DB.
+  // Requiring it as ?token= ensures only someone with the legitimate link can download.
+  const downloadToken = searchParams.get('token');
+  const passAuthToken = (pass as { authentication_token?: string | null }).authentication_token;
+  if (passAuthToken && downloadToken !== passAuthToken) {
+    return NextResponse.json({ error: t('api.passNotFound') }, { status: 404 });
+  }
+
   if (pass.platform !== 'apple') {
     return NextResponse.json(
       { error: t('api.notApplePass') },

@@ -103,7 +103,7 @@ async function getAppleWalletUrl(restaurantId: string, customerId: string): Prom
   // Check for existing Apple pass
   const { data: existingPass } = await supabaseAdmin
     .from('wallet_passes')
-    .select('id')
+    .select('id, authentication_token')
     .eq('customer_id', customerId)
     .eq('restaurant_id', restaurantId)
     .eq('platform', 'apple')
@@ -111,13 +111,14 @@ async function getAppleWalletUrl(restaurantId: string, customerId: string): Prom
     .maybeSingle();
 
   if (existingPass) {
-    return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${existingPass.id}/pkpass`;
+    const tkn = (existingPass as { authentication_token?: string }).authentication_token ?? '';
+    return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${existingPass.id}/pkpass?token=${tkn}`;
   }
 
   // Issue new pass
-  const applePassId = await autoIssueApplePass({ restaurantId, customerId });
-  if (applePassId) {
-    return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${applePassId}/pkpass`;
+  const appleResult = await autoIssueApplePass({ restaurantId, customerId });
+  if (appleResult) {
+    return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${appleResult.passId}/pkpass?token=${appleResult.token}`;
   }
   return null;
 }

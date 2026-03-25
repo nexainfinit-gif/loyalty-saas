@@ -17,8 +17,10 @@ interface AutoIssueParams {
  *
  * Never throws — safe to await inside registration routes without
  * risking the customer-creation response.
+ *
+ * Returns { passId, token } or null.
  */
-export async function autoIssueApplePass(params: AutoIssueParams): Promise<string | null> {
+export async function autoIssueApplePass(params: AutoIssueParams): Promise<{ passId: string; token: string } | null> {
   const { restaurantId, customerId } = params;
 
   try {
@@ -63,7 +65,7 @@ export async function autoIssueApplePass(params: AutoIssueParams): Promise<strin
       return null;
     }
 
-    return pass.id;
+    return { passId: pass.id, token: authToken };
   } catch (err) {
     console.error('[autoIssueApplePass] unexpected:', err);
     return null;

@@ -62,7 +62,7 @@ export async function GET(request: Request) {
   // ── 3. Reuse existing active pass, or create a new one ───────────────────────
   const { data: existing } = await supabaseAdmin
     .from('wallet_passes')
-    .select('id, issued_at')
+    .select('id, issued_at, authentication_token')
     .eq('restaurant_id', restaurantId)
     .eq('customer_id',   customer.id)
     .eq('template_id',   template.id)
@@ -71,11 +71,14 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   let passId: string;
+  let authToken: string;
   let isNew = false;
 
   if (existing) {
     passId = existing.id;
+    authToken = (existing as { authentication_token?: string }).authentication_token ?? '';
   } else {
+    const newAuthToken = (await import('crypto')).randomUUID().replace(/-/g, '');
     const { data: created, error: insertErr } = await supabaseAdmin
       .from('wallet_passes')
       .insert({
@@ -84,6 +87,7 @@ export async function GET(request: Request) {
         template_id:   template.id,
         platform:      'apple',
         status:        'active',
+        authentication_token: newAuthToken,
       })
       .select('id')
       .single();
@@ -94,13 +98,15 @@ export async function GET(request: Request) {
     }
 
     passId = created.id;
+    authToken = newAuthToken;
     isNew  = true;
   }
 
-  const pkpassUrl = `${appUrl}/api/wallet/passes/${passId}/pkpass`;
+  const pkpassUrl = `${appUrl}/api/wallet/passes/${passId}/pkpass?token=${authToken}`;
 
   return NextResponse.json({
     passId,
+    passToken: authToken,
     pkpassUrl,
     isNew,
     customer: {

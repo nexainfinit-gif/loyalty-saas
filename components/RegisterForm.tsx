@@ -263,10 +263,13 @@ export default function RegisterForm({ restaurant, refCode }: RegisterFormProps)
                 </a>
               )}
               {successData.appleWalletUrl && (() => {
-                const applePassId = successData.appleWalletUrl!.split('/passes/')[1]?.split('/')[0] ?? null;
+                const urlParts = successData.appleWalletUrl!.split('/passes/')[1] ?? '';
+                const applePassId = urlParts.split('/')[0] ?? null;
+                const tokenMatch = successData.appleWalletUrl!.match(/[?&]token=([^&]+)/);
+                const appleToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : undefined;
                 return applePassId ? (
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <AddToAppleWalletButton passId={applePassId} />
+                    <AddToAppleWalletButton passId={applePassId} token={appleToken} />
                   </div>
                 ) : null;
               })()}

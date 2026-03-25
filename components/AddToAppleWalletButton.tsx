@@ -2,6 +2,7 @@
 
 interface Props {
   passId:     string;
+  token?:     string;
   className?: string;
 }
 
@@ -31,10 +32,13 @@ function AppleLogo() {
  *  passId    — UUID of the wallet_passes row
  *  className — optional extra classes
  */
-export default function AddToAppleWalletButton({ passId, className = '' }: Props) {
+export default function AddToAppleWalletButton({ passId, token, className = '' }: Props) {
+  const href = token
+    ? `/api/wallet/passes/${passId}/pkpass?token=${encodeURIComponent(token)}`
+    : `/api/wallet/passes/${passId}/pkpass`;
   return (
     <a
-      href={`/api/wallet/passes/${passId}/pkpass`}
+      href={href}
       className={[
         'inline-flex items-center gap-3',
         'bg-black text-white rounded-xl px-5 py-3',

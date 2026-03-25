@@ -183,12 +183,12 @@ export async function POST(req: NextRequest) {
 
   // Auto-issue Apple Wallet pass if the restaurant has a default template configured.
   // Never fails registration — passId will be null when Apple Wallet is not set up.
-  const applePassId = await autoIssueApplePass({
+  const appleResult = await autoIssueApplePass({
     restaurantId: restaurant.id,
     customerId: customer.id,
   });
-  const appleWalletUrl = applePassId
-    ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${applePassId}/pkpass`
+  const appleWalletUrl = appleResult
+    ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${appleResult.passId}/pkpass?token=${appleResult.token}`
     : null;
 
   try {

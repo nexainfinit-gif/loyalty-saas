@@ -359,6 +359,7 @@ function IssuePassModal({ token, templates, customers, onIssued, onClose, presel
   const [error,         setError]         = useState('');
   const [success,       setSuccess]       = useState('');
   const [issuedPassId,  setIssuedPassId]  = useState<string | null>(null);
+  const [issuedPassToken, setIssuedPassToken] = useState<string | null>(null);
   const [saveUrl,       setSaveUrl]       = useState<string | null>(null);
 
   const filtered = customers.filter(c => {
@@ -386,6 +387,7 @@ function IssuePassModal({ token, templates, customers, onIssued, onClose, presel
     if (!res.ok) { setError(json.error ?? t('wallet.unknownError')); return; }
     setSuccess(t('wallet.issueSuccess'));
     setIssuedPassId(json.pass.id);
+    setIssuedPassToken(json.pass.authentication_token ?? null);
     if (json.saveUrl) setSaveUrl(json.saveUrl);
     onIssued(json.pass.id);
   }
@@ -459,7 +461,7 @@ function IssuePassModal({ token, templates, customers, onIssued, onClose, presel
               {issuedPassId && platform === 'apple' && (
                 <div className="space-y-1">
                   <p className="text-xs text-emerald-600">{t('wallet.issueOpenIphone')}</p>
-                  <AddToAppleWalletButton passId={issuedPassId} />
+                  <AddToAppleWalletButton passId={issuedPassId} token={issuedPassToken ?? undefined} />
                 </div>
               )}
               {issuedPassId && platform === 'google' && saveUrl && (
@@ -997,9 +999,10 @@ function CustomerPassesPanel({ token, customers }: CustomerPassesPanelProps) {
 
 function TestAppleWalletButton({ token }: { token: string }) {
   const { t } = useTranslation();
-  const [loading, setLoading]   = useState(false);
-  const [passId,  setPassId]    = useState<string | null>(null);
-  const [err,     setErr]       = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [passId,  setPassId]      = useState<string | null>(null);
+  const [passToken, setPassToken] = useState<string | null>(null);
+  const [err,     setErr]         = useState('');
 
   async function runTest() {
     setLoading(true);
@@ -1012,13 +1015,14 @@ function TestAppleWalletButton({ token }: { token: string }) {
     setLoading(false);
     if (!res.ok) { setErr(json.error ?? t('common.error')); return; }
     setPassId(json.passId);
+    setPassToken(json.passToken ?? null);
   }
 
   if (passId) {
     return (
       <div className="flex flex-col items-start gap-2">
         <p className="text-xs text-gray-500">{t('wallet.openIphone')}</p>
-        <AddToAppleWalletButton passId={passId} />
+        <AddToAppleWalletButton passId={passId} token={passToken ?? undefined} />
         <button
           onClick={() => setPassId(null)}
           className="text-xs text-gray-400 hover:text-gray-600 underline"
