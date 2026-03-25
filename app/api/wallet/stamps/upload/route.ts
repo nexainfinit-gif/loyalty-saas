@@ -54,16 +54,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Fichier trop grand (max 5 Mo).' }, { status: 413 });
   }
 
-  // ── Validate the supplied restaurantId belongs to this owner ─────────────
+  // ── Validate the supplied restaurantId exists ───────────────────────────
+  // Platform owners (requireOwner) can upload for any restaurant.
   const { data: restaurant } = await supabaseAdmin
     .from('restaurants')
     .select('id')
     .eq('id', restaurantId)
-    .eq('owner_id', guard.userId)
     .single();
 
   if (!restaurant) {
-    return NextResponse.json({ error: 'Restaurant introuvable ou accès refusé.' }, { status: 403 });
+    return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
   }
 
   // ── Upload using service role (bypasses RLS, bucket stays private) ────────
