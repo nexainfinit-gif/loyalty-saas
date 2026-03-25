@@ -78,19 +78,23 @@ export async function POST(request: Request) {
   }
 
   // ── Validate template ─────────────────────────────────────────────────────
+  // Draft templates have restaurant_id = NULL — match by ID only,
+  // then verify it belongs to the target restaurant OR is a global draft.
   const { data: template } = await supabaseAdmin
     .from('wallet_pass_templates')
-    .select('id, status, is_repeatable, valid_from, valid_to, pass_kind, config_json, primary_color')
+    .select('id, status, is_repeatable, valid_from, valid_to, pass_kind, config_json, primary_color, restaurant_id')
     .eq('id', templateId)
-    .eq('restaurant_id', restaurantId)
     .maybeSingle();
 
   if (!template) {
-    return NextResponse.json({ error: 'Template introuvable ou accès refusé.' }, { status: 404 });
+    return NextResponse.json({ error: 'Template introuvable.' }, { status: 404 });
   }
-  if (template.status !== 'published') {
+  if (template.restaurant_id && template.restaurant_id !== restaurantId) {
+    return NextResponse.json({ error: 'Ce template appartient à un autre restaurant.' }, { status: 403 });
+  }
+  if (template.status === 'archived') {
     return NextResponse.json(
-      { error: `Ce template est "${template.status}" et ne peut pas être émis.` },
+      { error: 'Ce template est archivé et ne peut pas être émis.' },
       { status: 409 },
     );
   }
