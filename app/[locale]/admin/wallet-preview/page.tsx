@@ -1461,10 +1461,10 @@ function WalletPreviewInner() {
         const target = templates.find((t: { id: string }) => t.id === preloadTemplateId);
         if (!target) { setPreloadTemplateId(null); return; }
 
-        // 2. Always reload preview meta for the template's restaurant
-        //    This ensures logo, color, name, loyalty settings match the right restaurant
+        // 2. Load the template's config into controls
         const templateRid = target.restaurant_id;
         if (templateRid) {
+          // Template belongs to a restaurant — reload preview meta for that restaurant
           const previewRes = await fetch(`/api/wallet/preview?restaurantId=${templateRid}`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
@@ -1472,15 +1472,22 @@ function WalletPreviewInner() {
             const previewJson = await previewRes.json();
             setData(previewJson);
             setSelectedRestaurantId(templateRid);
+            setMerchantMode('restaurant');
             const freshBase = metaToControls(previewJson.meta);
             const merged = target.config_json
               ? configJsonToControls(freshBase, target.config_json)
               : freshBase;
             setControls(merged);
             setDefaults(freshBase);
-            setActiveTemplateId(preloadTemplateId);
+          }
+        } else {
+          // Draft template (no restaurant) — apply config_json on current controls
+          setMerchantMode('draft');
+          if (target.config_json) {
+            setControls(prev => prev ? configJsonToControls(prev, target.config_json) : prev);
           }
         }
+        setActiveTemplateId(preloadTemplateId);
       } catch { /* ignore */ }
       setPreloadTemplateId(null);
     })();
