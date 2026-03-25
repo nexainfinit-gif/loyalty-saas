@@ -584,6 +584,7 @@ function StampUpload({
   onUpload,
   accessToken,
   restaurantId,
+  templateId,
 }: {
   label:        string;
   stampType:    'empty' | 'filled';
@@ -591,6 +592,7 @@ function StampUpload({
   onUpload:     (url: string) => void;
   accessToken:  string;
   restaurantId: string;
+  templateId?:  string;
 }) {
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
@@ -611,6 +613,7 @@ function StampUpload({
     const form = new FormData();
     form.append('type', stampType);
     form.append('restaurantId', restaurantId);
+    if (templateId) form.append('templateId', templateId);
     form.append('file', file);
     try {
       const res  = await fetch('/api/wallet/stamps/upload', {
@@ -817,6 +820,7 @@ function ImageUpload({
   onUpload,
   accessToken,
   restaurantId,
+  templateId,
   uploadType,
   cropAspect,
   cropWidth,
@@ -828,6 +832,7 @@ function ImageUpload({
   onUpload:     (url: string) => void;
   accessToken:  string;
   restaurantId: string;
+  templateId?:  string;
   uploadType:   string;
   cropAspect?:  number;
   cropWidth?:   number;
@@ -869,6 +874,7 @@ function ImageUpload({
     const form = new FormData();
     form.append('type', uploadType);
     form.append('restaurantId', restaurantId);
+    if (templateId) form.append('templateId', templateId);
     form.append('file', fileOrBlob, 'image.png');
     try {
       const res = await fetch('/api/wallet/stamps/upload', {
@@ -1029,14 +1035,16 @@ function TemplateSaver({
   restaurantId,
   onLoadTemplate,
   onReset,
+  onTemplateSelect,
   initialTemplateId,
 }: {
   controls:       Controls;
   defaults:       Controls;
   accessToken:    string;
   restaurantId:   string;
-  onLoadTemplate: (cfg: Record<string, unknown>) => void;
-  onReset:        () => void;
+  onLoadTemplate:    (cfg: Record<string, unknown>) => void;
+  onReset:           () => void;
+  onTemplateSelect?: (id: string | null) => void;
   initialTemplateId?: string | null;
 }) {
   const { t } = useTranslation();
@@ -1071,6 +1079,11 @@ function TemplateSaver({
       .catch(() => {})
       .finally(() => setLoadingList(false));
   }, [accessToken, restaurantId]);
+
+  // Notify parent of selected template changes
+  useEffect(() => {
+    onTemplateSelect?.(selectedId || null);
+  }, [selectedId, onTemplateSelect]);
 
   function clearFeedback() {
     setTimeout(() => setFeedback(null), 4000);
@@ -1301,6 +1314,7 @@ function WalletPreviewInner() {
   const [stampUrl, setStampUrl]   = useState('');
   const [accessToken, setToken]   = useState('');
   const [preloadTemplateId, setPreloadTemplateId] = useState<string | null>(initialTemplateId);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [restaurants, setRestaurants] = useState<{ id: string; name: string }[]>([]);
   const [merchantMode, setMerchantMode] = useState<'restaurant' | 'draft'>('restaurant');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
@@ -1668,6 +1682,7 @@ function WalletPreviewInner() {
                   onUpload={url => handleChange('logoImageUrl', url)}
                   accessToken={accessToken}
                   restaurantId={rid}
+                  templateId={activeTemplateId ?? undefined}
                   uploadType="logo"
                   cropAspect={1}
                   cropWidth={200}
@@ -1700,6 +1715,7 @@ function WalletPreviewInner() {
                   onUpload={url => handleChange('stripImageUrl', url)}
                   accessToken={accessToken}
                   restaurantId={rid}
+                  templateId={activeTemplateId ?? undefined}
                   uploadType="strip"
                   cropAspect={750 / 246}
                   cropWidth={750}
@@ -1790,8 +1806,8 @@ function WalletPreviewInner() {
                         {t('walletPreview.stampLoginRequired')}
                       </p>
                     )}
-                    <StampUpload label={t('walletPreview.stampEmpty')} stampType="empty" currentUrl={controls.stampEmptyUrl} onUpload={url => handleChange('stampEmptyUrl', url)} accessToken={accessToken} restaurantId={rid} />
-                    <StampUpload label={t('walletPreview.stampFilled')} stampType="filled" currentUrl={controls.stampFilledUrl} onUpload={url => handleChange('stampFilledUrl', url)} accessToken={accessToken} restaurantId={rid} />
+                    <StampUpload label={t('walletPreview.stampEmpty')} stampType="empty" currentUrl={controls.stampEmptyUrl} onUpload={url => handleChange('stampEmptyUrl', url)} accessToken={accessToken} restaurantId={rid} templateId={activeTemplateId ?? undefined} />
+                    <StampUpload label={t('walletPreview.stampFilled')} stampType="filled" currentUrl={controls.stampFilledUrl} onUpload={url => handleChange('stampFilledUrl', url)} accessToken={accessToken} restaurantId={rid} templateId={activeTemplateId ?? undefined} />
                   </div>
 
                   <div className="border-t border-gray-100 pt-4 space-y-3">
@@ -1964,6 +1980,7 @@ function WalletPreviewInner() {
               restaurantId={rid}
               onLoadTemplate={handleLoadTemplate}
               onReset={handleReset}
+              onTemplateSelect={setActiveTemplateId}
               initialTemplateId={initialTemplateId}
             />
 

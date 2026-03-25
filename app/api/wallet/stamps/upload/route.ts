@@ -30,6 +30,7 @@ export async function POST(request: Request) {
 
   const type         = (form.get('type')         as string | null) ?? '';
   const restaurantId = (form.get('restaurantId') as string | null) ?? '';
+  const templateId   = (form.get('templateId')   as string | null) ?? '';
   const file         = form.get('file') as File | null;
 
   if (!['empty', 'filled', 'strip', 'logo'].includes(type)) {
@@ -68,7 +69,10 @@ export async function POST(request: Request) {
 
   // ── Upload using service role (bypasses RLS, bucket stays private) ────────
   const bytes = Buffer.from(await file.arrayBuffer());
-  const path  = `${restaurantId}/stamps/${type}.${ext}`;
+  // Scope by templateId when provided, otherwise by restaurantId only (legacy)
+  const path = templateId
+    ? `${restaurantId}/templates/${templateId}/${type}.${ext}`
+    : `${restaurantId}/stamps/${type}.${ext}`;
 
   const { error: uploadErr } = await supabaseAdmin.storage
     .from(BUCKET)
