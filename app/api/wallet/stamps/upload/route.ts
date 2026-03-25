@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     .getPublicUrl(path);
 
   if (publicData?.publicUrl) {
-    return NextResponse.json({ url: publicData.publicUrl });
+    return NextResponse.json({ url: `${publicData.publicUrl}?t=${Date.now()}` });
   }
 
   const { data: signed, error: signErr } = await supabaseAdmin.storage
