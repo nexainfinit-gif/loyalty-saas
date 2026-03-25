@@ -1037,6 +1037,7 @@ function TemplateSaver({
   onReset,
   onTemplateSelect,
   initialTemplateId,
+  isDraft,
 }: {
   controls:       Controls;
   defaults:       Controls;
@@ -1046,6 +1047,7 @@ function TemplateSaver({
   onReset:           () => void;
   onTemplateSelect?: (id: string | null) => void;
   initialTemplateId?: string | null;
+  isDraft?:          boolean;
 }) {
   const { t } = useTranslation();
   const [templates, setTemplates]   = useState<TemplateOption[]>([]);
@@ -1057,13 +1059,21 @@ function TemplateSaver({
   const [mode, setMode]             = useState<'apply' | 'create'>('apply');
 
   useEffect(() => {
-    if (!accessToken || !restaurantId) return;
+    if (!accessToken) return;
     setLoadingList(true);
-    fetch(`/api/admin/wallet/templates?restaurantId=${restaurantId}`)
+    const url = isDraft
+      ? '/api/admin/wallet/templates'
+      : restaurantId
+        ? `/api/admin/wallet/templates?restaurantId=${restaurantId}`
+        : '/api/admin/wallet/templates';
+    fetch(url)
       .then(r => r.json())
       .then(json => {
         if (json.templates) {
-          setTemplates(json.templates.map((t: any) => ({
+          const filtered = isDraft
+            ? json.templates.filter((t: any) => !t.restaurant_id)
+            : json.templates;
+          setTemplates(filtered.map((t: any) => ({
             id: t.id, name: t.name, pass_kind: t.pass_kind,
             config_json: t.config_json ?? null,
           })));
@@ -1078,7 +1088,7 @@ function TemplateSaver({
       })
       .catch(() => {})
       .finally(() => setLoadingList(false));
-  }, [accessToken, restaurantId]);
+  }, [accessToken, restaurantId, isDraft]);
 
   // Notify parent of selected template changes
   useEffect(() => {
@@ -1137,9 +1147,10 @@ function TemplateSaver({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          restaurant_id: restaurantId,
+          ...(!isDraft && restaurantId ? { restaurant_id: restaurantId } : {}),
           name:          newName.trim(),
           pass_kind:     'stamps',
+          status:        isDraft ? 'draft' : 'published',
           primary_color: controls.bgColor,
           config_json:   controlsToConfigJson(controls),
         }),
@@ -1996,6 +2007,7 @@ function WalletPreviewInner() {
               onReset={handleReset}
               onTemplateSelect={setActiveTemplateId}
               initialTemplateId={initialTemplateId}
+              isDraft={merchantMode === 'draft'}
             />
 
           </div>

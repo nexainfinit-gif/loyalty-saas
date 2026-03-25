@@ -85,9 +85,6 @@ export async function POST(request: Request) {
     primary_color, is_repeatable, is_default, valid_from, valid_to, config_json,
   } = body;
 
-  if (!restaurant_id) {
-    return NextResponse.json({ error: 'restaurant_id requis.' }, { status: 400 });
-  }
   if (!name?.trim()) {
     return NextResponse.json({ error: 'Le nom du template est requis.' }, { status: 400 });
   }
@@ -95,19 +92,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'pass_kind doit être "stamps", "points" ou "event".' }, { status: 400 });
   }
 
-  // Verify restaurant exists
-  const { data: restaurant } = await supabaseAdmin
-    .from('restaurants')
-    .select('id')
-    .eq('id', restaurant_id)
-    .maybeSingle();
+  // Verify restaurant exists (if provided — drafts have no restaurant)
+  if (restaurant_id) {
+    const { data: restaurant } = await supabaseAdmin
+      .from('restaurants')
+      .select('id')
+      .eq('id', restaurant_id)
+      .maybeSingle();
 
-  if (!restaurant) {
-    return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
+    if (!restaurant) {
+      return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
+    }
   }
 
   // Clear is_default on existing templates for this restaurant
-  if (is_default === true) {
+  if (is_default === true && restaurant_id) {
     await supabaseAdmin
       .from('wallet_pass_templates')
       .update({ is_default: false })
@@ -117,7 +116,7 @@ export async function POST(request: Request) {
   const { data: template, error } = await supabaseAdmin
     .from('wallet_pass_templates')
     .insert({
-      restaurant_id,
+      restaurant_id: restaurant_id || null,
       name:          name.trim(),
       pass_kind,
       status,
