@@ -1056,6 +1056,7 @@ function TemplateSaver({
   const [saving, setSaving]         = useState(false);
   const [feedback, setFeedback]     = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [newName, setNewName]       = useState('');
+  const [newKind, setNewKind]       = useState<'stamps' | 'points' | 'event'>('stamps');
   const [mode, setMode]             = useState<'apply' | 'create'>('apply');
 
   useEffect(() => {
@@ -1149,7 +1150,7 @@ function TemplateSaver({
         body: JSON.stringify({
           ...(!isDraft && restaurantId ? { restaurant_id: restaurantId } : {}),
           name:          newName.trim(),
-          pass_kind:     'stamps',
+          pass_kind:     newKind,
           status:        isDraft ? 'draft' : 'published',
           primary_color: controls.bgColor,
           config_json:   controlsToConfigJson(controls),
@@ -1271,6 +1272,27 @@ function TemplateSaver({
                 placeholder={t('walletPreview.templatePlaceholder')}
                 className={inputCls}
               />
+            </Field>
+
+            <Field label="Type de carte">
+              <div className="flex gap-2">
+                {(['stamps', 'points', 'event'] as const).map(kind => (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => setNewKind(kind)}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-colors ${
+                      newKind === kind
+                        ? kind === 'stamps' ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        : kind === 'points' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-purple-50 text-purple-700 border-purple-200'
+                        : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {kind === 'stamps' ? 'Tampons' : kind === 'points' ? 'Points' : 'Événement'}
+                  </button>
+                ))}
+              </div>
             </Field>
 
             <button
