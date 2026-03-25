@@ -33,7 +33,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Accès refusé.' }, { status: 403 });
   }
 
-  const { data: templates, error } = await supabaseAdmin
+  // 1. Templates owned by this restaurant
+  const { data: ownTemplates, error } = await supabaseAdmin
     .from('wallet_pass_templates')
     .select('id, name, pass_kind, status, primary_color, config_json, is_repeatable, is_default, valid_from, valid_to, created_at')
     .eq('restaurant_id', restaurantId)
@@ -44,8 +45,30 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Count active passes per template in one query
-  const ids = (templates ?? []).map(t => t.id);
+  // 2. Also find draft templates (restaurant_id IS NULL) that have active passes for this restaurant
+  const { data: draftPasses } = await supabaseAdmin
+    .from('wallet_passes')
+    .select('template_id')
+    .eq('restaurant_id', restaurantId)
+    .eq('status', 'active');
+
+  const draftTemplateIds = [...new Set((draftPasses ?? []).map(p => p.template_id))]
+    .filter(id => !(ownTemplates ?? []).some(t => t.id === id));
+
+  let draftTemplates: typeof ownTemplates = [];
+  if (draftTemplateIds.length > 0) {
+    const { data } = await supabaseAdmin
+      .from('wallet_pass_templates')
+      .select('id, name, pass_kind, status, primary_color, config_json, is_repeatable, is_default, valid_from, valid_to, created_at')
+      .in('id', draftTemplateIds)
+      .is('restaurant_id', null);
+    draftTemplates = data ?? [];
+  }
+
+  const allTemplates = [...(ownTemplates ?? []), ...draftTemplates];
+
+  // Count active passes per template
+  const ids = allTemplates.map(t => t.id);
   const passCountMap: Record<string, number> = {};
 
   if (ids.length > 0) {
@@ -53,6 +76,7 @@ export async function GET(request: Request) {
       .from('wallet_passes')
       .select('template_id')
       .in('template_id', ids)
+      .eq('restaurant_id', restaurantId)
       .eq('status', 'active');
 
     (counts ?? []).forEach(r => {
@@ -61,7 +85,7 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({
-    templates: (templates ?? []).map(t => ({
+    templates: allTemplates.map(t => ({
       ...t,
       active_passes: passCountMap[t.id] ?? 0,
     })),
