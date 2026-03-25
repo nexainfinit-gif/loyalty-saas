@@ -1049,9 +1049,7 @@ function TemplateSaver({
   useEffect(() => {
     if (!accessToken || !restaurantId) return;
     setLoadingList(true);
-    fetch(`/api/wallet/templates?restaurantId=${restaurantId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
+    fetch(`/api/admin/wallet/templates?restaurantId=${restaurantId}`)
       .then(r => r.json())
       .then(json => {
         if (json.templates) {
@@ -1081,11 +1079,10 @@ function TemplateSaver({
     setSaving(true);
     setFeedback(null);
     try {
-      const res = await fetch(`/api/wallet/templates/${selectedId}`, {
+      const res = await fetch(`/api/admin/wallet/templates/${selectedId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           primary_color: controls.bgColor,
@@ -1119,15 +1116,15 @@ function TemplateSaver({
     setSaving(true);
     setFeedback(null);
     try {
-      const res = await fetch('/api/wallet/templates', {
+      const res = await fetch('/api/admin/wallet/templates', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
+          restaurant_id: restaurantId,
           name:          newName.trim(),
-          type:          'stamps',
+          pass_kind:     'stamps',
           primary_color: controls.bgColor,
           config_json:   controlsToConfigJson(controls),
         }),
