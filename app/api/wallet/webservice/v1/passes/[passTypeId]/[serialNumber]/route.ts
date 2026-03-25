@@ -129,8 +129,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   };
 
   // ── Build pkpass ─────────────────────────────────────────────────────────
-  // passKind: loyalty_settings.program_type is the source of truth
-  const effectivePassKind = (loyaltySettings?.program_type === 'stamps' ? 'stamps' : 'points') as 'stamps' | 'points';
+  // passKind: template.pass_kind is the source of truth, fallback to loyalty_settings
+  const templatePassKind = tmpl.pass_kind as string | undefined;
+  const effectivePassKind = (
+    templatePassKind === 'stamps' || templatePassKind === 'points' || templatePassKind === 'event'
+      ? templatePassKind
+      : loyaltySettings?.program_type === 'stamps' ? 'stamps' : 'points'
+  ) as 'stamps' | 'points' | 'event';
 
   const input: PassBuildInput = {
     passId:         pass.id,
