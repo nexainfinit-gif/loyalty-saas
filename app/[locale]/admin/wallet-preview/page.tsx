@@ -1315,6 +1315,19 @@ function WalletPreviewInner() {
   const [accessToken, setToken]   = useState('');
   const [preloadTemplateId, setPreloadTemplateId] = useState<string | null>(initialTemplateId);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+
+  // Re-trigger preload when URL ?templateId changes (component reuse)
+  useEffect(() => {
+    if (initialTemplateId) {
+      if (initialTemplateId !== activeTemplateId) {
+        setPreloadTemplateId(initialTemplateId);
+      }
+    } else if (defaults) {
+      // No templateId in URL (new template) — reset to defaults
+      setControls(defaults);
+      setActiveTemplateId(null);
+    }
+  }, [initialTemplateId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [restaurants, setRestaurants] = useState<{ id: string; name: string }[]>([]);
   const [merchantMode, setMerchantMode] = useState<'restaurant' | 'draft'>('restaurant');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('');
@@ -1454,6 +1467,7 @@ function WalletPreviewInner() {
               : freshBase;
             setControls(merged);
             setDefaults(freshBase);
+            setActiveTemplateId(preloadTemplateId);
           }
         }
       } catch { /* ignore */ }
