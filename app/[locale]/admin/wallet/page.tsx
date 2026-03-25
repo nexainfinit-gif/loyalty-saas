@@ -792,6 +792,22 @@ export default function AdminWalletPage() {
             </div>
 
             <div className="px-6 py-5 space-y-4">
+              {/* Restaurant selector for draft templates (no restaurant_id) */}
+              {!issueRestaurantId && (
+                <FormField label={t('admin.walletRestaurantLabel')}>
+                  <select
+                    value={issueRestaurantId}
+                    onChange={(e) => setIssueRestaurantId(e.target.value)}
+                    className={selectCls}
+                  >
+                    <option value="">{t('admin.walletSelectRestaurant')}</option>
+                    {restaurants.map((r) => (
+                      <option key={r.id} value={r.id}>{r.name} ({r.slug})</option>
+                    ))}
+                  </select>
+                </FormField>
+              )}
+
               <FormField
                 label={t('admin.walletIssueEmailLabel')}
                 hint={t('admin.walletIssueEmailHint')}
@@ -849,7 +865,7 @@ export default function AdminWalletPage() {
               </button>
               <button
                 onClick={handleIssue}
-                disabled={issuing || !issueInput.trim()}
+                disabled={issuing || !issueInput.trim() || !issueRestaurantId}
                 className="px-4 py-2 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
               >
                 {issuing ? t('admin.walletIssuing') : t('admin.walletIssueBtn')}
