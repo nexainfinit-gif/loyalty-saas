@@ -1091,6 +1091,8 @@ function TemplateSaver({
   const [saving, setSaving]         = useState(false);
   const [feedback, setFeedback]     = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [newName, setNewName]       = useState('');
+  const [targetRid, setTargetRid]   = useState('');
+  const [allRestaurants, setAllRestaurants] = useState<{ id: string; name: string }[]>([]);
   const [mode, setMode]             = useState<'apply' | 'create'>('apply');
 
   useEffect(() => {
@@ -1124,6 +1126,17 @@ function TemplateSaver({
       .catch(() => {})
       .finally(() => setLoadingList(false));
   }, [accessToken, restaurantId, isDraft]);
+
+  // Fetch restaurants for draft target selector
+  useEffect(() => {
+    if (!isDraft) return;
+    fetch('/api/admin/restaurants?filter=all&sort=name&order=asc')
+      .then(r => r.json())
+      .then(json => {
+        setAllRestaurants((json.restaurants ?? []).map((r: { id: string; name: string }) => ({ id: r.id, name: r.name })));
+      })
+      .catch(() => {});
+  }, [isDraft]);
 
   // Notify parent of selected template changes
   useEffect(() => {
@@ -1182,10 +1195,12 @@ function TemplateSaver({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...(!isDraft && restaurantId ? { restaurant_id: restaurantId } : {}),
+          ...(isDraft
+            ? (targetRid ? { restaurant_id: targetRid } : {})
+            : restaurantId ? { restaurant_id: restaurantId } : {}),
           name:          newName.trim(),
           pass_kind:     controls.passKind,
-          status:        isDraft ? 'draft' : 'published',
+          status:        isDraft && !targetRid ? 'draft' : 'published',
           primary_color: controls.bgColor,
           config_json:   controlsToConfigJson(controls),
         }),
@@ -1308,6 +1323,23 @@ function TemplateSaver({
               />
             </Field>
 
+            {isDraft && (
+              <Field label="Associer à un restaurant">
+                <select
+                  value={targetRid}
+                  onChange={e => setTargetRid(e.target.value)}
+                  className={inputCls}
+                >
+                  <option value="">— Brouillon global (aucun) —</option>
+                  {allRestaurants.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  {targetRid ? 'Le template sera publié pour ce restaurant.' : 'Sauvegardé comme brouillon réutilisable.'}
+                </p>
+              </Field>
+            )}
 
             <button
               onClick={handleCreate}
