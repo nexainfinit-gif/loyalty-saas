@@ -47,3 +47,13 @@ next-env.d.ts
 
 # Apple Wallet certificates (NEVER commit)
 certs/
+
+# Local artifacts / business files — never version these
+/_archive/
+/*.png
+/*.jpg
+/*.jpeg
+/*.xlsx
+/*.pdf
+/.~lock*
+/tests/screenshots/
