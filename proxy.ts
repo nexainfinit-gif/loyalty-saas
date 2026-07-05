@@ -20,9 +20,13 @@ const IGNORED_PREFIXES = [
 
 /** Auth-protected paths (checked AFTER locale prefix is stripped). */
 const PROTECTED_PATHS = [
-  '/dashboard/wallet',
-  '/admin/wallet-preview',
-  '/dashboard/wallet-studio',
+  '/dashboard',
+  '/admin',
+];
+
+/** Public exceptions inside protected prefixes. */
+const PUBLIC_PATHS = [
+  '/dashboard/login',
 ];
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
@@ -87,10 +91,14 @@ export async function proxy(request: NextRequest) {
     sameSite: 'lax',
   });
 
-  /* ── Auth protection for wallet routes ───────────────────────────────── */
+  /* ── Auth protection for dashboard/admin routes ──────────────────────── */
+  // Server-side session gate (defence-in-depth: pages also check client-side,
+  // and every API route enforces its own auth). Role checks (platform owner
+  // for /admin) remain in the API layer — this gate only requires a session.
 
   const strippedPath = stripLocalePrefix(pathname, pathnameLocale);
-  const needsAuth = PROTECTED_PATHS.some((p) => strippedPath.startsWith(p));
+  const isPublic = PUBLIC_PATHS.some((p) => strippedPath.startsWith(p));
+  const needsAuth = !isPublic && PROTECTED_PATHS.some((p) => strippedPath.startsWith(p));
 
   if (needsAuth) {
     const supabase = createServerClient(
