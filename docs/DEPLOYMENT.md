@@ -125,6 +125,15 @@ Full migration list (run all for fresh deployment):
 | 031 | `031_per_pass_counters.sql` | Per-pass points/stamps counters |
 | 032 | `032_fix_appointments_rls.sql` | **Fix broken RLS from 009 — run this on existing DBs** |
 | 033 | `033_scan_actions.sql` | Configurable scan actions (formerly `sql/create_scan_actions.sql`) |
+| 034 | `034_waitlist_leads.sql` | Leads waitlist du site marketing |
+| 035 | `035_plan_limits.sql` | Limites numériques par plan (source unique) |
+| 036 | `036_email_quota.sql` | Quota d'emails/mois par plan |
+| 037 | `037_campaigns_legacy_columns.sql` | **Répare la création de campagne** (drop NOT NULL segment_type + drop CHECK type obsolète) |
+| 038 | `038_customers_qr_token_default.sql` | **Défaut + backfill qr_token** (sinon clients non scannables) |
+
+> ⚠️ **Vérifier l'état RÉEL des migrations avant tout lancement.** Le 2026-07-05, plusieurs
+> migrations committées n'avaient jamais été exécutées en base (031, 011a…), cassant silencieusement
+> le scan et le booking. Ne pas se fier à la présence du fichier — probe les colonnes/tables en DB.
 
 ### Enable RLS
 
