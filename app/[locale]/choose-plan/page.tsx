@@ -39,11 +39,18 @@ export default function ChoosePlanPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace('/dashboard/login'); return; }
 
-      const { data: resto } = await supabase
+      // NB: an owner can have several restaurants (incl. demo ones) —
+      // .maybeSingle() errors silently on >1 row and caused an infinite
+      // dashboard → choose-plan → onboarding loop. Same pattern as the
+      // dashboard: first non-demo restaurant.
+      const { data: restos } = await supabase
         .from('restaurants')
         .select('id, subscription_status')
         .eq('owner_id', session.user.id)
-        .maybeSingle();
+        .eq('is_demo', false)
+        .order('created_at', { ascending: true })
+        .limit(1);
+      const resto = restos?.[0] ?? null;
 
       if (!resto) { router.replace('/onboarding'); return; }
       if (resto.subscription_status === 'active') {

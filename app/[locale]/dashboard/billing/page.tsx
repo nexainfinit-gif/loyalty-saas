@@ -97,11 +97,16 @@ export default function BillingPage() {
       if (!session) { router.replace('/dashboard/login'); return }
       setAccessToken(session.access_token)
 
-      const { data: resto } = await supabase
+      // First non-demo restaurant — .maybeSingle() errors on >1 row
+      // (owners can have demo + real restaurants). Same pattern as dashboard.
+      const { data: restos } = await supabase
         .from('restaurants')
         .select('id, name, plan, plan_id, subscription_status, current_period_end, stripe_customer_id, plans(name, key)')
         .eq('owner_id', session.user.id)
-        .maybeSingle()
+        .eq('is_demo', false)
+        .order('created_at', { ascending: true })
+        .limit(1)
+      const resto = restos?.[0] ?? null
 
       if (!resto) { router.replace('/onboarding'); return }
       setRestaurant(resto as unknown as Restaurant)

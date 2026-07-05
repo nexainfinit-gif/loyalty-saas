@@ -14,14 +14,17 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Vérifie si restaurant existe déjà pour cet owner
+  // Vérifie si un restaurant (non-démo) existe déjà pour cet owner.
+  // NB: .single() échouait silencieusement dès que l'owner avait plusieurs
+  // lignes (restos démo) — le garde ne bloquait plus rien.
   const { data: existingOwner } = await supabase
     .from('restaurants')
     .select('id')
     .eq('owner_id', user.id)
-    .single()
+    .eq('is_demo', false)
+    .limit(1)
 
-  if (existingOwner) return Response.json({ error: 'Restaurant déjà créé' }, { status: 409 })
+  if (existingOwner?.length) return Response.json({ error: 'Restaurant déjà créé' }, { status: 409 })
 
   const { name, slug, email, city, phone, business_type, primary_color, logo_url } = await req.json()
 
@@ -82,11 +85,15 @@ export async function PATCH(req: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: restaurant } = await supabase
+  // Premier restaurant non-démo (un owner peut avoir plusieurs lignes)
+  const { data: restos } = await supabase
     .from('restaurants')
     .select('id')
     .eq('owner_id', user.id)
-    .single()
+    .eq('is_demo', false)
+    .order('created_at', { ascending: true })
+    .limit(1)
+  const restaurant = restos?.[0] ?? null
 
   if (!restaurant) return Response.json({ error: 'Restaurant introuvable' }, { status: 404 })
 

@@ -12,11 +12,16 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // ── Restaurant lookup ────────────────────────────────────────────────────
-  const { data: restaurant } = await supabase
+  // Premier restaurant non-démo — .single() échoue si l'owner a plusieurs
+  // lignes (ex. restos démo du platform owner).
+  const { data: restos } = await supabase
     .from('restaurants')
     .select('id')
     .eq('owner_id', session.user.id)
-    .single();
+    .eq('is_demo', false)
+    .order('created_at', { ascending: true })
+    .limit(1);
+  const restaurant = restos?.[0] ?? null;
 
   if (!restaurant) return NextResponse.json({ error: 'Restaurant introuvable' }, { status: 404 });
 
