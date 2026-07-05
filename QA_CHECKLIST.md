@@ -2,8 +2,8 @@
 # Audit 2026-03-18 | 18 bugs trouvés
 # Format: [ ] À faire | [~] En cours | [x] Corrigé & vérifié
 #
-# MISE À JOUR 2026-07-05 : 17/18 bugs corrigés dans le commit f097f84
-# (2026-03-18) — vérifié dans le code actuel. Seul BUG-17 (Low) reste ouvert.
+# MISE À JOUR 2026-07-05 : 18/18 bugs corrigés — 17 dans f097f84 (2026-03-18),
+# BUG-17 dans 156610c (2026-07-05). CHECKLIST CLOSE.
 
 ---
 
@@ -93,10 +93,10 @@
 
 ## LOW (polish / perf)
 
-- [ ] **BUG-17** RSC prefetch excessifs (15-20+ requêtes par page)
-  - SEUL BUG RESTANT — non traité dans f097f84
-  - Évaluer si tous les prefetch sont nécessaires
-  - Config Next.js ou `<Link prefetch={false}>`
+- [x] **BUG-17** RSC prefetch excessifs (15-20+ requêtes par page)
+  - Corrigé (156610c, 2026-07-05) : `prefetch={false}` par défaut sur LocaleLink
+    (surchargeable) + liens directs de la sidebar dashboard
+  - Fichiers : `components/LocaleLink.tsx`, `app/[locale]/dashboard/page.tsx`
 
 ---
 
@@ -107,5 +107,5 @@
 | Quick wins | 8 | 8 |
 | Critical | 5 | 5 |
 | High | 4 | 4 |
-| Low | 1 | 0 |
-| **Total** | **18** | **17** |
+| Low | 1 | 1 |
+| **Total** | **18** | **18** |
