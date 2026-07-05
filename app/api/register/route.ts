@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       email: email.toLowerCase().trim(),
       birth_date: birthDate || null,
       postal_code: postalCode || null,
-      marketing_consent: true,
+      consent_marketing: marketingConsent,
       consent_date: new Date().toISOString(),
       consent_ip: ip,
       email_verified: false,
@@ -190,6 +190,15 @@ export async function POST(req: NextRequest) {
   const appleWalletUrl = appleResult
     ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/wallet/passes/${appleResult.passId}/pkpass?token=${appleResult.token}`
     : null;
+
+  // Backfill pass-level counters if welcome bonus was awarded and a pass was auto-issued.
+  // The welcome bonus transaction fires before the pass exists, so pass counters are 0.
+  if (welcomeBonus > 0 && appleResult?.passId) {
+    await supabase
+      .from('wallet_passes')
+      .update({ total_points: welcomeBonus })
+      .eq('id', appleResult.passId);
+  }
 
   try {
     await sendWelcomeEmail({

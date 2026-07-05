@@ -73,15 +73,38 @@ describe('parseBody', () => {
     const result = parseBody(registerSlugSchema, {
       first_name: 'Luc',
       email: 'luc@example.com',
+      consent_marketing: true,
     });
 
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.first_name).toBe('Luc');
       expect(result.data.email).toBe('luc@example.com');
-      // Optional field defaults
-      expect(result.data.consent_marketing).toBe(false);
+      expect(result.data.consent_marketing).toBe(true);
     }
+  });
+
+  it('rejects registration without explicit marketing consent (RGPD — BUG-02)', () => {
+    const result = parseBody(registerSlugSchema, {
+      first_name: 'Luc',
+      email: 'luc@example.com',
+      // consent_marketing intentionally omitted — must be rejected
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('Vous devez accepter les conditions');
+    }
+  });
+
+  it('rejects consent_marketing: false (RGPD — explicit true required)', () => {
+    const result = parseBody(registerSlugSchema, {
+      first_name: 'Luc',
+      email: 'luc@example.com',
+      consent_marketing: false,
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it('returns { success: false, error } for invalid input', () => {

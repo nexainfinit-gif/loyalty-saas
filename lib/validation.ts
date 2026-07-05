@@ -39,6 +39,11 @@ export type ParseResult<T> =
  * If the schema already defines a custom French message, keep it as-is.
  */
 function humanizeZodMessage(issue: z.ZodIssue): string {
+  // Custom messages defined in schemas (French) must win over generic mapping.
+  // Zod default (English) messages all start with one of these prefixes.
+  const isZodDefault = /^(Invalid|Too|Expected|Unrecognized|Required)/.test(issue.message);
+  if (!isZodDefault) return issue.message;
+
   const msg = issue.message.toLowerCase();
   const code = issue.code;
   if (code === 'too_small')                  return 'Ce champ est obligatoire.';
@@ -47,8 +52,6 @@ function humanizeZodMessage(issue: z.ZodIssue): string {
   if (code === 'invalid_type')               return 'Format invalide.';
   if (code === 'invalid_format')             return 'Format invalide.';
   if (code === 'invalid_value')              return 'Valeur invalide.';
-  // Keep custom French messages already defined in schemas
-  if (/[À-ÿà-ÿ]/.test(issue.message) || issue.message.length > 10) return issue.message;
   return 'Format invalide.';
 }
 

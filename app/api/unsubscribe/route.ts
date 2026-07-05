@@ -13,11 +13,8 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { NextRequest } from 'next/server';
 
-// ── Column name resolution ─────────────────────────────────────────────────
-// The codebase has an inconsistency: CLAUDE.md documents the column as
-// "marketing_consent" while the register/campaigns routes use "consent_marketing".
-// We attempt the update with both names so the endpoint works regardless.
-const CONSENT_COLUMNS = ['consent_marketing', 'marketing_consent'] as const;
+// Consent column verified against the live schema (2026-07-05): the customers
+// table has a single column named "consent_marketing".
 
 export async function GET(req: NextRequest) {
   // Strip any surrounding { } that can end up in the URL if copied literally
@@ -53,24 +50,13 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Step 2: set marketing consent to false ─────────────────────────────
-  // Try each possible column name until one succeeds.
-  let updated = false;
-  for (const col of CONSENT_COLUMNS) {
-    const { error: updateError } = await supabaseAdmin
-      .from('customers')
-      .update({ [col]: false })
-      .eq('id', customer.id);
+  const { error: updateError } = await supabaseAdmin
+    .from('customers')
+    .update({ consent_marketing: false })
+    .eq('id', customer.id);
 
-    if (!updateError) {
-      updated = true;
-      break;
-    }
-    // Log non-fatal: column may simply not exist under this name.
-    console.warn(`[unsubscribe] update with col="${col}" failed:`, updateError.message);
-  }
-
-  if (!updated) {
-    console.error('[unsubscribe] all column name attempts failed for customer:', customer.id);
+  if (updateError) {
+    console.error('[unsubscribe] consent update failed for customer:', customer.id, updateError.message);
     return pageResponse(500, 'error');
   }
 

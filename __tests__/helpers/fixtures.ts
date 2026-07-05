@@ -53,7 +53,6 @@ export const CUSTOMER = {
   completed_cards: 0,
   birth_date: '1990-06-15',
   postal_code: '75001',
-  marketing_consent: true,
   consent_marketing: true,
   consent_date: '2026-01-01T00:00:00Z',
   last_visit_at: '2026-03-01T12:00:00Z',
