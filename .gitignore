@@ -57,3 +57,7 @@ certs/
 /*.pdf
 /.~lock*
 /tests/screenshots/
+
+# Playwright artifacts
+/test-results/
+/playwright-report/
