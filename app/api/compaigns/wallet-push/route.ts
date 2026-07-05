@@ -153,7 +153,9 @@ export async function POST(req: Request) {
       type: 'wallet_push',
       subject: 'Notification Wallet',
       body: message.trim(),
+      content: message.trim(),
       segment: seg,
+      segment_type: seg,
       status: 'sending',
       recipients_count: passes.length,
     })

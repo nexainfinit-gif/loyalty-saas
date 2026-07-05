@@ -111,7 +111,10 @@ export async function POST(req: Request) {
     )
   }
 
-  // Sauvegarde la campagne
+  // Sauvegarde la campagne.
+  // segment_type/content sont des colonnes legacy (NOT NULL avant migration 037)
+  // dupliquant segment/body — on les remplit pour rester compatible même si la
+  // migration n'a pas encore été appliquée.
   const { data: campaign, error: campErr } = await supabaseAdmin
     .from('campaigns').insert({
       restaurant_id: restaurant.id,
@@ -119,13 +122,16 @@ export async function POST(req: Request) {
       type: type ?? 'custom',
       subject,
       body: bodyText,
+      content: bodyText,
       segment,
+      segment_type: segment,
       status: scheduled_at ? 'scheduled' : 'sending',
       scheduled_at: scheduled_at ?? null,
       recipients_count: recipients.length,
     }).select().single()
 
   if (campErr || !campaign) {
+    logger.error({ ctx: 'campaigns', rid: restaurant.id, msg: 'campaign insert failed', err: campErr?.message })
     return Response.json({ error: 'Erreur création campagne' }, { status: 500 })
   }
 

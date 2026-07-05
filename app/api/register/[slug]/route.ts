@@ -126,6 +126,8 @@ export async function POST(
       consent_ip: ip,
       email_verified: false,
       email_verification_token: emailVerificationToken,
+      // qr_token explicite : pas de défaut DB fiable, clé du scan/QR/wallet.
+      qr_token: crypto.randomUUID(),
     })
     .select()
     .single()

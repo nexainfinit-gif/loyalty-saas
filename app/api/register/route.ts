@@ -129,6 +129,9 @@ export async function POST(req: NextRequest) {
       consent_ip: ip,
       email_verified: false,
       email_verification_token: emailVerificationToken,
+      // qr_token explicite : la colonne n'a pas de défaut DB fiable et c'est
+      // la clé primaire du scan/QR/wallet/unsubscribe — jamais NULL.
+      qr_token: crypto.randomUUID(),
     })
     .select()
     .single();

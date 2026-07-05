@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
     }
   );
 
+  // OTP flow (magic link with token_hash + type)
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({
       token_hash,
@@ -35,7 +36,18 @@ export async function GET(req: NextRequest) {
     if (!error) {
       return NextResponse.redirect(`${origin}/dashboard`);
     }
-    
-    return NextResponse.redirect(`${origin}/dashboard/login?error=${error.message}`);
+    return NextResponse.redirect(`${origin}/dashboard/login?error=${encodeURIComponent(error.message)}`);
   }
+
+  // PKCE flow (code exchange)
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) {
+      return NextResponse.redirect(`${origin}/dashboard`);
+    }
+    return NextResponse.redirect(`${origin}/dashboard/login?error=${encodeURIComponent(error.message)}`);
+  }
+
+  // No valid auth params → never fall through with an empty response (would 500).
+  return NextResponse.redirect(`${origin}/dashboard/login?error=lien_invalide`);
 }
