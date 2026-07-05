@@ -78,6 +78,7 @@ export default function ScannerPage() {
         .from('restaurants')
         .select('scanner_token')
         .eq('owner_id', session.user.id)
+        .eq('is_demo', false)
         .order('created_at', { ascending: true })
         .limit(1);
 

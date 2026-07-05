@@ -53,12 +53,18 @@ export default function OnboardingPage() {
         router.push('/dashboard/login');
         return;
       }
-      const { data: existing } = await supabase
+      // Même pattern robuste que le dashboard (commit 81a8d97) : un owner peut
+      // posséder plusieurs restaurants (démos + réel). .maybeSingle() PLANTE
+      // sur >1 ligne → l'onboarding croyait à tort qu'aucun resto n'existait et
+      // piégeait l'utilisateur sur le formulaire. On prend le 1er resto RÉEL.
+      const { data: existingRows } = await supabase
         .from('restaurants')
         .select('id')
         .eq('owner_id', session.user.id)
-        .maybeSingle();
-      if (existing) {
+        .eq('is_demo', false)
+        .order('created_at', { ascending: true })
+        .limit(1);
+      if (existingRows && existingRows.length > 0) {
         window.location.href = `/${locale}/choose-plan`;
         return;
       }

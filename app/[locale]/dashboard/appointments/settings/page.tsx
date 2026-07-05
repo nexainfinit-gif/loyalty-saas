@@ -42,12 +42,16 @@ export default function SettingsPage() {
         // Fetch restaurant slug for embed code
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          const { data: resto } = await supabase
+          // is_demo=false + limit(1) : .maybeSingle() plante si l'owner a
+          // plusieurs restaurants (démos + réel) — cf. commit 81a8d97.
+          const { data: restos } = await supabase
             .from('restaurants')
             .select('slug')
             .eq('owner_id', user.id)
-            .maybeSingle()
-          if (resto?.slug) setSlug(resto.slug)
+            .eq('is_demo', false)
+            .order('created_at', { ascending: true })
+            .limit(1)
+          if (restos?.[0]?.slug) setSlug(restos[0].slug)
         }
 
         // Fetch Google Calendar status
