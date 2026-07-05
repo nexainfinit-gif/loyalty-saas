@@ -79,17 +79,11 @@ Set all of the following in **Vercel > Project > Settings > Environment Variable
 
 Execute the following migrations **in order** against your Supabase SQL editor or via the CLI. If deploying fresh, run all migrations. If upgrading from a prior version, run only the ones not yet applied.
 
-Key recent migrations (013-016):
-
 ```bash
 # From the project root:
 supabase db push --db-url "postgresql://postgres:<password>@<host>:5432/postgres"
 
-# Or manually in Supabase SQL Editor, run each file in order:
-# docs/migrations/013_indexes_rls_serial.sql   — Performance indexes + RLS policies
-# docs/migrations/014_consent_ip.sql           — GDPR consent IP tracking
-# docs/migrations/015_audit_log.sql            — Audit log table
-# docs/migrations/016_email_verification.sql   — Email verification flow
+# Or manually in Supabase SQL Editor, run each file in order.
 ```
 
 Full migration list (run all for fresh deployment):
@@ -104,15 +98,33 @@ Full migration list (run all for fresh deployment):
 | 005 | `005_dynamic_plans.sql` | Dynamic plans table |
 | 006 | `006_kpi_engine.sql` | KPI engine functions |
 | 007 | `007_restaurant_metrics.sql` | Restaurant metrics materialization |
-| 008 | `008_growth_actions.sql` | Growth action tracking |
-| 009 | `009_appointments.sql` | Appointments / booking module |
-| 010 | `010_no_show_tracking.sql` | No-show tracking |
+| 008 | `008_growth_actions.sql` | Appointments growth action tracking |
+| 009 | `009_appointments.sql` | Appointments / booking module ⚠️ RLS policies broken — fixed by 032 |
+| 010 | `010_no_show_tracking.sql` | No-show tracking (rebuilt 2026-07-05 from live schema) |
 | 011 | `011_stripe_billing.sql` | Stripe billing integration |
+| 011a | `011a_appointment_cancel_token.sql` | Appointment cancel token |
 | 012 | `012_tutorial_tracking.sql` | Tutorial completion tracking |
 | 013 | `013_indexes_rls_serial.sql` | Performance indexes + RLS |
 | 014 | `014_consent_ip.sql` | GDPR consent IP |
 | 015 | `015_audit_log.sql` | Audit log |
 | 016 | `016_email_verification.sql` | Email verification |
+| 017 | `017_team_invites.sql` | Team invites + members |
+| 018 | `018_scan_integrity.sql` | scan_events + wallet_sync_queue (idempotency) |
+| 019 | `019_wallet_push_registrations.sql` | Apple Wallet APNS registrations |
+| 020 | `020_referral_system.sql` | Referral system |
+| 021 | `021_vip_threshold.sql` | VIP thresholds |
+| 022 | `022_reward_pending.sql` | Reward pending flag |
+| 023 | `023_wallet_promo_message.sql` | Wallet promo message |
+| 024 | `024_demo_mode.sql` | Demo mode + starter plan backfill |
+| 025 | `025_no_show_threshold.sql` | No-show blocking threshold |
+| 026 | `026_waiting_list.sql` | Booking waiting list |
+| 027 | `027_recurring_appointments.sql` | Recurring appointments |
+| 028 | `028_google_calendar_sync.sql` | Google Calendar sync |
+| 029 | `029_client_accounts.sql` | Client self-service sessions |
+| 030 | `030_draft_templates.sql` | Draft wallet templates |
+| 031 | `031_per_pass_counters.sql` | Per-pass points/stamps counters |
+| 032 | `032_fix_appointments_rls.sql` | **Fix broken RLS from 009 — run this on existing DBs** |
+| 033 | `033_scan_actions.sql` | Configurable scan actions (formerly `sql/create_scan_actions.sql`) |
 
 ### Enable RLS
 
@@ -134,29 +146,19 @@ vercel --prod
 
 ### Cron Jobs
 
-Add the following to `vercel.json`:
-
-```json
-{
-  "crons": [
-    {
-      "path": "/api/cron/birthdays",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/cert-check",
-      "schedule": "0 8 * * 1"
-    }
-  ]
-}
-```
+The 7 cron jobs are defined in `vercel.json` (source of truth):
 
 | Cron | Schedule | Description |
 |------|----------|-------------|
-| `/api/cron/birthdays` | Daily at 09:00 UTC | Sends birthday reward emails |
-| `/api/cron/cert-check` | Weekly on Monday at 08:00 UTC | Checks Apple Wallet certificate expiry |
+| `/api/cron/wallet-sync` | Daily at 01:00 UTC | Drains wallet_sync_queue + retries failed Google Wallet syncs |
+| `/api/cron/metrics-daily` | Daily at 01:00 UTC | Computes restaurant_metrics_daily rows |
+| `/api/cron/metrics` | Daily at 02:00 UTC | Health/upgrade/churn scores + growth triggers |
+| `/api/cron/reminders` | Daily at 08:00 UTC | Appointment reminder emails |
+| `/api/cron/cert-check` | Weekly Monday 08:00 UTC | Apple Wallet certificate expiry alerting |
+| `/api/cron/birthdays` | Daily at 09:00 UTC | Birthday reward emails |
+| `/api/cron/followup` | Daily at 10:00 UTC | Post-appointment follow-up emails |
 
-Both endpoints are secured with the `CRON_SECRET` header.
+All endpoints require `Authorization: Bearer $CRON_SECRET` (timing-safe comparison).
 
 ---
 

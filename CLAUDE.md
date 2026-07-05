@@ -1,17 +1,23 @@
 # CLAUDE.md — Loyalty SaaS
 
 ## Project Overview
-A loyalty program SaaS for restaurants. Owners manage customer rewards (points or stamps), send email campaigns, and issue Google Wallet cards & Apple wallet. Customers self-register via a public page and accumulate points by scanning QR codes.
+A loyalty program SaaS for restaurants & local businesses (brand: Rebites). Owners manage customer rewards (points or stamps), send email campaigns, issue Google & Apple Wallet passes, and (for eligible business types) manage appointments/booking. Customers self-register via a public page and accumulate points by scanning QR codes. Stripe-billed subscription plans, super-admin platform panel, i18n (fr/en/nl/it/es).
+
+> Doc refreshed 2026-07-05 from a full codebase audit. See `docs/DEPLOYMENT.md` for the deploy runbook and `docs/migrations/` for the full data model.
 
 ---
 
 ## Tech Stack
 - **Framework**: Next.js (App Router, TypeScript)
 - **UI**: React 19, TailwindCSS 4, Recharts, React-QR-Code
-- **Database/Auth**: Supabase (PostgreSQL + JWT auth)
+- **Database/Auth**: Supabase (PostgreSQL + JWT auth), no ORM — raw SDK
+- **Billing**: Stripe (checkout, webhook, customer portal, dynamic plans in DB)
 - **Email**: Resend
-- **Digital Wallet**: Google Wallet API (JWT-based)
-- **Deployment**: Vercel (with Cron jobs)
+- **Digital Wallet**: Google Wallet API (JWT) + Apple Wallet (pkpass, APNS push, web service v1)
+- **Observability**: Sentry (env-gated), structured logger (`lib/logger.ts`)
+- **Tests**: Vitest (`__tests__/`), Playwright configured (no specs yet), k6 load tests (`load-tests/`)
+- **i18n**: 5 locales via `[locale]` routing (`proxy.ts` middleware + `lib/i18n*.ts`)
+- **Deployment**: Vercel (7 cron jobs — see `vercel.json`)
 
 ---
 
@@ -20,7 +26,9 @@ A loyalty program SaaS for restaurants. Owners manage customer rewards (points o
 npm run dev      # Development server (http://localhost:3000)
 npm run build    # Production build
 npm run start    # Run production build
-npm run lint     # ESLint
+npm run lint     # ESLint (47 known errors — non-blocking in CI for now)
+npm run typecheck # tsc --noEmit (clean — MUST stay clean, CI gate)
+npm run test     # Vitest (CI gate)
 ```
 
 ---
@@ -43,42 +51,51 @@ GOOGLE_WALLET_PRIVATE_KEY
 ## Project Structure
 ```
 app/
-├── api/                    # API routes
-│   ├── auth/callback/      # Supabase OAuth callback
-│   ├── register/           # Customer registration
-│   ├── scan/[token]/       # QR code scanning (points redemption)
-│   ├── wallet/[customerId] # Google Wallet card management
-│   ├── compaigns/          # Email campaign dispatch
-│   ├── cron/birthdays/     # Daily birthday email (Vercel Cron, 9 AM UTC)
-│   ├── export-csv/         # Customer data export
-│   ├── upload-logo/        # Restaurant logo upload
-│   └── Restaurant/Create/  # Restaurant creation
-├── dashboard/              # Protected owner dashboard
-│   ├── page.tsx            # Main dashboard (large client component)
-│   └── scanner/            # QR code scanner
-├── register/[slug]/        # Public customer registration form
-├── onboarding/             # Restaurant onboarding flow
-└── auth/confirm/           # Email confirmation
+├── [locale]/               # ALL pages are locale-prefixed (fr/en/nl/it/es)
+│   ├── page.tsx            # Root = auth redirector (NO landing page yet)
+│   ├── dashboard/          # Owner dashboard (page.tsx ~2300 lines) + scanner,
+│   │                       #   wallet studio, appointments/*, billing, login
+│   ├── admin/              # Super-admin panel (restaurants, plans, KPIs,
+│   │                       #   impersonation, wallet-preview ~2100 lines)
+│   ├── register/[slug]/    # Public customer registration (THE live flow)
+│   ├── book/[slug]/        # Public booking + cancel/reschedule by token
+│   ├── client/[slug]/      # Customer self-service portal (magic-link)
+│   └── onboarding/ choose-plan/ support/ privacy/ auth/confirm/
+├── api/                    # ~99 route.ts — domains: wallet (27), admin (18),
+│   │                       #   appointments/book (15), cron (7), stripe (3),
+│   │                       #   register, scan, team, referral, client, gcal…
+│   ├── scan/[token]/       # Core loyalty scan (idempotency, anti-fraud)
+│   ├── compaigns/          # (!) typo baked into API contract — do not rename
+│   └── Restaurant/Create/  # (!) PascalCase baked in — do not rename
 
-components/
-└── RegisterForm.tsx         # Branded customer registration form
-
-lib/
-├── supabase.ts             # Client-side Supabase instance
-├── supabase-admin.ts       # Admin Supabase (service role key)
-├── supabase-server.ts      # Server-side Supabase (cookie session)
-├── google-wallet.ts        # Google Wallet JWT generation
-└── email.ts                # Resend email templates (welcome + birthday)
+components/                 # Dashboard tabs (Overview/Loyalty/Wallet/Analytics),
+                            #   appointments/, ui/ (Badge, Card), mobile nav
+                            # (!) RegisterForm.tsx is DEAD code (imported nowhere)
+lib/                        # 30+ modules: supabase{,-admin,-server,-browser},
+                            #   server-auth (ALL route guards), google-wallet,
+                            #   apple-wallet, apns, email, validation (Zod),
+                            #   rate-limit, plan-limits, kpi-*, growth-*, referral
+proxy.ts (root)             # Next middleware: locale routing + server auth gate
+                            #   for /dashboard & /admin + security headers
+docs/migrations/            # 001→033 numbered SQL (source of truth for schema)
+__tests__/                  # Vitest: 200+ tests, helpers/fake-db.ts (filter-aware
+                            #   Supabase mock for tenant-isolation tests)
 ```
 
 ---
 
 ## Database Tables (Supabase/PostgreSQL)
-- **restaurants** — `id, name, slug, color, primary_color, logo_url, owner_id, plan`
-- **customers** — `id, restaurant_id, first_name, last_name, email, birth_date, postal_code, marketing_consent, consent_date, qr_token, total_points, total_visits, stamps_count, last_visit_at, created_at`
-- **loyalty_settings** — `points_per_scan, reward_threshold, reward_message, program_type, stamps_total`
-- **transactions** — `id, customer_id, points_delta, type, created_at`
-- **campaigns** — `id, name, type, recipients_count, status, sent_at, scheduled_at`
+~25 tables. Source of truth: `docs/migrations/` (001→033). Core ones:
+- **restaurants** — tenant root: `id, name, slug, owner_id, plan, plan_id, scanner_token, stripe_customer_id, is_demo`
+- **customers** — `id, restaurant_id, first_name, last_name, email, qr_token, total_points, stamps_count, completed_cards, reward_pending, consent_marketing, consent_ip, email_verified, referral_code`
+  (!) The consent column is **`consent_marketing`** (NOT `marketing_consent` — verified against live DB 2026-07-05).
+- **transactions** — ledger; a Postgres trigger updates customer + pass counters on insert
+- **loyalty_settings** — program config incl. anti-fraud (`max_scans_per_day`, `min_scan_delay_minutes`)
+- **wallet_passes / wallet_pass_templates** — Apple+Google passes, per-pass counters (031)
+- **scan_events / wallet_sync_queue** — scan audit + idempotency (018)
+- **plans / plan_features / plan_kpis** — DB-driven plan catalog ((!) coexists with hardcoded `lib/plan-limits.ts` — known drift, consolidation pending)
+- Appointments domain: **services, staff_members, appointments, appointment_settings, waiting_list, client_no_show_stats…** (009–010, 025–028)
+- **team_invites/team_members, referrals, audit_log, client_sessions**
 
 No ORM — raw Supabase SDK queries throughout.
 
@@ -89,17 +106,20 @@ No ORM — raw Supabase SDK queries throughout.
 - **Auth**: Cookie-based session via `@supabase/ssr`. Authenticated user = restaurant owner.
 - **Loyalty modes**: `points` (scan = N points) or `stamps` (scan = 1 stamp toward reward).
 - **QR codes**: Each customer gets a unique `qr_token`. Scanning hits `/api/scan/[token]`.
-- **Emails**: HTML templates in `lib/email.ts`. QR code images via QuickChart API.
-- **Google Wallet**: JWT generated in `lib/google-wallet.ts`, served via `/api/wallet/[customerId]`.
-- **TypeScript errors ignored** in build (`next.config.ts` — `ignoreBuildErrors: true`).
-- **Inline styles** are used extensively alongside Tailwind (especially in dashboard).
+- **Auth guards**: ALWAYS use `lib/server-auth.ts` (`requireAuth`, `requireOwner`, `requireScannerAuth`, `requireWalletAccess`) — never inline auth.
+- **Validation**: Zod schemas via `lib/validation.ts` + `parseBody()` (French error messages). Extend this pattern to new mutation routes.
+- **Emails**: HTML templates in `lib/email.ts` — all dynamic values MUST go through `esc()`/`safeCssColor()`.
+- **Google Wallet**: JWT generated in `lib/google-wallet.ts`. Apple Wallet: `lib/apple-wallet.ts` + `lib/apns.ts` (see memory notes — curl-based APNS on Vercel, production only).
+- **Typecheck is clean** — keep it that way (`npm run typecheck` is a CI gate since 2026-07-05).
+- **Multi-tenant**: every query MUST be scoped `.eq('restaurant_id', …)` at the query level, even with an auth guard (defence-in-depth). Tested in `__tests__/api/scan` + `__tests__/api/customers`.
 
 ---
 
 ## Deployment
-- Hosted on **Vercel**
-- Cron job: `/api/cron/birthdays` daily at 9 AM UTC (secured with `CRON_SECRET`)
-- All env vars must be set in Vercel project settings
+- Hosted on **Vercel** — full runbook in `docs/DEPLOYMENT.md`
+- **7 cron jobs** in `vercel.json`: birthdays, wallet-sync, metrics-daily, metrics, reminders, cert-check, followup — all secured with `CRON_SECRET` (timing-safe)
+- CI: GitHub Actions (`.github/workflows/ci.yml`) — typecheck + tests are blocking gates
+- All env vars must be set in Vercel project settings (see `.env.example`)
 
 ---
 
