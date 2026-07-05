@@ -93,25 +93,14 @@ export async function POST(request: Request) {
     );
   }
 
-  // ── Check for existing active pass (non-repeatable templates only) ─────────
-  if (!template.is_repeatable) {
-    const { data: existing } = await supabaseAdmin
-      .from('wallet_passes')
-      .select('id')
-      .eq('restaurant_id', guard.restaurantId)
-      .eq('customer_id',   customerId)
-      .eq('template_id',   templateId)
-      .eq('platform',      platform)
-      .eq('status',        'active')
-      .maybeSingle();
+  // ── Resolve effective pass_kind ────────────────────────────────────────────
+  // Template pass_kind is authoritative; limited to stamps | points | vip.
+  const rawPassKind = (template.pass_kind as string) ?? 'points';
+  const effectiveKind = (['stamps', 'points', 'vip'].includes(rawPassKind) ? rawPassKind : 'points') as 'stamps' | 'points' | 'vip';
 
-    if (existing) {
-      return NextResponse.json(
-        { error: 'Ce client possède déjà un pass actif pour ce template.', passId: existing.id },
-        { status: 409 },
-      );
-    }
-  }
+  // Max 1 active pass per kind per customer per restaurant (enforced by DB
+  // unique index idx_wallet_passes_one_active_per_kind). The 23505 handler
+  // below returns a clear error message if violated.
 
   // ── Compute expires_at from template validity window ───────────────────────
   const expiresAt = template.valid_to ?? null;
@@ -187,6 +176,7 @@ export async function POST(request: Request) {
         template_id:    templateId,
         platform:       'google',
         status:         'active',
+        pass_kind:      effectiveKind,
         expires_at:     expiresAt,
         object_id:      objectId,
         last_synced_at: synced ? new Date().toISOString() : null,
@@ -198,7 +188,7 @@ export async function POST(request: Request) {
     if (insertErr) {
       if (insertErr.code === '23505') {
         return NextResponse.json(
-          { error: 'Un pass actif existe déjà pour ce slot (conflit concurrent).' },
+          { error: `Ce client a déjà un pass "${effectiveKind}" actif. Révoquez-le avant d'en émettre un nouveau.` },
           { status: 409 },
         );
       }
@@ -224,6 +214,7 @@ export async function POST(request: Request) {
       template_id:          templateId,
       platform:             'apple',
       status:               'active',
+      pass_kind:            effectiveKind,
       expires_at:           expiresAt,
       authentication_token: appleAuthToken,
     })
@@ -233,7 +224,7 @@ export async function POST(request: Request) {
   if (insertErr) {
     if (insertErr.code === '23505') {
       return NextResponse.json(
-        { error: 'Un pass actif existe déjà pour ce slot (conflit concurrent).' },
+        { error: `Ce client a déjà un pass "${effectiveKind}" actif. Révoquez-le avant d'en émettre un nouveau.` },
         { status: 409 },
       );
     }

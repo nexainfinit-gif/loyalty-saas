@@ -24,16 +24,26 @@ export async function autoIssueApplePass(params: AutoIssueParams): Promise<{ pas
   const { restaurantId, customerId } = params;
 
   try {
-    // 1. Find the restaurant's default published template
-    const { data: template } = await supabaseAdmin
-      .from('wallet_pass_templates')
-      .select('id, valid_to')
-      .eq('restaurant_id', restaurantId)
-      .eq('is_default', true)
-      .eq('status', 'published')
-      .maybeSingle();
+    // 1. Find the restaurant's default published template + loyalty settings for pass_kind
+    const [{ data: template }, { data: ls }] = await Promise.all([
+      supabaseAdmin
+        .from('wallet_pass_templates')
+        .select('id, valid_to, pass_kind')
+        .eq('restaurant_id', restaurantId)
+        .eq('is_default', true)
+        .eq('status', 'published')
+        .maybeSingle(),
+      supabaseAdmin
+        .from('loyalty_settings')
+        .select('program_type')
+        .eq('restaurant_id', restaurantId)
+        .maybeSingle(),
+    ]);
 
     if (!template) return null;  // no default template configured — skip silently
+
+    const rawKind = (template.pass_kind as string) ?? ls?.program_type ?? 'points';
+    const passKind = (['stamps', 'points', 'vip'].includes(rawKind) ? rawKind : 'points');
 
     // 2. Insert the pass (generate passId + short_code upfront for deterministic identity)
     const passId    = randomUUID();
@@ -51,6 +61,7 @@ export async function autoIssueApplePass(params: AutoIssueParams): Promise<{ pas
         template_id:          template.id,
         platform:             'apple',
         status:               'active',
+        pass_kind:            passKind,
         expires_at:           template.valid_to ?? null,
         authentication_token: authToken,
       })

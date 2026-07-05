@@ -192,6 +192,8 @@ export async function POST(request: Request) {
       configJson:     resolvedConfig,
     });
 
+    const effectiveKind = (['stamps', 'points', 'vip'].includes(template.pass_kind) ? template.pass_kind : 'points');
+
     const { data: newPass, error: insertErr } = await supabaseAdmin
       .from('wallet_passes')
       .insert({
@@ -202,6 +204,7 @@ export async function POST(request: Request) {
         template_id:    templateId,
         platform:       'google',
         status:         'active',
+        pass_kind:      effectiveKind,
         expires_at:     expiresAt,
         object_id:      objectId,
         last_synced_at: synced ? new Date().toISOString() : null,
@@ -213,7 +216,7 @@ export async function POST(request: Request) {
     if (insertErr) {
       if (insertErr.code === '23505') {
         return NextResponse.json(
-          { error: 'Conflit concurrent — un pass actif existe déjà.' },
+          { error: 'Ce client a déjà un pass actif de ce type. Révoquez-le avant d\'en émettre un nouveau.' },
           { status: 409 },
         );
       }
@@ -242,6 +245,8 @@ export async function POST(request: Request) {
   const appleShortCode = applePassId.replace(/-/g, '').slice(0, 8).toUpperCase();
   const appleAuthToken = randomUUID().replace(/-/g, '');
 
+  const effectiveKindApple = (['stamps', 'points', 'vip'].includes(template.pass_kind) ? template.pass_kind : 'points');
+
   const { data: newPass, error: insertErr } = await supabaseAdmin
     .from('wallet_passes')
     .insert({
@@ -252,6 +257,7 @@ export async function POST(request: Request) {
       template_id:          templateId,
       platform:             'apple',
       status:               'active',
+      pass_kind:            effectiveKindApple,
       expires_at:           expiresAt,
       authentication_token: appleAuthToken,
     })
@@ -261,7 +267,7 @@ export async function POST(request: Request) {
   if (insertErr) {
     if (insertErr.code === '23505') {
       return NextResponse.json(
-        { error: 'Conflit concurrent — un pass actif existe déjà.' },
+        { error: 'Ce client a déjà un pass actif de ce type. Révoquez-le avant d\'en émettre un nouveau.' },
         { status: 409 },
       );
     }

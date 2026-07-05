@@ -62,6 +62,10 @@ export async function GET(
       customer_id,
       restaurant_id,
       pass_version,
+      pass_kind,
+      total_points,
+      stamps_count,
+      reward_pending,
       template:wallet_pass_templates (
         pass_kind,
         primary_color,
@@ -156,10 +160,13 @@ export async function GET(
   }
 
   // ── Build pkpass ─────────────────────────────────────────────────────────
-  // passKind: config_json.passKind > template.pass_kind > loyalty_settings
+  // passKind: pass.pass_kind (denormalized at issuance) is the source of truth.
+  // Falls back to loyalty_settings → config_json → template for legacy passes.
+  const passOwnKind = (pass as { pass_kind?: string }).pass_kind || null;
+  const lsKind = loyaltySettings?.program_type as string | undefined;
   const cfgPassKind = (resolvedConfig.passKind as string) || null;
   const templatePassKind = tmpl.pass_kind as string | undefined;
-  const rawKind = cfgPassKind || templatePassKind || loyaltySettings?.program_type || 'points';
+  const rawKind = passOwnKind || lsKind || cfgPassKind || templatePassKind || 'points';
   const effectivePassKind = (
     rawKind === 'stamps' || rawKind === 'points' || rawKind === 'event' ? rawKind : 'points'
   ) as 'stamps' | 'points' | 'event';
@@ -173,13 +180,13 @@ export async function GET(
     customerId:     customer.id,
     firstName:      customer.first_name ?? '',
     lastName:       customer.last_name  ?? '',
-    stampsCount:    customer.stamps_count  ?? 0,
-    totalPoints:    customer.total_points  ?? 0,
+    stampsCount:    (pass as { stamps_count?: number }).stamps_count  ?? customer.stamps_count  ?? 0,
+    totalPoints:    (pass as { total_points?: number }).total_points  ?? customer.total_points  ?? 0,
     qrToken:        customer.qr_token      ?? customer.id,
     restaurantName:      restaurant.name,
     logoUrl:             restaurant.logo_url,
     authenticationToken: authToken,
-    rewardPending:       (customer as { reward_pending?: boolean }).reward_pending ?? false,
+    rewardPending:       (pass as { reward_pending?: boolean }).reward_pending ?? (customer as { reward_pending?: boolean }).reward_pending ?? false,
     referralCode:        (customer as { referral_code?: string | null }).referral_code ?? null,
     promoMessage:        (pass as { promo_message?: string | null }).promo_message ?? null,
   };

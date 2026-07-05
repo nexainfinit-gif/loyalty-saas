@@ -157,10 +157,17 @@ export async function PATCH(
       );
     }
 
-    // Fetch live customer data
+    // Fetch pass-level counters
+    const { data: passCounters } = await supabaseAdmin
+      .from('wallet_passes')
+      .select('pass_kind, total_points, stamps_count')
+      .eq('id', pass.id)
+      .single();
+
+    // Fetch customer for QR token (still needed for barcode)
     const { data: customer } = await supabaseAdmin
       .from('customers')
-      .select('id, total_points, stamps_count, qr_token')
+      .select('id, qr_token')
       .eq('id', pass.customer_id)
       .eq('restaurant_id', guard.restaurantId)
       .single();
@@ -169,14 +176,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'Client introuvable.' }, { status: 404 });
     }
 
-    // Fetch loyalty settings — program_type drives which field is primary on the pass
+    // Fetch loyalty settings
     const { data: settings } = await supabaseAdmin
       .from('loyalty_settings')
       .select('stamps_total, reward_message, program_type')
       .eq('restaurant_id', guard.restaurantId)
       .maybeSingle();
 
-    const passKind = (settings?.program_type ?? 'points') as 'stamps' | 'points';
+    // Use pass.pass_kind (denormalized), fallback to loyalty_settings
+    const passKind = (
+      passCounters?.pass_kind === 'stamps' || passCounters?.pass_kind === 'points'
+        ? passCounters.pass_kind
+        : settings?.program_type ?? 'points'
+    ) as 'stamps' | 'points';
 
     // If this pass has a short_code, align the Google Wallet barcode with it.
     // This is idempotent — already-aligned passes are unaffected.
@@ -186,8 +198,8 @@ export async function PATCH(
 
     const result = await updateLoyaltyObject(pass.object_id, {
       passKind,
-      totalPoints:   customer.total_points  ?? 0,
-      stampsCount:   customer.stamps_count  ?? 0,
+      totalPoints:   passCounters?.total_points  ?? 0,
+      stampsCount:   passCounters?.stamps_count  ?? 0,
       stampsTotal:   settings?.stamps_total ?? 10,
       rewardMessage: settings?.reward_message ?? undefined,
       barcode:       { value: barcodeValue, alternateText: shortCode ?? barcodeQrToken.replace(/-/g, '').slice(0, 8).toUpperCase() },

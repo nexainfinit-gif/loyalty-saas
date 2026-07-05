@@ -21,6 +21,14 @@ type ScanCustomer = {
   reward_pending: boolean;
 };
 
+type ResolvedPass = {
+  id: string;
+  pass_kind: string;
+  total_points: number;
+  stamps_count: number;
+  reward_pending: boolean;
+} | null;
+
 /**
  * Resolve a scan token to a customer.
  *
@@ -32,10 +40,16 @@ type ScanCustomer = {
  *
  * All lookups are scoped to restaurantId.
  */
+type ScanResolution = {
+  customer: ScanCustomer | null;
+  resolvedBy: 'qr_token' | 'id' | 'pass_id' | 'short_code' | 'none';
+  resolvedPassId: string | null;
+};
+
 async function resolveScanToken(
   token: string,
   restaurantId: string,
-): Promise<{ customer: ScanCustomer | null; resolvedBy: 'qr_token' | 'id' | 'pass_id' | 'short_code' | 'none' }> {
+): Promise<ScanResolution> {
   // 1. qr_token (primary — what camera reads from barcode.value)
   const { data: byQrToken } = await supabaseAdmin
     .from('customers')
@@ -44,7 +58,7 @@ async function resolveScanToken(
     .eq('restaurant_id', restaurantId)
     .maybeSingle();
 
-  if (byQrToken) return { customer: byQrToken as ScanCustomer, resolvedBy: 'qr_token' };
+  if (byQrToken) return { customer: byQrToken as ScanCustomer, resolvedBy: 'qr_token', resolvedPassId: null };
 
   // 2. customer.id (legacy fallback)
   const { data: byId } = await supabaseAdmin
@@ -54,12 +68,12 @@ async function resolveScanToken(
     .eq('restaurant_id', restaurantId)
     .maybeSingle();
 
-  if (byId) return { customer: byId as ScanCustomer, resolvedBy: 'id' };
+  if (byId) return { customer: byId as ScanCustomer, resolvedBy: 'id', resolvedPassId: null };
 
   // 3. wallet_passes.id (barcode fallback — some passes stored pass.id as barcode value)
   const { data: byPassId } = await supabaseAdmin
     .from('wallet_passes')
-    .select('customer_id')
+    .select('id, customer_id')
     .eq('id', token)
     .eq('restaurant_id', restaurantId)
     .eq('status', 'active')
@@ -73,13 +87,13 @@ async function resolveScanToken(
       .eq('restaurant_id', restaurantId)
       .maybeSingle();
 
-    if (custFromPass) return { customer: custFromPass as ScanCustomer, resolvedBy: 'pass_id' };
+    if (custFromPass) return { customer: custFromPass as ScanCustomer, resolvedBy: 'pass_id', resolvedPassId: byPassId.id };
   }
 
   // 4. short_code via wallet_passes (manual entry — 8-char code shown under QR)
   const { data: passRow } = await supabaseAdmin
     .from('wallet_passes')
-    .select('customer_id')
+    .select('id, customer_id')
     .eq('short_code', token)
     .eq('restaurant_id', restaurantId)
     .eq('status', 'active')
@@ -93,10 +107,63 @@ async function resolveScanToken(
       .eq('restaurant_id', restaurantId)
       .maybeSingle();
 
-    if (byShortCode) return { customer: byShortCode as ScanCustomer, resolvedBy: 'short_code' };
+    if (byShortCode) return { customer: byShortCode as ScanCustomer, resolvedBy: 'short_code', resolvedPassId: passRow.id };
   }
 
-  return { customer: null, resolvedBy: 'none' };
+  return { customer: null, resolvedBy: 'none', resolvedPassId: null };
+}
+
+/**
+ * Find the active wallet pass to increment for this scan.
+ *
+ * Resolution order:
+ *  1. If resolveScanToken already identified a specific pass → use it
+ *  2. Otherwise, find the active pass matching the restaurant's current program_type
+ *  3. If none matches, find the most recently issued active pass
+ *  4. If no pass at all → null (legacy: customer-level counters only)
+ */
+async function resolveTargetPass(
+  resolvedPassId: string | null,
+  customerId: string,
+  restaurantId: string,
+  programType: string,
+): Promise<ResolvedPass> {
+  if (resolvedPassId) {
+    const { data } = await supabaseAdmin
+      .from('wallet_passes')
+      .select('id, pass_kind, total_points, stamps_count, reward_pending')
+      .eq('id', resolvedPassId)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (data) return data as ResolvedPass;
+  }
+
+  // Find active pass matching current program_type
+  const { data: byKind } = await supabaseAdmin
+    .from('wallet_passes')
+    .select('id, pass_kind, total_points, stamps_count, reward_pending')
+    .eq('customer_id', customerId)
+    .eq('restaurant_id', restaurantId)
+    .eq('status', 'active')
+    .eq('pass_kind', programType)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (byKind) return byKind as ResolvedPass;
+
+  // Fallback: most recent active pass of any kind
+  const { data: anyPass } = await supabaseAdmin
+    .from('wallet_passes')
+    .select('id, pass_kind, total_points, stamps_count, reward_pending')
+    .eq('customer_id', customerId)
+    .eq('restaurant_id', restaurantId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return anyPass ? (anyPass as ResolvedPass) : null;
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
@@ -178,9 +245,9 @@ export async function POST(
   // ── Resolve token to customer ─────────────────────────────────────────
   logger.info({ ctx: 'scan', rid: restaurantId, msg: `raw="${rawToken}" extracted="${scanToken}"` });
 
-  const { customer, resolvedBy } = await resolveScanToken(scanToken, restaurantId);
+  const { customer, resolvedBy, resolvedPassId } = await resolveScanToken(scanToken, restaurantId);
 
-  logger.info({ ctx: 'scan', rid: restaurantId, msg: `token="${scanToken}" resolvedBy="${resolvedBy}"` });
+  logger.info({ ctx: 'scan', rid: restaurantId, msg: `token="${scanToken}" resolvedBy="${resolvedBy}" passId=${resolvedPassId ?? 'none'}` });
 
   if (!customer) {
     logger.warn({ ctx: 'scan', rid: restaurantId, msg: `NOT FOUND — token="${scanToken}" len=${scanToken.length}` });
@@ -196,6 +263,9 @@ export async function POST(
 
   const programType     = settings?.program_type ?? 'points';
   const stampsTotal     = settings?.stamps_total ?? 10;
+
+  // ── Resolve target pass (per-pass counters) ─────────────────────────
+  const targetPass = await resolveTargetPass(resolvedPassId, customer.id, restaurantId, programType);
 
   // ── Anti-fraud checks ──────────────────────────────────────────────
   const maxScans = settings?.max_scans_per_day ?? 0;
@@ -279,24 +349,25 @@ export async function POST(
     }
   }
 
-  // Capture pre-scan balances for audit trail
-  const balanceBefore = customer.total_points;
-  const stampsBefore  = customer.stamps_count ?? 0;
-  const currentStamps = customer.stamps_count ?? 0;
-  const isRewardPending = customer.reward_pending ?? false;
+  // Capture pre-scan balances — use pass-level when available, else customer-level (legacy)
+  const balanceBefore   = targetPass?.total_points ?? customer.total_points;
+  const stampsBefore    = targetPass?.stamps_count ?? customer.stamps_count ?? 0;
+  const currentStamps   = stampsBefore;
+  const isRewardPending = targetPass?.reward_pending ?? customer.reward_pending ?? false;
 
   // ── Reward redemption: if reward is pending, this scan collects it ────
   if (programType === 'stamps' && isRewardPending) {
     // Reset stamps to 0 via negative delta (triggers completed_cards increment)
     const resetDelta = -currentStamps;
     const { error: redeemErr } = await supabaseAdmin.from('transactions').insert({
-      restaurant_id: restaurantId,
-      customer_id:   customer.id,
-      type:          'reward_redeem',
-      points_delta:  0,
-      stamps_delta:  resetDelta,
-      balance_after: balanceBefore,
-      metadata:      { reason: 'Récompense récoltée' },
+      restaurant_id:  restaurantId,
+      customer_id:    customer.id,
+      wallet_pass_id: targetPass?.id ?? null,
+      type:           'reward_redeem',
+      points_delta:   0,
+      stamps_delta:   resetDelta,
+      balance_after:  balanceBefore,
+      metadata:       { reason: 'Récompense récoltée' },
     });
 
     if (redeemErr) {
@@ -304,27 +375,44 @@ export async function POST(
       return Response.json({ error: t('api.scanError') }, { status: 500 });
     }
 
-    // Clear reward_pending flag
+    // Clear reward_pending flag on both pass and customer
+    if (targetPass) {
+      await supabaseAdmin.from('wallet_passes')
+        .update({ reward_pending: false })
+        .eq('id', targetPass.id);
+    }
     await supabaseAdmin.from('customers')
       .update({ reward_pending: false })
       .eq('id', customer.id);
 
-    // Re-read balances after reset
+    // Re-read balances after reset — from pass if available, else customer
+    const { data: freshRedeemPass } = targetPass
+      ? await supabaseAdmin
+          .from('wallet_passes')
+          .select('total_points, stamps_count')
+          .eq('id', targetPass.id)
+          .maybeSingle()
+      : { data: null };
+
     const { data: freshRedeem } = await supabaseAdmin
       .from('customers')
       .select('total_points, stamps_count')
       .eq('id', customer.id)
       .maybeSingle();
 
+    const redeemPoints = freshRedeemPass?.total_points ?? freshRedeem?.total_points ?? balanceBefore;
+    const redeemStamps = freshRedeemPass?.stamps_count ?? freshRedeem?.stamps_count ?? 0;
+
     const responsePayload = {
       success: true,
       program_type: programType,
+      pass_id: targetPass?.id ?? null,
       customer: {
         id:           customer.id,
         first_name:   customer.first_name,
         last_name:    customer.last_name,
-        total_points: freshRedeem?.total_points ?? balanceBefore,
-        stamps_count: freshRedeem?.stamps_count ?? 0,
+        total_points: redeemPoints,
+        stamps_count: redeemStamps,
       },
       points_added:         0,
       reward_triggered:     false,
@@ -340,14 +428,15 @@ export async function POST(
     const scanEventInsert = {
       restaurant_id:       restaurantId,
       customer_id:         customer.id,
+      wallet_pass_id:      targetPass?.id ?? null,
       idempotency_key:     idempotencyKey,
       resolved_by:         resolvedBy,
       points_awarded:      0,
       stamps_delta:        resetDelta,
       balance_before:      balanceBefore,
-      balance_after:       freshRedeem?.total_points ?? balanceBefore,
+      balance_after:       redeemPoints,
       stamps_before:       stampsBefore,
-      stamps_after:        freshRedeem?.stamps_count ?? 0,
+      stamps_after:        redeemStamps,
       program_type:        programType,
       reward_triggered:    false,
       stamp_card_completed: false,
@@ -396,15 +485,16 @@ export async function POST(
     : stampCardCompleted ? (stampsTotal - currentStamps)  // cap at stampsTotal
     : stampsToAdd;
 
-  // ── Transaction insert (DB trigger atomically updates customer) ────────
+  // ── Transaction insert (DB trigger atomically updates customer + pass) ──
   const { error: insertError } = await supabaseAdmin.from('transactions').insert({
-    restaurant_id: restaurantId,
-    customer_id:   customer.id,
-    type:          'visit',
-    points_delta:  pointsToAdd,
-    stamps_delta:  stampsDelta,
-    balance_after: newBalance,
-    metadata:      {
+    restaurant_id:  restaurantId,
+    customer_id:    customer.id,
+    wallet_pass_id: targetPass?.id ?? null,
+    type:           'visit',
+    points_delta:   pointsToAdd,
+    stamps_delta:   stampsDelta,
+    balance_after:  newBalance,
+    metadata:       {
       reason: scanActionLabel ? `Scan: ${scanActionLabel}` : 'Scan caisse',
       ...(scanActionId ? { scan_action_id: scanActionId } : {}),
     },
@@ -418,27 +508,42 @@ export async function POST(
     );
   }
 
-  // If stamp card just completed, set reward_pending = true
+  // If stamp card just completed, set reward_pending = true on pass + customer
   if (stampCardCompleted) {
+    if (targetPass) {
+      await supabaseAdmin.from('wallet_passes')
+        .update({ reward_pending: true })
+        .eq('id', targetPass.id);
+    }
     await supabaseAdmin.from('customers')
       .update({ reward_pending: true })
       .eq('id', customer.id);
   }
 
   // ── Re-read actual post-trigger balances (concurrency-safe) ───────────
+  // Prefer pass-level counters when available
+  const { data: freshPass } = targetPass
+    ? await supabaseAdmin
+        .from('wallet_passes')
+        .select('total_points, stamps_count')
+        .eq('id', targetPass.id)
+        .maybeSingle()
+    : { data: null };
+
   const { data: fresh } = await supabaseAdmin
     .from('customers')
     .select('total_points, stamps_count')
     .eq('id', customer.id)
     .maybeSingle();
 
-  const actualBalance = fresh?.total_points ?? newBalance;
-  const actualStamps  = fresh?.stamps_count ?? (currentStamps + stampsDelta);
+  const actualBalance = freshPass?.total_points ?? fresh?.total_points ?? newBalance;
+  const actualStamps  = freshPass?.stamps_count ?? fresh?.stamps_count ?? (currentStamps + stampsDelta);
 
   // ── Build response payload ────────────────────────────────────────────
   const responsePayload = {
     success: true,
     program_type: programType,
+    pass_id: targetPass?.id ?? null,
     customer: {
       id:           customer.id,
       first_name:   customer.first_name,
@@ -460,6 +565,7 @@ export async function POST(
   const scanEventInsert = {
     restaurant_id:       restaurantId,
     customer_id:         customer.id,
+    wallet_pass_id:      targetPass?.id ?? null,
     idempotency_key:     idempotencyKey,
     resolved_by:         resolvedBy,
     points_awarded:      pointsToAdd,

@@ -219,6 +219,7 @@ async function getGoogleWalletUrl(customer: {
         template_id: template.id,
         platform: 'google',
         status: 'active',
+        pass_kind: effectivePassKind,
         object_id: objectId,
         last_synced_at: synced ? new Date().toISOString() : null,
         sync_error: synced ? null : 'Initial sync failed',

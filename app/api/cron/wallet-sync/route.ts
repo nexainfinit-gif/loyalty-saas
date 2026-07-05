@@ -50,7 +50,7 @@ export async function GET(req: Request) {
       // Find active Google passes for this customer
       const { data: googlePasses } = await supabaseAdmin
         .from('wallet_passes')
-        .select('id, object_id, wallet_pass_templates(pass_kind)')
+        .select('id, object_id, pass_kind, total_points, stamps_count')
         .eq('customer_id', item.customer_id)
         .eq('platform', 'google')
         .eq('status', 'active')
@@ -75,39 +75,27 @@ export async function GET(req: Request) {
         return;
       }
 
-      // Fetch live customer data
-      const { data: customer } = await supabaseAdmin
-        .from('customers')
-        .select('total_points, stamps_count')
-        .eq('id', item.customer_id)
-        .maybeSingle();
-
-      if (!customer) {
-        await supabaseAdmin
-          .from('wallet_sync_queue')
-          .update({ status: 'failed', last_error: 'Customer not found', processed_at: new Date().toISOString() })
-          .eq('id', item.id);
-        return;
-      }
-
       const { data: settings } = await supabaseAdmin
         .from('loyalty_settings')
         .select('stamps_total, program_type')
         .eq('restaurant_id', item.restaurant_id)
         .maybeSingle();
 
-      // passKind: loyalty_settings.program_type is the source of truth
-      const effectivePassKind = (settings?.program_type === 'stamps' ? 'stamps' : 'points') as 'stamps' | 'points';
-
       let allOk = true;
 
-      // Sync Google passes
+      // Sync Google passes — use pass-level counters (already fetched in select)
       if (googlePasses?.length) {
         await Promise.allSettled(googlePasses.map(async (pass) => {
+          const effectivePassKind = (
+            pass.pass_kind === 'stamps' || pass.pass_kind === 'points'
+              ? pass.pass_kind
+              : settings?.program_type === 'stamps' ? 'stamps' : 'points'
+          ) as 'stamps' | 'points';
+
           const result = await updateLoyaltyObject(pass.object_id!, {
             passKind:    effectivePassKind,
-            totalPoints: customer.total_points ?? 0,
-            stampsCount: customer.stamps_count ?? 0,
+            totalPoints: pass.total_points ?? 0,
+            stampsCount: pass.stamps_count ?? 0,
             stampsTotal: settings?.stamps_total ?? 10,
           });
 
@@ -152,7 +140,7 @@ export async function GET(req: Request) {
   // ── Phase 2: Retry failed syncs (existing behavior) ───────────────────
   const { data: failedPasses, error: fetchErr } = await supabaseAdmin
     .from('wallet_passes')
-    .select('id, object_id, restaurant_id, customer_id, wallet_pass_templates(pass_kind)')
+    .select('id, object_id, restaurant_id, customer_id, pass_kind, total_points, stamps_count')
     .eq('platform', 'google')
     .eq('status', 'active')
     .not('object_id', 'is', null)
@@ -168,27 +156,23 @@ export async function GET(req: Request) {
     await Promise.allSettled(failedPasses.map(async (pass) => {
       stats.retried++;
 
-      const { data: customer } = await supabaseAdmin
-        .from('customers')
-        .select('total_points, stamps_count')
-        .eq('id', pass.customer_id)
-        .maybeSingle();
-
-      if (!customer) { stats.failed++; return; }
-
       const { data: settings } = await supabaseAdmin
         .from('loyalty_settings')
         .select('stamps_total, program_type')
         .eq('restaurant_id', pass.restaurant_id)
         .maybeSingle();
 
-      // passKind: loyalty_settings.program_type is the source of truth
-      const effectivePassKind = (settings?.program_type === 'stamps' ? 'stamps' : 'points') as 'stamps' | 'points';
+      // Use pass-level pass_kind and counters
+      const effectivePassKind = (
+        pass.pass_kind === 'stamps' || pass.pass_kind === 'points'
+          ? pass.pass_kind
+          : settings?.program_type === 'stamps' ? 'stamps' : 'points'
+      ) as 'stamps' | 'points';
 
       const result = await updateLoyaltyObject(pass.object_id!, {
         passKind:    effectivePassKind,
-        totalPoints: customer.total_points ?? 0,
-        stampsCount: customer.stamps_count ?? 0,
+        totalPoints: pass.total_points ?? 0,
+        stampsCount: pass.stamps_count ?? 0,
         stampsTotal: settings?.stamps_total ?? 10,
       });
 

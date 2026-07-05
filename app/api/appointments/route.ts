@@ -367,10 +367,23 @@ export async function PUT(request: NextRequest) {
               const programType = loyaltySettings?.program_type ?? 'points';
               const stampsTotal = loyaltySettings?.stamps_total ?? 10;
 
-              // 5. Insert transaction
+              // 5. Resolve target pass for per-pass counter increment
+              const { data: activePass } = await supabaseAdmin
+                .from('wallet_passes')
+                .select('id')
+                .eq('customer_id', customer.id)
+                .eq('restaurant_id', auth.restaurantId)
+                .eq('status', 'active')
+                .eq('pass_kind', programType)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              // Insert transaction (trigger updates both customer + pass counters)
               await supabaseAdmin.from('transactions').insert({
                 customer_id: customer.id,
                 restaurant_id: auth.restaurantId,
+                wallet_pass_id: activePass?.id ?? null,
                 type: 'appointment',
                 points_delta: pointsDelta,
                 metadata: { appointment_id: parsed.data.id, source: 'auto_appointment_completion' },

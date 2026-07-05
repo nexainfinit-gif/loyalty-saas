@@ -87,6 +87,7 @@ export async function GET(request: Request) {
         template_id:   template.id,
         platform:      'apple',
         status:        'active',
+        pass_kind:     (['stamps', 'points', 'vip'].includes(template.pass_kind) ? template.pass_kind : 'points'),
         authentication_token: newAuthToken,
       })
       .select('id')

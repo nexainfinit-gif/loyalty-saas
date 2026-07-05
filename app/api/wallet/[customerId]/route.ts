@@ -42,29 +42,34 @@ export async function GET(
   // ── Check for an existing active Google pass for this customer ────────────
   const { data: existingPass } = await supabaseAdmin
     .from('wallet_passes')
-    .select('id, object_id, wallet_pass_templates(pass_kind)')
+    .select('id, object_id, pass_kind, total_points, stamps_count')
     .eq('customer_id', customerId)
     .eq('restaurant_id', guard.restaurantId)
     .eq('platform', 'google')
     .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (existingPass && existingPass.object_id) {
-    // passKind: loyalty_settings.program_type is the source of truth — ensures
-    // the card type (stamps vs points) always matches the active program.
     const { data: lsForSync } = await supabaseAdmin
       .from('loyalty_settings')
       .select('stamps_total, program_type')
       .eq('restaurant_id', guard.restaurantId)
       .maybeSingle();
 
-    const effectivePassKind = (lsForSync?.program_type === 'stamps' ? 'stamps' : 'points') as 'stamps' | 'points';
+    // Use pass.pass_kind (denormalized at issuance), fallback to loyalty_settings
+    const effectivePassKind = (
+      existingPass.pass_kind === 'stamps' || existingPass.pass_kind === 'points'
+        ? existingPass.pass_kind
+        : lsForSync?.program_type === 'stamps' ? 'stamps' : 'points'
+    ) as 'stamps' | 'points';
 
-    // Update existing pass with latest loyalty state — fire-and-forget
+    // Update existing pass with pass-level balances (not customer-level)
     void updateLoyaltyObject(existingPass.object_id, {
       passKind:    effectivePassKind,
-      totalPoints: customer.total_points ?? 0,
-      stampsCount: customer.stamps_count ?? 0,
+      totalPoints: existingPass.total_points ?? customer.total_points ?? 0,
+      stampsCount: existingPass.stamps_count ?? customer.stamps_count ?? 0,
       stampsTotal: lsForSync?.stamps_total ?? 10,
     }).then(result => {
       if (!result.ok) {
@@ -94,8 +99,8 @@ export async function GET(
       classId,
       customerId:      customer.id,
       displayName:     `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim(),
-      totalPoints:     customer.total_points  ?? 0,
-      stampsCount:     customer.stamps_count  ?? 0,
+      totalPoints:     existingPass.total_points ?? customer.total_points  ?? 0,
+      stampsCount:     existingPass.stamps_count ?? customer.stamps_count  ?? 0,
       stampsTotal:     lsForSync?.stamps_total ?? 10,
       rewardThreshold: 100,
       rewardMessage:   'Récompense offerte !',
@@ -168,7 +173,7 @@ export async function GET(
       configJson:     resolvedConfig,
     });
 
-    // Track the pass in DB
+    // Track the pass in DB — new pass starts at 0 counters
     await supabaseAdmin
       .from('wallet_passes')
       .insert({
@@ -178,6 +183,7 @@ export async function GET(
         template_id:    anyTemplate.id,
         platform:       'google',
         status:         'active',
+        pass_kind:      newPassKind,
         object_id:      objectId,
         last_synced_at: synced ? new Date().toISOString() : null,
         sync_error:     synced ? null : 'Initial sync failed',
