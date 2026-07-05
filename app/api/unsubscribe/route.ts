@@ -112,6 +112,17 @@ function pageResponse(status: number, state: State): Response {
   </div>
 </body>
 </html>`,
-    { status, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+    {
+      status,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        // Cette route renvoie du HTML mais vit sous /api/* : le proxy et les
+        // headers next.config ne couvrent que les réponses JSON — on pose donc
+        // les protections clickjacking/MIME ici directement.
+        'X-Frame-Options': 'DENY',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+      },
+    },
   );
 }

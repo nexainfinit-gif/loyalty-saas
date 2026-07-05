@@ -7,6 +7,9 @@ import { logger } from '@/lib/logger';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const limiter = rateLimit({ prefix: 'client-auth', limit: 5, windowMs: 300_000 });
+// GET (validation de token) : plus permissif que le POST mais borné —
+// cohérent avec scanner-info (30/min/IP)
+const getLimiter = rateLimit({ prefix: 'client-auth-get', limit: 30, windowMs: 60_000 });
 
 const loginSchema = z.object({
   email: z.string().email().max(255),
@@ -136,6 +139,11 @@ export async function POST(request: NextRequest) {
  * Validates a session token and returns customer + restaurant data.
  */
 export async function GET(request: NextRequest) {
+  const ip = getClientIp(request);
+  if (!getLimiter.check(ip).success) {
+    return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans une minute.' }, { status: 429 });
+  }
+
   const { searchParams } = new URL(request.url);
   const token = searchParams.get('token');
 
