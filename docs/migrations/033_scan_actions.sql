@@ -1,5 +1,7 @@
--- Migration: Create scan_actions table
+-- 033: Create scan_actions table
 -- Stores configurable scan action buttons per restaurant
+-- Note (2026-07-05) : anciennement sql/create_scan_actions.sql (hors dossier
+-- migrations, non numéroté). Déjà appliqué en production — idempotent.
 
 CREATE TABLE IF NOT EXISTS scan_actions (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

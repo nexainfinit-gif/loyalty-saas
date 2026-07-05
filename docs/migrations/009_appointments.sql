@@ -114,6 +114,10 @@ CREATE TABLE IF NOT EXISTS appointment_settings (
 );
 
 -- Row Level Security
+-- ATTENTION (2026-07-05) : les policies "*_restaurant" ci-dessous sont
+-- FAUSSES (restaurant_id = auth.uid() ne matche jamais). Elles sont
+-- corrigees par la migration 032_fix_appointments_rls.sql — ne pas copier
+-- ce pattern. Conservees ici pour l historique.
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_availability ENABLE ROW LEVEL SECURITY;
