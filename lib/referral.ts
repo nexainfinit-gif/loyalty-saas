@@ -8,7 +8,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { logger } from '@/lib/logger';
 import { auditLog } from '@/lib/audit';
-import { hasFeature, getPlanLimits } from '@/lib/plan-limits';
+import { hasFeature } from '@/lib/plan-limits';
 
 const CTX = 'referral';
 
@@ -200,7 +200,7 @@ export async function processReferral(params: {
     .eq('id', restaurantId)
     .single();
 
-  if (!hasFeature(restaurant?.plan ?? null, 'referral_program')) {
+  if (!(await hasFeature(restaurant?.plan ?? null, 'referral_program'))) {
     return { success: false, error: 'plan_blocked' };
   }
 

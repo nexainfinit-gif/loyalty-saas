@@ -1,42 +1,105 @@
-/* ── Plan Gating — limits & feature flags per plan ────────────────────────── */
+/* ── Plan Gating — limits & feature flags per plan ──────────────────────────
+ *
+ * SOURCE UNIQUE : les tables `plans` (limites numériques, migration 035) et
+ * `plan_features` (flags) en DB — éditables via le panel admin.
+ * L'ancien objet PLAN_LIMITS hardcodé a été supprimé (2026-07-05) : ses clés
+ * (free/starter/pro) ne correspondaient plus aux plans réels
+ * (starter/growth/pro) et faisaient retomber "growth" sur les limites "free".
+ *
+ * Cache mémoire 60 s pour éviter une requête DB par appel.
+ * Fallback si plan introuvable / DB indisponible : limites les plus
+ * restrictives connues (celles de starter) — jamais d'accès illimité par
+ * accident.
+ */
 
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-/* ── Plan definitions ─────────────────────────────────────────────────────── */
+export type PlanLimits = {
+  maxTemplates: number;          // -1 = illimité
+  maxCampaignsPerMonth: number;  // -1 = illimité
+  maxCustomers: number;          // -1 = illimité
+};
 
-export const PLAN_LIMITS = {
-  free: {
-    maxTemplates:         1,
-    maxCampaignsPerMonth: 2,
-    maxCustomers:         100,
-    features:             ['loyalty_basic'] as readonly string[],
-  },
-  starter: {
-    maxTemplates:         3,
-    maxCampaignsPerMonth: 10,
-    maxCustomers:         500,
-    features:             ['loyalty_basic', 'campaigns_email', 'wallet_apple', 'referral_program'] as readonly string[],
-  },
-  pro: {
-    maxTemplates:         10,
-    maxCampaignsPerMonth: -1, // unlimited
-    maxCustomers:         -1, // unlimited
-    features:             ['loyalty_basic', 'campaigns_email', 'wallet_apple', 'wallet_google', 'analytics_advanced', 'referral_program'] as readonly string[],
-  },
-} as const;
+type PlanEntry = {
+  id: string;
+  limits: PlanLimits;
+  features: Record<string, boolean>;
+};
 
-export type PlanName = keyof typeof PLAN_LIMITS;
+/** Fallback restrictif (valeurs starter) quand le plan est inconnu. */
+const FALLBACK_LIMITS: PlanLimits = {
+  maxTemplates: 3,
+  maxCampaignsPerMonth: 8,
+  maxCustomers: 500,
+};
 
-export function getPlanLimits(plan: string | null) {
-  return PLAN_LIMITS[(plan as PlanName) ?? 'free'] ?? PLAN_LIMITS.free;
+const CACHE_TTL_MS = 60_000;
+let cache: { at: number; byKey: Map<string, PlanEntry> } | null = null;
+
+/** NULL/undefined en DB = illimité (-1 en interne). */
+function toLimit(v: unknown): number {
+  return typeof v === 'number' ? v : -1;
+}
+
+async function loadPlans(): Promise<Map<string, PlanEntry>> {
+  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.byKey;
+
+  // select('*') : tolère l'absence des colonnes max_* tant que la
+  // migration 035 n'est pas appliquée (les limites tombent en fallback).
+  const [{ data: plans, error: plansErr }, { data: feats }] = await Promise.all([
+    supabaseAdmin.from('plans').select('*'),
+    supabaseAdmin.from('plan_features').select('plan_id, feature_key, enabled'),
+  ]);
+
+  if (plansErr || !plans) {
+    // DB indisponible : garder le cache périmé s'il existe, sinon vide.
+    return cache?.byKey ?? new Map();
+  }
+
+  const byKey = new Map<string, PlanEntry>();
+  for (const p of plans as Record<string, unknown>[]) {
+    const features: Record<string, boolean> = {};
+    for (const f of feats ?? []) {
+      if (f.plan_id === p.id) features[f.feature_key] = f.enabled;
+    }
+    const hasLimitColumns = 'max_customers' in p;
+    byKey.set(String(p.key), {
+      id: String(p.id),
+      limits: hasLimitColumns
+        ? {
+            maxTemplates: toLimit(p.max_templates),
+            maxCampaignsPerMonth: toLimit(p.max_campaigns_per_month),
+            maxCustomers: toLimit(p.max_customers),
+          }
+        : FALLBACK_LIMITS,
+      features,
+    });
+  }
+
+  cache = { at: Date.now(), byKey };
+  return byKey;
+}
+
+/** Test-only: réinitialise le cache mémoire. */
+export function _clearPlanCache() {
+  cache = null;
 }
 
 /**
- * Check whether a plan includes a given feature flag.
+ * Limites numériques d'un plan (par clé). Fallback restrictif si inconnu.
  */
-export function hasFeature(plan: string | null, feature: string): boolean {
-  const limits = getPlanLimits(plan);
-  return (limits.features as readonly string[]).includes(feature);
+export async function getPlanLimits(plan: string | null): Promise<PlanLimits> {
+  const byKey = await loadPlans();
+  return byKey.get(plan ?? '')?.limits ?? FALLBACK_LIMITS;
+}
+
+/**
+ * Le plan inclut-il un feature flag (table plan_features) ?
+ * Inconnu / DB indisponible → false (jamais d'accès par accident).
+ */
+export async function hasFeature(plan: string | null, feature: string): Promise<boolean> {
+  const byKey = await loadPlans();
+  return byKey.get(plan ?? '')?.features[feature] === true;
 }
 
 /* ── Resource limit checker ───────────────────────────────────────────────── */
@@ -56,7 +119,7 @@ export async function checkPlanLimit(
   plan: string | null,
   resource: 'templates' | 'campaigns' | 'customers',
 ): Promise<{ allowed: boolean; limit: number; current: number }> {
-  const limits = getPlanLimits(plan);
+  const limits = await getPlanLimits(plan);
 
   let max: number;
   let current = 0;

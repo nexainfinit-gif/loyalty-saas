@@ -54,8 +54,11 @@ class FakeQuery implements PromiseLike<{ data: unknown; error: unknown }> {
 
   constructor(private db: FakeDb, private table: string, private opts: FakeDbOptions) {}
 
-  select(_cols?: string, _opts?: unknown) {
+  private wantCount = false;
+
+  select(_cols?: string, opts?: { count?: string; head?: boolean }) {
     if (this.op !== 'select') this.wantRows = true;
+    if (opts?.count) this.wantCount = true;
     return this;
   }
   insert(rows: Row | Row[]) { this.op = 'insert'; this.insertRows = Array.isArray(rows) ? rows : [rows]; return this; }
@@ -159,12 +162,15 @@ class FakeQuery implements PromiseLike<{ data: unknown; error: unknown }> {
     return { data: rows[0] ?? null, error: null };
   }
 
-  // Awaiting the builder directly (no .single()) resolves like PostgREST list
-  then<T1 = { data: unknown; error: unknown }, T2 = never>(
-    onfulfilled?: ((value: { data: unknown; error: unknown }) => T1 | PromiseLike<T1>) | null,
+  // Awaiting the builder directly (no .single()) resolves like PostgREST list.
+  // Supports select(..., { count: 'exact' }) — count of matched rows.
+  then<T1 = { data: unknown; error: unknown; count: number | null }, T2 = never>(
+    onfulfilled?: ((value: { data: unknown; error: unknown; count: number | null }) => T1 | PromiseLike<T1>) | null,
     onrejected?: ((reason: unknown) => T2 | PromiseLike<T2>) | null,
   ): PromiseLike<T1 | T2> {
-    return Promise.resolve(this.run()).then(onfulfilled, onrejected);
+    const { data, error } = this.run();
+    const count = this.wantCount && Array.isArray(data) ? data.length : null;
+    return Promise.resolve({ data, error, count }).then(onfulfilled, onrejected);
   }
 }
 
