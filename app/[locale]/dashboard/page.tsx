@@ -1033,7 +1033,7 @@ export default function DashboardPage() {
           })}
 
           {/* Scanner */}
-          <Link
+          <Link prefetch={false}
             href={`/${locale}/dashboard/scanner`}
             aria-label={t('nav.scannerQr')}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all mt-1${!sidebarOpen ? ' justify-center px-0' : ''}`}
@@ -1055,7 +1055,7 @@ export default function DashboardPage() {
           )}
 
           {/* Billing */}
-          <Link
+          <Link prefetch={false}
             href={`/${locale}/dashboard/billing`}
             aria-label={t('nav.billing')}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all${!sidebarOpen ? ' justify-center px-0' : ''}`}
@@ -1068,7 +1068,7 @@ export default function DashboardPage() {
 
           {/* Booking Rebites — visible when booking feature enabled + eligible business type */}
           {pf('booking') && BOOKING_ELIGIBLE_TYPES.has(restaurant?.business_type ?? '') && (
-            <Link
+            <Link prefetch={false}
               href={`/${locale}/dashboard/appointments`}
               aria-label={t('nav.booking')}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all${!sidebarOpen ? ' justify-center px-0' : ''}`}
@@ -1079,7 +1079,7 @@ export default function DashboardPage() {
           )}
 
           {/* Aide */}
-          <Link
+          <Link prefetch={false}
             href={`/${locale}/support`}
             aria-label={t('nav.help')}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all mt-1${!sidebarOpen ? ' justify-center px-0' : ''}`}

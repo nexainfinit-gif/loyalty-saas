@@ -18,6 +18,7 @@ export type PlanLimits = {
   maxTemplates: number;          // -1 = illimité
   maxCampaignsPerMonth: number;  // -1 = illimité
   maxCustomers: number;          // -1 = illimité
+  maxEmailsPerMonth: number;     // -1 = illimité (migration 036)
 };
 
 type PlanEntry = {
@@ -31,6 +32,7 @@ const FALLBACK_LIMITS: PlanLimits = {
   maxTemplates: 3,
   maxCampaignsPerMonth: 8,
   maxCustomers: 500,
+  maxEmailsPerMonth: 5000,
 };
 
 const CACHE_TTL_MS = 60_000;
@@ -70,6 +72,7 @@ async function loadPlans(): Promise<Map<string, PlanEntry>> {
             maxTemplates: toLimit(p.max_templates),
             maxCampaignsPerMonth: toLimit(p.max_campaigns_per_month),
             maxCustomers: toLimit(p.max_customers),
+            maxEmailsPerMonth: toLimit(p.max_emails_per_month),
           }
         : FALLBACK_LIMITS,
       features,
@@ -108,6 +111,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   templates: 'templates de pass',
   campaigns: 'campagnes ce mois-ci',
   customers: 'clients',
+  emails: 'emails ce mois-ci',
 };
 
 /**
@@ -167,10 +171,43 @@ export async function checkPlanLimit(
 }
 
 /**
+ * Quota d'emails du mois calendaire courant (UTC).
+ *
+ * `additional` = nombre d'emails que l'appelant s'apprête à envoyer :
+ * la campagne est autorisée si (déjà envoyés ce mois) + additional ≤ quota.
+ * Comptage = SUM(campaigns.recipients_count) du mois courant — les campagnes
+ * planifiées comptent aussi (le quota est réservé à la création).
+ */
+export async function checkEmailQuota(
+  restaurantId: string,
+  plan: string | null,
+  additional: number,
+): Promise<{ allowed: boolean; limit: number; current: number }> {
+  const limits = await getPlanLimits(plan);
+  const max = limits.maxEmailsPerMonth;
+
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const { data } = await supabaseAdmin
+    .from('campaigns')
+    .select('recipients_count')
+    .eq('restaurant_id', restaurantId)
+    .gte('created_at', monthStart);
+
+  const current = (data ?? []).reduce(
+    (sum, c) => sum + ((c.recipients_count as number) ?? 0),
+    0,
+  );
+
+  if (max === -1) return { allowed: true, limit: -1, current };
+  return { allowed: current + additional <= max, limit: max, current };
+}
+
+/**
  * Build a standardised 403 JSON body for plan limit errors.
  */
 export function planLimitError(
-  resource: 'templates' | 'campaigns' | 'customers',
+  resource: 'templates' | 'campaigns' | 'customers' | 'emails',
   current: number,
   limit: number,
 ) {

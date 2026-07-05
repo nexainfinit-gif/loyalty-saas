@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAuth, requireFeature } from '@/lib/server-auth'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { checkPlanLimit, planLimitError } from '@/lib/plan-limits'
+import { checkPlanLimit, checkEmailQuota, planLimitError } from '@/lib/plan-limits'
 import { logger } from '@/lib/logger'
 import { auditLog } from '@/lib/audit'
 
@@ -94,6 +94,22 @@ export async function POST(req: Request) {
         return true
     }
   })
+
+  // ── Quota d'emails du mois (migration 036 — protège la marge) ──
+  // Vérifié APRÈS le calcul des destinataires : la campagne n'est acceptée
+  // que si (emails déjà envoyés ce mois) + destinataires ≤ quota du plan.
+  const emailQuota = await checkEmailQuota(restaurant.id, guard.plan, recipients.length)
+  if (!emailQuota.allowed) {
+    return Response.json(
+      {
+        ...planLimitError('emails', emailQuota.current, emailQuota.limit),
+        error: `Quota d'emails atteint pour votre plan (${emailQuota.current} envoyés ce mois-ci, ` +
+               `cette campagne en ajouterait ${recipients.length}, quota : ${emailQuota.limit}). ` +
+               `Réduisez le segment ou passez au plan supérieur.`,
+      },
+      { status: 403 },
+    )
+  }
 
   // Sauvegarde la campagne
   const { data: campaign, error: campErr } = await supabaseAdmin

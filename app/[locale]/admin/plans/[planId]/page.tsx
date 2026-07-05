@@ -17,6 +17,9 @@ interface Plan {
   sort_order:    number;
   created_at:    string;
   features:      Record<string, boolean>;
+  max_templates:           number | null;
+  max_campaigns_per_month: number | null;
+  max_customers:           number | null;
 }
 
 /* ── Toggle row ─────────────────────────────────────────────────────────────── */
@@ -76,9 +79,10 @@ export default function AdminPlanEditPage() {
   const [newFeatureKey, setNewFeatureKey] = useState('');
   const [features, setFeatures]           = useState<Record<string, boolean>>({});
 
-  // Local metadata form state
+  // Local metadata form state ('' dans une limite = illimité)
   const [meta, setMeta] = useState({
     name: '', price_monthly: '', is_public: true, is_active: true, sort_order: '0',
+    max_templates: '', max_campaigns_per_month: '', max_customers: '',
   });
 
   useEffect(() => {
@@ -99,6 +103,9 @@ export default function AdminPlanEditPage() {
           is_public:     p.is_public,
           is_active:     p.is_active,
           sort_order:    String(p.sort_order),
+          max_templates:           p.max_templates != null ? String(p.max_templates) : '',
+          max_campaigns_per_month: p.max_campaigns_per_month != null ? String(p.max_campaigns_per_month) : '',
+          max_customers:           p.max_customers != null ? String(p.max_customers) : '',
         });
         setFeatures(p.features ?? {});
       })
@@ -120,6 +127,9 @@ export default function AdminPlanEditPage() {
           is_public:     meta.is_public,
           is_active:     meta.is_active,
           sort_order:    Number(meta.sort_order) || 0,
+          max_templates:           meta.max_templates !== '' ? Number(meta.max_templates) : null,
+          max_campaigns_per_month: meta.max_campaigns_per_month !== '' ? Number(meta.max_campaigns_per_month) : null,
+          max_customers:           meta.max_customers !== '' ? Number(meta.max_customers) : null,
         }),
       });
       const json = await res.json();
@@ -248,6 +258,45 @@ export default function AdminPlanEditPage() {
                 onChange={(e) => setMeta({ ...meta, sort_order: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t('admin.planDetailLimitsTitle')}</label>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={meta.max_templates}
+                    onChange={(e) => setMeta({ ...meta, max_templates: e.target.value })}
+                    placeholder="∞"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">{t('admin.planDetailMaxTemplates')}</p>
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={meta.max_campaigns_per_month}
+                    onChange={(e) => setMeta({ ...meta, max_campaigns_per_month: e.target.value })}
+                    placeholder="∞"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">{t('admin.planDetailMaxCampaigns')}</p>
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={meta.max_customers}
+                    onChange={(e) => setMeta({ ...meta, max_customers: e.target.value })}
+                    placeholder="∞"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">{t('admin.planDetailMaxCustomers')}</p>
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-2">{t('admin.planDetailUnlimitedHint')}</p>
             </div>
             <div className="flex gap-6">
               <label className="flex items-center gap-2 cursor-pointer">

@@ -21,7 +21,7 @@ export async function GET(
 
   const { data: plan, error } = await supabaseAdmin
     .from('plans')
-    .select('id, key, name, price_monthly, is_public, is_active, sort_order, created_at')
+    .select('id, key, name, price_monthly, is_public, is_active, sort_order, created_at, max_templates, max_campaigns_per_month, max_customers')
     .eq('id', planId)
     .maybeSingle();
 
@@ -52,8 +52,12 @@ export async function GET(
  * Update plan metadata (not features — use /features for that).
  * Auth: platform owner only.
  *
- * Body: { name?, price_monthly?, is_public?, is_active?, sort_order? }
+ * Body: { name?, price_monthly?, is_public?, is_active?, sort_order?,
+ *         max_templates?, max_campaigns_per_month?, max_customers? }
+ * Les limites acceptent null = illimité, sinon un entier ≥ 0.
  */
+const LIMIT_FIELDS = ['max_templates', 'max_campaigns_per_month', 'max_customers'];
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ planId: string }> },
@@ -67,10 +71,23 @@ export async function PATCH(
     return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 });
   }
 
-  const allowed = ['name', 'price_monthly', 'is_public', 'is_active', 'sort_order'];
+  const allowed = ['name', 'price_monthly', 'is_public', 'is_active', 'sort_order', ...LIMIT_FIELDS];
   const patch: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) patch[key] = body[key];
+  }
+
+  // Limites : null = illimité, sinon entier ≥ 0
+  for (const key of LIMIT_FIELDS) {
+    if (key in patch) {
+      const v = patch[key];
+      if (v !== null && (!Number.isInteger(v) || (v as number) < 0)) {
+        return NextResponse.json(
+          { error: `${key} doit être un entier positif ou vide (illimité).` },
+          { status: 400 },
+        );
+      }
+    }
   }
 
   if (Object.keys(patch).length === 0) {

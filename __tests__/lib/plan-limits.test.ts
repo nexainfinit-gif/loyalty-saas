@@ -16,12 +16,12 @@ vi.mock('@/lib/supabase-admin', () => ({
   supabaseAdmin: { from: (table: string) => dbHolder.db.from(table) },
 }));
 
-import { getPlanLimits, hasFeature, checkPlanLimit, _clearPlanCache } from '@/lib/plan-limits';
+import { getPlanLimits, hasFeature, checkPlanLimit, checkEmailQuota, _clearPlanCache } from '@/lib/plan-limits';
 
 const PLANS = [
-  { id: 'plan-starter', key: 'starter', max_templates: 3, max_campaigns_per_month: 8, max_customers: 500 },
-  { id: 'plan-growth', key: 'growth', max_templates: 10, max_campaigns_per_month: 12, max_customers: 2000 },
-  { id: 'plan-pro', key: 'pro', max_templates: null, max_campaigns_per_month: 15, max_customers: 4000 },
+  { id: 'plan-starter', key: 'starter', max_templates: 3, max_campaigns_per_month: 8, max_customers: 500, max_emails_per_month: 5000 },
+  { id: 'plan-growth', key: 'growth', max_templates: 10, max_campaigns_per_month: 12, max_customers: 2000, max_emails_per_month: 25000 },
+  { id: 'plan-pro', key: 'pro', max_templates: null, max_campaigns_per_month: 15, max_customers: 4000, max_emails_per_month: null },
 ];
 
 const FEATURES = [
@@ -51,7 +51,7 @@ beforeEach(() => {
 describe('getPlanLimits (DB source of truth)', () => {
   it('reads growth limits from the DB — the bug that motivated migration 035', async () => {
     const limits = await getPlanLimits('growth');
-    expect(limits).toEqual({ maxTemplates: 10, maxCampaignsPerMonth: 12, maxCustomers: 2000 });
+    expect(limits).toEqual({ maxTemplates: 10, maxCampaignsPerMonth: 12, maxCustomers: 2000, maxEmailsPerMonth: 25000 });
   });
 
   it('treats NULL columns as unlimited (-1)', async () => {
@@ -62,7 +62,7 @@ describe('getPlanLimits (DB source of truth)', () => {
 
   it('falls back to restrictive limits for an unknown plan key', async () => {
     const limits = await getPlanLimits('free'); // no longer exists in DB
-    expect(limits).toEqual({ maxTemplates: 3, maxCampaignsPerMonth: 8, maxCustomers: 500 });
+    expect(limits).toEqual({ maxTemplates: 3, maxCampaignsPerMonth: 8, maxCustomers: 500, maxEmailsPerMonth: 5000 });
   });
 
   it('falls back to restrictive limits when plan is null', async () => {
@@ -137,5 +137,64 @@ describe('checkPlanLimit', () => {
     const res = await checkPlanLimit('rest-001', 'growth', 'campaigns');
     expect(res.current).toBe(1); // old campaign excluded
     expect(res.limit).toBe(12);
+  });
+});
+
+describe('checkEmailQuota (migration 036 — marge 66 %)', () => {
+  const now = new Date().toISOString();
+
+  it('allows a campaign that stays within the monthly quota', async () => {
+    seedDb({
+      campaigns: [
+        { id: 'c1', restaurant_id: 'rest-001', recipients_count: 3000, created_at: now },
+      ],
+    });
+
+    const res = await checkEmailQuota('rest-001', 'starter', 1500);
+    expect(res).toEqual({ allowed: true, limit: 5000, current: 3000 }); // 3000+1500 ≤ 5000
+  });
+
+  it('blocks a campaign that would exceed the quota', async () => {
+    seedDb({
+      campaigns: [
+        { id: 'c1', restaurant_id: 'rest-001', recipients_count: 4000, created_at: now },
+      ],
+    });
+
+    const res = await checkEmailQuota('rest-001', 'starter', 1500);
+    expect(res.allowed).toBe(false); // 4000+1500 > 5000
+    expect(res.current).toBe(4000);
+  });
+
+  it('ignores previous months and other restaurants', async () => {
+    seedDb({
+      campaigns: [
+        { id: 'old', restaurant_id: 'rest-001', recipients_count: 99999, created_at: '2020-01-01T00:00:00Z' },
+        { id: 'other', restaurant_id: 'rest-OTHER', recipients_count: 99999, created_at: now },
+        { id: 'mine', restaurant_id: 'rest-001', recipients_count: 100, created_at: now },
+      ],
+    });
+
+    const res = await checkEmailQuota('rest-001', 'starter', 100);
+    expect(res).toEqual({ allowed: true, limit: 5000, current: 100 });
+  });
+
+  it('NULL quota = unlimited (pro)', async () => {
+    seedDb({
+      campaigns: [
+        { id: 'c1', restaurant_id: 'rest-001', recipients_count: 999999, created_at: now },
+      ],
+    });
+
+    const res = await checkEmailQuota('rest-001', 'pro', 500000);
+    expect(res.allowed).toBe(true);
+    expect(res.limit).toBe(-1);
+  });
+
+  it('unknown plan falls back to the restrictive quota (5000)', async () => {
+    seedDb();
+    const res = await checkEmailQuota('rest-001', 'plan-fantome', 6000);
+    expect(res.allowed).toBe(false);
+    expect(res.limit).toBe(5000);
   });
 });

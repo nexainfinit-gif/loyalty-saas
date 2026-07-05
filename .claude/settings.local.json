@@ -158,7 +158,25 @@
       "Bash(powershell -Command \"Copy-Item \\(Get-ChildItem 'C:\\\\Users\\\\Mehdi\\\\OneDrive\\\\Images' -Recurse -Filter '*2026-03-24 081935*' | Select-Object -First 1\\).FullName -Destination 'C:\\\\Users\\\\Mehdi\\\\Desktop\\\\loyalty-saas\\\\temp-screenshot.png'\")",
       "Bash(gh api:*)",
       "Bash(source .env.local)",
-      "Bash(powershell -Command \"Copy-Item \\(Get-ChildItem 'C:\\\\Users\\\\Mehdi\\\\OneDrive\\\\Images' -Recurse -Filter '*2026-03-25 082657*' | Select-Object -First 1\\).FullName -Destination 'C:\\\\Users\\\\Mehdi\\\\Desktop\\\\loyalty-saas\\\\temp-ss.png'\")"
+      "Bash(powershell -Command \"Copy-Item \\(Get-ChildItem 'C:\\\\Users\\\\Mehdi\\\\OneDrive\\\\Images' -Recurse -Filter '*2026-03-25 082657*' | Select-Object -First 1\\).FullName -Destination 'C:\\\\Users\\\\Mehdi\\\\Desktop\\\\loyalty-saas\\\\temp-ss.png'\")",
+      "Bash(xargs echo \"landing noindex:\")",
+      "Bash(nslookup rebites.be)",
+      "Bash(xargs echo \"og:title index:\")",
+      "Bash(xargs echo \"fix waitlist visible:\")",
+      "Bash(openssl s_client -connect rebites.be:443 -servername rebites.be)",
+      "Bash(xargs echo \"og:title \\(via -k\\):\")",
+      "Bash(xargs echo \"waitlist fix \\(via -k\\):\")",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "Bash(nslookup -type=A rebites.be 8.8.8.8)",
+      "Bash(nslookup -type=AAAA rebites.be 8.8.8.8)",
+      "Bash(nslookup -type=CAA rebites.be 8.8.8.8)",
+      "Bash(nslookup -type=TXT _github-pages-challenge-nexainfinit-gif.rebites.be 8.8.8.8)",
+      "Bash(nslookup www.rebites.be 8.8.8.8)",
+      "Bash(xargs echo \"balises og/twitter:\")",
+      "Bash(xargs echo \"JSON-LD:\")",
+      "Bash(xargs echo \"noindex:\")",
+      "Bash(xargs echo \"fix waitlist:\")",
+      "Bash(python -)"
     ]
   },
   "enabledPlugins": {
