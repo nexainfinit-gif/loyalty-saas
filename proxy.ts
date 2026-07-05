@@ -18,16 +18,27 @@ const IGNORED_PREFIXES = [
   '/sentry',
 ];
 
-/** Auth-protected paths (checked AFTER locale prefix is stripped). */
+/**
+ * Auth-protected paths (checked AFTER locale prefix is stripped).
+ *
+ * ⚠️ NE PAS ajouter /dashboard ni /admin ici tant que l'auth n'est pas migrée
+ * en cookies. La session vit en localStorage (lib/supabase.ts, storageKey
+ * 'loyalty-auth') et n'est copiée vers les cookies que côté client, en
+ * asynchrone, par SupabaseSessionSync. Après login, window.location.href vers
+ * /dashboard navigue AVANT que le cookie soit écrit → un gate serveur sur
+ * /dashboard renvoie au login en boucle. /dashboard et /admin sont donc
+ * gardés côté client (getSession dans les pages). Ne restent gatées côté
+ * serveur que les pages wallet, atteintes par navigation in-app (cookie déjà
+ * synchronisé à ce moment-là).
+ */
 const PROTECTED_PATHS = [
-  '/dashboard',
-  '/admin',
+  '/dashboard/wallet',
+  '/admin/wallet-preview',
+  '/dashboard/wallet-studio',
 ];
 
 /** Public exceptions inside protected prefixes. */
-const PUBLIC_PATHS = [
-  '/dashboard/login',
-];
+const PUBLIC_PATHS: string[] = [];
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 
