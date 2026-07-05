@@ -7,6 +7,6 @@ export const supabase = createBrowserClient(
 
 if (process.env.NODE_ENV === 'development') {
   if (typeof window !== 'undefined') {
-    (window as any).supabase = supabase;
+    (window as Window & { supabase?: typeof supabase }).supabase = supabase;
   }
 }

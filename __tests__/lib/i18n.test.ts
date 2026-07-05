@@ -136,8 +136,8 @@ describe('translation coverage', () => {
       'booking', 'bookingSuccess', 'wallet', 'walletPreview',
     ];
     for (const ns of expected) {
-      expect((frDict as any)[ns], `"${ns}" missing in FR`).toBeDefined();
-      expect((enDict as any)[ns], `"${ns}" missing in EN`).toBeDefined();
+      expect((frDict as Record<string, unknown>)[ns], `"${ns}" missing in FR`).toBeDefined();
+      expect((enDict as Record<string, unknown>)[ns], `"${ns}" missing in EN`).toBeDefined();
     }
   });
 

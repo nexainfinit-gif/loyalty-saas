@@ -73,6 +73,16 @@ function ProBadge() {
   return <Badge variant="info" className="text-[10px] ml-2">PRO</Badge>;
 }
 
+function ComingSoon() {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-400">
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      {t('loyalty.comingSoon')}
+    </div>
+  );
+}
+
 /* ─── Main component ────────────────────────────────────── */
 export default function LoyaltyTab({
   settings,
@@ -96,15 +106,6 @@ export default function LoyaltyTab({
     { id: 'advanced',  label: t('loyalty.tabAdvanced'),  icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
     { id: 'summary',   label: t('loyalty.tabSummary'),   icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
   ];
-
-  function ComingSoon() {
-    return (
-      <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-400">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-        {t('loyalty.comingSoon')}
-      </div>
-    );
-  }
 
   const update = useCallback(
     (partial: Partial<LoyaltySettings>) => onSettingsChange({ ...settings, ...partial }),
@@ -1006,6 +1007,7 @@ function VipTiersManager({ programType, t }: { programType: string; t: (k: strin
     if (res.ok) { const d = await res.json(); setTiers(d.tiers ?? []); }
     setLoading(false);
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch on mount; setState happens after await, callback is reused by save/delete
   useEffect(() => { fetchTiers(); }, [fetchTiers]);
 
   const handleSave = async () => {
@@ -1092,6 +1094,7 @@ function MultipliersManager({ t }: { t: (k: string, v?: Record<string, string | 
     if (res.ok) { const d = await res.json(); setItems(d.multipliers ?? []); }
     setLoading(false);
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch on mount; setState happens after await, callback is reused by save/delete
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const handleSave = async () => {
@@ -1205,6 +1208,7 @@ function RewardCatalogManager({ programType, t }: { programType: string; t: (key
     setLoading(false);
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch on mount; setState happens after await, callback is reused by save/delete
   useEffect(() => { fetchRewards(); }, [fetchRewards]);
 
   const handleSave = async () => {

@@ -15,14 +15,15 @@ function LoginForm() {
   const [errorMsg, setErrorMsg] = useState('');
   const [cooldown, setCooldown] = useState(0);
 
-  // Handle ?error= from auth callback
-  useEffect(() => {
-    const error = searchParams.get('error');
-    if (error) {
-      setErrorMsg(t('auth.linkExpired'));
-      setStatus('error');
-    }
-  }, [searchParams, t]);
+  // Handle ?error= from auth callback — state adjusted during render
+  // (recommended React pattern) instead of in an effect.
+  const authError = searchParams.get('error');
+  const [prevAuthError, setPrevAuthError] = useState<string | null>(null);
+  if (authError && authError !== prevAuthError) {
+    setPrevAuthError(authError);
+    setErrorMsg(t('auth.linkExpired'));
+    setStatus('error');
+  }
 
   // Cooldown timer for resend
   useEffect(() => {
@@ -48,7 +49,7 @@ function LoginForm() {
       setStatus('idle');
       setCooldown(60);
     }
-  }, [email]);
+  }, [email, t]);
 
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();

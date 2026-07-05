@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
 import jsQR from 'jsqr';
+import type { Session } from '@supabase/supabase-js';
 
 interface ScanAction {
   id: string;
@@ -42,10 +43,14 @@ interface ScanResult {
 
 type Status = 'idle' | 'identifying' | 'identified' | 'loading' | 'success' | 'error';
 
+// Minimal typing for the (not yet standard) BarcodeDetector API
+type BarcodeDetectorLike = { detect: (source: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
+type BarcodeDetectorCtor = new (options: { formats: string[] }) => BarcodeDetectorLike;
+
 export default function ScannerPage() {
   const router = useLocaleRouter();
   const { t } = useTranslation();
-  const [session, setSession]               = useState<any>(null);
+  const [session, setSession]               = useState<Session | null>(null);
   const [scannerUrl, setScannerUrl]         = useState<string | null>(null);
   const [urlCopied, setUrlCopied]           = useState(false);
   const [manualId, setManualId]             = useState('');
@@ -120,7 +125,7 @@ export default function ScannerPage() {
     const ctx = canvas.getContext('2d');
 
     if ('BarcodeDetector' in window) {
-      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+      const detector = new ((window as unknown as { BarcodeDetector: BarcodeDetectorCtor }).BarcodeDetector)({ formats: ['qr_code'] });
       intervalRef.current = setInterval(async () => {
         if (!videoRef.current || !streamRef.current) return;
         try {
@@ -185,12 +190,13 @@ export default function ScannerPage() {
       }
       streamRef.current = stream;
       setCameraActive(true);
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as { name?: string; message?: string };
       const msg =
-        err.name === 'NotAllowedError'  ? t('scanner.cameraBlocked') :
-        err.name === 'NotFoundError'    ? t('scanner.noCamera') :
-        err.name === 'NotReadableError' ? t('scanner.cameraError', { errorName: 'Camera already in use' }) :
-        t('scanner.cameraError', { errorName: err.name || err.message || 'Unknown error' });
+        e.name === 'NotAllowedError'  ? t('scanner.cameraBlocked') :
+        e.name === 'NotFoundError'    ? t('scanner.noCamera') :
+        e.name === 'NotReadableError' ? t('scanner.cameraError', { errorName: 'Camera already in use' }) :
+        t('scanner.cameraError', { errorName: e.name || e.message || 'Unknown error' });
       setErrorMsg(msg);
       setStatus('error');
     } finally {

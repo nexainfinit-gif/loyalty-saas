@@ -65,6 +65,7 @@ export default function WalletTab({ restaurantId, restaurantName, restaurantColo
     setLoading(false);
   }, [restaurantId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch on mount; setState happens after await, callback is reused for refresh
   useEffect(() => { fetchData(); }, [fetchData]);
 
   if (loading) {

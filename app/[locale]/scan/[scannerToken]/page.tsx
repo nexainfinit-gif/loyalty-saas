@@ -8,6 +8,10 @@ import { useParams } from 'next/navigation';
 import jsQR from 'jsqr';
 import { useTranslation } from '@/lib/i18n';
 
+// Minimal typing for the (not yet standard) BarcodeDetector API
+type BarcodeDetectorLike = { detect: (source: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
+type BarcodeDetectorCtor = new (options: { formats: string[] }) => BarcodeDetectorLike;
+
 interface ScanAction {
   id: string;
   label: string;
@@ -97,7 +101,7 @@ export default function PublicScannerPage() {
     const ctx    = canvas.getContext('2d');
 
     if ('BarcodeDetector' in window) {
-      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+      const detector = new ((window as unknown as { BarcodeDetector: BarcodeDetectorCtor }).BarcodeDetector)({ formats: ['qr_code'] });
       intervalRef.current = setInterval(async () => {
         if (!videoRef.current || !streamRef.current) return;
         try {
@@ -146,11 +150,12 @@ export default function PublicScannerPage() {
       catch { stream = await navigator.mediaDevices.getUserMedia({ video: true }); }
       streamRef.current = stream;
       setCameraActive(true);
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as { name?: string; message?: string };
       const msg =
-        err.name === 'NotAllowedError'  ? t('scanner.cameraBlocked') :
-        err.name === 'NotFoundError'    ? t('scanner.noCamera') :
-        `${t('scanner.cameraError')} (${err.name}). ${t('scanner.manualTitle')}.`;
+        e.name === 'NotAllowedError'  ? t('scanner.cameraBlocked') :
+        e.name === 'NotFoundError'    ? t('scanner.noCamera') :
+        `${t('scanner.cameraError')} (${e.name}). ${t('scanner.manualTitle')}.`;
       setErrorMsg(msg);
       setStatus('error');
     }

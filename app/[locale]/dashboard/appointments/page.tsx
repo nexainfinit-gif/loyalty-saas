@@ -34,6 +34,7 @@ export default function AgendaPage() {
 
   // Set the initial date on the client only (avoids server/client mismatch → hydration error #418)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional client-only init to avoid SSR hydration mismatch
     setSelectedDate(new Date())
   }, [])
 
@@ -67,6 +68,7 @@ export default function AgendaPage() {
   }, [selectedDate, view])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch on date/view change; callback is reused by mutation handlers
     fetchAppointments()
   }, [fetchAppointments])
 

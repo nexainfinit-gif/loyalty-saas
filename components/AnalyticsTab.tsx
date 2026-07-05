@@ -119,7 +119,8 @@ export default function AnalyticsTab({
 }: Props) {
   const { t, locale } = useTranslation();
   const [period, setPeriod] = useState<Period>('30d');
-  const NOW = Date.now();
+  // Timestamp captured once at mount (lazy state init keeps render pure)
+  const [NOW] = useState(() => Date.now());
   const totalCustomers = customers.length;
   const periodMs = period === '7d' ? 7 * MS_DAY : period === '30d' ? 30 * MS_DAY : 90 * MS_DAY;
   const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
@@ -197,7 +198,7 @@ export default function AnalyticsTab({
       avgRewardCost,
       estimatedRewardCost,
     };
-  }, [customers, transactions, totalCustomers, periodMs, loyaltySettings, restaurantSettings]);
+  }, [customers, transactions, totalCustomers, periodMs, loyaltySettings, restaurantSettings, NOW]);
 
   /* ── Distribution data ── */
   const distribution = useMemo(() => {
@@ -214,7 +215,7 @@ export default function AnalyticsTab({
       { name: 'VIP', value: statusCounts.vip, color: PIE_COLORS[2] },
       { name: t('analytics.newClients'), value: statusCounts.new, color: PIE_COLORS[0] },
     ].filter(d => d.value > 0);
-  }, [customers, kpis.nearReward, loyaltySettings, t]);
+  }, [customers, kpis.nearReward, loyaltySettings, t, NOW]);
 
   /* ── Monthly growth chart ── */
   const monthlyGrowth = useMemo(() => {

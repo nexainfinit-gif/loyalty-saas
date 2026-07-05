@@ -252,7 +252,13 @@ function buildStampUrl(c: Controls): string {
 function WalletCard({ c, stampUrl }: { c: Controls; stampUrl: string }) {
   const { t } = useTranslation();
   const [stampErr, setStampErr] = useState(false);
-  useEffect(() => { setStampErr(false); }, [stampUrl]);
+  // Reset the error flag when the stamp URL changes — done during render
+  // (recommended React pattern) instead of in an effect to avoid a cascading render.
+  const [prevStampUrl, setPrevStampUrl] = useState(stampUrl);
+  if (prevStampUrl !== stampUrl) {
+    setPrevStampUrl(stampUrl);
+    setStampErr(false);
+  }
 
   const filled  = Math.min(c.currentStamps, c.stampsTotal);
   const cardBg  = c.bgColor;
@@ -1030,6 +1036,8 @@ interface TemplateOption {
   config_json: Record<string, unknown> | null;
 }
 
+type TemplateApiRow = TemplateOption & { restaurant_id: string | null };
+
 function controlsToConfigJson(c: Controls): Record<string, unknown> {
   return {
     passKind:        c.passKind,
@@ -1108,14 +1116,14 @@ function TemplateSaver({
       .then(json => {
         if (json.templates) {
           const filtered = isDraft
-            ? json.templates.filter((t: any) => !t.restaurant_id)
+            ? json.templates.filter((t: TemplateApiRow) => !t.restaurant_id)
             : json.templates;
-          setTemplates(filtered.map((t: any) => ({
+          setTemplates(filtered.map((t: TemplateApiRow) => ({
             id: t.id, name: t.name, pass_kind: t.pass_kind,
             config_json: t.config_json ?? null,
           })));
           // Auto-select the template from ?templateId if provided
-          const hasInitial = initialTemplateId && json.templates.some((t: any) => t.id === initialTemplateId);
+          const hasInitial = initialTemplateId && json.templates.some((t: TemplateApiRow) => t.id === initialTemplateId);
           if (hasInitial) {
             setSelectedId(initialTemplateId);
           } else if (json.templates.length > 0) {
@@ -1455,8 +1463,8 @@ function WalletPreviewInner() {
           setControls(initial);
           setDefaults(initial);
         })
-        .catch((err: any) => {
-          setError(err.is401 ? '__401__' : t('walletPreview.networkError'));
+        .catch((err: unknown) => {
+          setError((err as { is401?: boolean }).is401 ? '__401__' : t('walletPreview.networkError'));
         })
         .finally(() => setLoading(false));
     });

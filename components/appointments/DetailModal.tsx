@@ -30,17 +30,19 @@ export default function AppointmentDetailModal({
   const [noShowCount, setNoShowCount] = useState(0)
   const [loyaltyAwarded, setLoyaltyAwarded] = useState(0)
 
-  // Reset loyalty feedback when appointment changes
-  useEffect(() => {
+  // Reset loyalty feedback (and no-show count when there is no client email)
+  // when the appointment changes — done during render (recommended React
+  // pattern) instead of in an effect.
+  const [prevAppointmentId, setPrevAppointmentId] = useState(appointment?.id)
+  if (appointment?.id !== prevAppointmentId) {
+    setPrevAppointmentId(appointment?.id)
     setLoyaltyAwarded(0)
-  }, [appointment?.id])
+    if (!appointment?.client_email) setNoShowCount(0)
+  }
 
   // Fetch no-show count when modal opens with a client email
   useEffect(() => {
-    if (!appointment?.client_email) {
-      setNoShowCount(0)
-      return
-    }
+    if (!appointment?.client_email) return
     api<{ noShowCount: number }>(
       `/api/appointments/no-show-stats?email=${encodeURIComponent(appointment.client_email)}`
     ).then((res) => {

@@ -20,11 +20,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Non-blocking for now: 47 pre-existing errors (2026-07-05).
-      # Make this a hard gate once the lint debt is cleaned up.
-      - name: Lint (non-blocking)
+      - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Typecheck
         run: npm run typecheck

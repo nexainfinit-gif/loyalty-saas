@@ -51,7 +51,8 @@ export default function ClientPortalPage() {
   const slug = params.slug as string
   const token = searchParams.get('token')
 
-  const [loading, setLoading] = useState(true)
+  // No token → nothing to fetch, so start with loading=false
+  const [loading, setLoading] = useState(Boolean(token))
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [loyalty, setLoyalty] = useState<Loyalty | null>(null)
@@ -61,10 +62,7 @@ export default function ClientPortalPage() {
   const [loginLoading, setLoginLoading] = useState(false)
 
   useEffect(() => {
-    if (!token) {
-      setLoading(false)
-      return
-    }
+    if (!token) return
 
     async function fetchData() {
       const [authRes, aptsRes] = await Promise.all([

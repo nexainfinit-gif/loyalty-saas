@@ -513,7 +513,7 @@ function generateRecurrenceDates(
     : new Date(start.getTime() + 365 * 86400000); // Default: 1 year max
   const MAX_OCCURRENCES = 52;
 
-  let current = new Date(start);
+  const current = new Date(start);
   while (current <= end && dates.length < MAX_OCCURRENCES) {
     dates.push(formatDateStr(current));
 

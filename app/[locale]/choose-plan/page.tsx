@@ -86,7 +86,7 @@ export default function ChoosePlanPage() {
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;
+        window.location.assign(data.url);
         return;
       }
       toast.error(data.error || t('plan.checkoutError'));

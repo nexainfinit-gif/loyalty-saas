@@ -192,7 +192,7 @@ export async function PATCH(
 
     // If this pass has a short_code, align the Google Wallet barcode with it.
     // This is idempotent — already-aligned passes are unaffected.
-    const shortCode = (pass as any).short_code as string | null | undefined;
+    const shortCode = (pass as { short_code?: string | null }).short_code;
     const barcodeQrToken = customer.qr_token ?? customer.id;
     const barcodeValue = shortCode ?? barcodeQrToken;
 

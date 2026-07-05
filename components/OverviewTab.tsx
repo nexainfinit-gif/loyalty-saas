@@ -262,7 +262,7 @@ export default function OverviewTab({
       trendActive: trendPct(activeThisPeriod, activePrevPeriod),
       trendRewards: trendPct(rewardsThisPeriod, rewardsPrevPeriod),
     };
-  }, [customers, transactions, totalCustomers, periodMs, loyaltySettings, NOW, businessType]);
+  }, [customers, transactions, periodMs, loyaltySettings, NOW, businessType, today]);
 
   /* ── Chart data ── */
   const chartData = useMemo(() => {

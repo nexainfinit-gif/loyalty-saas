@@ -3,6 +3,12 @@
 import { createContext, useContext, ReactNode, useMemo, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
+import fr from '@/locales/fr.json';
+import en from '@/locales/en.json';
+import nl from '@/locales/nl.json';
+import it from '@/locales/it.json';
+import es from '@/locales/es.json';
+
 /* ── Types ────────────────────────────────────────────────────────────────── */
 
 export type Locale = 'fr' | 'en' | 'nl' | 'it' | 'es';
@@ -19,26 +25,13 @@ export const localeNames: Record<Locale, string> = {
 
 /* ── Dictionary loader ────────────────────────────────────────────────────── */
 
-// Dictionaries are loaded lazily per locale
+// Dictionaries are bundled by Next.js at build time
 type Dictionary = Record<string, unknown>;
 
-let cachedDicts: Partial<Record<Locale, Dictionary>> = {};
+const dictionaries: Record<Locale, Dictionary> = { fr, en, nl, it, es };
 
 export function getDictionary(locale: Locale): Dictionary {
-  if (cachedDicts[locale]) return cachedDicts[locale]!;
-  // Dynamic require — bundled by Next.js at build time
-  const dict =
-    locale === 'en'
-      ? require('@/locales/en.json')
-      : locale === 'nl'
-        ? require('@/locales/nl.json')
-        : locale === 'it'
-          ? require('@/locales/it.json')
-          : locale === 'es'
-            ? require('@/locales/es.json')
-            : require('@/locales/fr.json');
-  cachedDicts[locale] = dict;
-  return dict;
+  return dictionaries[locale] ?? dictionaries[defaultLocale];
 }
 
 /* ── Nested key resolver ──────────────────────────────────────────────────── */

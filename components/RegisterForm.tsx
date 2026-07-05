@@ -7,6 +7,20 @@ import { useTranslation } from '@/lib/i18n';
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
+// Minimal typing for the Cloudflare Turnstile global injected by its script
+type TurnstileApi = {
+  render: (
+    el: HTMLElement,
+    opts: {
+      sitekey: string;
+      callback: (token: string) => void;
+      'expired-callback': () => void;
+      theme: string;
+    },
+  ) => void;
+};
+const getTurnstile = () => (window as Window & { turnstile?: TurnstileApi }).turnstile;
+
 interface Restaurant {
   id: string;
   name: string;
@@ -53,12 +67,13 @@ export default function RegisterForm({ restaurant, refCode }: RegisterFormProps)
     }
 
     function renderWidget() {
+      const turnstile = getTurnstile();
       if (
         turnstileRef.current &&
-        (window as any).turnstile &&
+        turnstile &&
         !turnstileRef.current.hasChildNodes()
       ) {
-        (window as any).turnstile.render(turnstileRef.current, {
+        turnstile.render(turnstileRef.current, {
           sitekey: TURNSTILE_SITE_KEY,
           callback: (token: string) => setCaptchaToken(token),
           'expired-callback': () => setCaptchaToken(null),
@@ -68,7 +83,7 @@ export default function RegisterForm({ restaurant, refCode }: RegisterFormProps)
     }
 
     // If script already loaded, render immediately; otherwise wait for load
-    if ((window as any).turnstile) {
+    if (getTurnstile()) {
       renderWidget();
     } else {
       const script = document.getElementById(scriptId);
