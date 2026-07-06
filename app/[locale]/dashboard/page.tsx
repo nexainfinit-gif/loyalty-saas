@@ -681,6 +681,19 @@ export default function DashboardPage() {
       return;
     }
     toast.success(t('dashboard.toastLoyaltySaved'));
+
+    // Auto-provisionne une carte Wallet générique si le restaurant n'en a pas
+    // encore : le commerçant n'a jamais à concevoir un template manuellement.
+    // Idempotent + non bloquant (n'affecte pas la sauvegarde des réglages).
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s) {
+        await fetch('/api/wallet/ensure-default-template', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${s.access_token}` },
+        });
+      }
+    } catch { /* non bloquant */ }
   }
 
   async function uploadLogo() {
