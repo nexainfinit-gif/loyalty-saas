@@ -1176,7 +1176,7 @@ export default function DashboardPage() {
                   {t('dashboard.walletTemplateBanner')}
                 </p>
                 <button
-                  onClick={() => router.push(`/${locale}/dashboard/wallet`)}
+                  onClick={() => router.push('/dashboard/wallet')}
                   className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors"
                 >
                   {t('dashboard.walletTemplateBannerBtn')}

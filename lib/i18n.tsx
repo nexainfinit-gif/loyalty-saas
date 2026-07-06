@@ -136,9 +136,13 @@ export function useLocaleRouter() {
 
 /* ── URL helpers ──────────────────────────────────────────────────────────── */
 
-/** Prefix a path with the current locale: localePath('/dashboard', 'en') → '/en/dashboard' */
+/** Prefix a path with the current locale: localePath('/dashboard', 'en') → '/en/dashboard'.
+ *  Idempotent : si le chemin est DÉJÀ préfixé d'une locale (ex. '/fr/dashboard'),
+ *  on ne re-préfixe pas → évite les URLs cassées à double locale '/fr/fr/...'. */
 export function localePath(path: string, locale: Locale): string {
   const clean = path.startsWith('/') ? path : `/${path}`;
+  const first = clean.split('/').filter(Boolean)[0];
+  if (locales.includes(first as Locale)) return clean;
   return `/${locale}${clean}`;
 }
 

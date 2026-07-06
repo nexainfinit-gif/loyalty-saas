@@ -197,6 +197,13 @@ describe('localePath — locale prefix routing', () => {
     expect(localePath('/register/my-shop', 'fr')).toBe('/fr/register/my-shop');
     expect(localePath('/book/my-salon/success', 'en')).toBe('/en/book/my-salon/success');
   });
+
+  it('is idempotent — never double-prefixes an already-localized path', () => {
+    // Régression /fr/fr/dashboard/wallet (404)
+    expect(localePath('/fr/dashboard/wallet', 'fr')).toBe('/fr/dashboard/wallet');
+    expect(localePath('/en/dashboard', 'fr')).toBe('/en/dashboard');
+    expect(localePath('/nl/book/salon', 'nl')).toBe('/nl/book/salon');
+  });
 });
 
 describe('extractLocale', () => {
