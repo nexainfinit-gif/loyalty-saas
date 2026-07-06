@@ -1163,9 +1163,51 @@ export default function WalletStudioPage() {
   const [issueTemplateId, setIssueTemplateId] = useState<string | undefined>(undefined);
   const [issuedCount,  setIssuedCount]  = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [quickCreating, setQuickCreating] = useState(false);
 
   // Silence unused var warning for restaurantId
   void restaurantId;
+
+  /**
+   * Crée en UN CLIC un template générique prêt à l'emploi, sans passer par le
+   * modal : mode dérivé du programme de fidélité, couleur marque, config tirée
+   * des réglages fidélité, marqué par défaut (auto-émission à l'inscription).
+   */
+  async function createQuickTemplate() {
+    if (quickCreating || !token) return;
+    setQuickCreating(true);
+    setError(null);
+    const type: PassKind = loyaltySettings?.program_type === 'points' ? 'points' : 'stamps';
+    const rewardMessage = loyaltySettings?.reward_message ?? t('wallet.quickRewardDefault');
+    const config_json =
+      type === 'points'
+        ? {
+            reward_threshold: loyaltySettings?.reward_threshold ?? 500,
+            points_per_scan:  loyaltySettings?.points_per_scan  ?? 10,
+            reward_message:   rewardMessage,
+          }
+        : { stamps_total: loyaltySettings?.stamps_total ?? 10, reward_message: rewardMessage };
+    try {
+      const res = await fetch('/api/wallet/templates', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: restaurantName
+            ? `${restaurantName} — ${t('wallet.quickTemplateName')}`
+            : t('wallet.quickTemplateName'),
+          type,
+          primary_color: '#4F6BED',
+          is_default:    true,
+          config_json,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error ?? t('wallet.unknownError')); return; }
+      setTemplates(prev => [{ ...json.template, active_passes: 0 }, ...prev]);
+    } finally {
+      setQuickCreating(false);
+    }
+  }
 
   const fetchTemplates = useCallback(async (tk: string): Promise<Template[]> => {
     const res = await fetch('/api/wallet/templates', {
@@ -1416,6 +1458,15 @@ export default function WalletStudioPage() {
                   className="flex items-center gap-1.5 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                 >
                   {t('wallet.emitPass')}
+                </button>
+              )}
+              {!visibleTemplates.some(t => t.status === 'published') && (
+                <button
+                  onClick={createQuickTemplate}
+                  disabled={quickCreating}
+                  className="flex items-center gap-1.5 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                >
+                  {quickCreating ? t('common.savingDots') : `⚡ ${t('wallet.quickTemplateBtn')}`}
                 </button>
               )}
               <button
