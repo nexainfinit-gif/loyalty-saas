@@ -941,7 +941,10 @@ export default function DashboardPage() {
         <DashboardTutorial
           onComplete={async () => {
             setShowTutorial(false);
-            setActiveTab('overview');
+            // Atterrit sur l'onglet Fidélité : le commerçant est ainsi prêt à
+            // configurer son programme (l'action essentielle) dès la fin du
+            // tutoriel, sa carte Wallet étant créée automatiquement au save.
+            setActiveTab('loyalty');
             // Mark tutorial as completed in DB
             if (restaurant) {
               await supabase

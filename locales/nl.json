@@ -454,21 +454,17 @@
     "vipThresholdSaved": "VIP-drempel opgeslagen"
   },
   "referral": {
-    "shareTitle": "Nodig een vriend uit",
-    "shareDescription": "Deel deze link en verdien beiden beloningen!",
-    "shareButton": "Deel mijn link",
+    "title": "Nodig je vrienden uit",
+    "description": "Deel je link en verdien beloningen wanneer je vrienden zich aanmelden bij het programma van {restaurant}!",
+    "rewardPoints": "Verdien {amount} punten per verwijzing",
+    "rewardStamps": "Verdien {amount} stempel(s) per verwijzing",
     "copyLink": "Link kopiëren",
-    "linkCopied": "Link gekopieerd!",
-    "bonusReceived": "U heeft {points} bonuspunten ontvangen dankzij een doorverwijzing!",
-    "referredBy": "Doorverwezen door {name}",
-    "maxReached": "U heeft het maximale aantal doorverwijzingen bereikt",
-    "invalidCode": "Deze doorverwijzingscode is niet meer geldig",
-    "statsTitle": "Doorverwijzingen",
-    "statsThisMonth": "{count} klanten doorverwezen deze maand",
-    "statsTotal": "{count} doorverwijzingen in totaal",
-    "topReferrers": "Beste verwijzers",
-    "youEarn": "U verdient {points} {type} per uitgenodigde vriend",
-    "friendGets": "Uw vriend ontvangt {points} {type} welkomstbonus"
+    "copied": "Gekopieerd!",
+    "share": "Delen",
+    "shareTitle": "Doe mee met het loyaliteitsprogramma van {restaurant}",
+    "shareText": "Doe mee met het loyaliteitsprogramma van {restaurant} en ontvang je beloningen!",
+    "referralBonus": "Je hebt {amount} bonuspunten ontvangen van je vriend!",
+    "referralBonusStamps": "Je hebt {amount} bonusstempel(s) ontvangen van je vriend!"
   },
   "analytics": {
     "title": "Analyses",
@@ -597,8 +593,8 @@
     "overviewDesc": "Uw hoofddashboard. Bekijk uw belangrijkste KPI's, de gezondheid van uw zaak en aanbevolen acties.",
     "clientsTitle": "Klanten",
     "clientsDesc": "De volledige lijst van uw klanten. Zoek, filter op activiteit, bekijk hun punten en exporteer uw gegevens als CSV.",
-    "loyaltyTitle": "Loyaliteit",
-    "loyaltyDesc": "Configureer uw programma: punten of stempels, beloningsdrempel, gepersonaliseerd bericht. Alles regelt u hier.",
+    "loyaltyTitle": "Stel je programma in",
+    "loyaltyDesc": "Begin hier: kies punten of stempels en stel de beloning in. Zodra je opslaat, wordt je Wallet-klantenkaart automatisch aangemaakt — verder niets te doen.",
     "campaignsTitle": "Campagnes",
     "campaignsDesc": "Stuur gerichte e-mails: heractivering van inactieven, verjaardagen, speciale aanbiedingen. Kies een sjabloon of maak uw eigen.",
     "analyticsTitle": "Analyses",
@@ -667,19 +663,6 @@
     "welcomePoints": "🎁 {points} welkomstpunten zijn toegevoegd aan uw kaart!",
     "consentRequired": "U moet akkoord gaan met het ontvangen van uw beloningen.",
     "emailAlreadyRegistered": "Dit e-mailadres is al ingeschreven voor dit programma."
-  },
-  "referral": {
-    "title": "Nodig je vrienden uit",
-    "description": "Deel je link en verdien beloningen wanneer je vrienden zich aanmelden bij het programma van {restaurant}!",
-    "rewardPoints": "Verdien {amount} punten per verwijzing",
-    "rewardStamps": "Verdien {amount} stempel(s) per verwijzing",
-    "copyLink": "Link kopiëren",
-    "copied": "Gekopieerd!",
-    "share": "Delen",
-    "shareTitle": "Doe mee met het loyaliteitsprogramma van {restaurant}",
-    "shareText": "Doe mee met het loyaliteitsprogramma van {restaurant} en ontvang je beloningen!",
-    "referralBonus": "Je hebt {amount} bonuspunten ontvangen van je vriend!",
-    "referralBonusStamps": "Je hebt {amount} bonusstempel(s) ontvangen van je vriend!"
   },
   "support": {
     "backToDashboard": "Terug naar dashboard",

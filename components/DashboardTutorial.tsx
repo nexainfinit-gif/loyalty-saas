@@ -10,10 +10,13 @@ interface TutorialStep {
   descKey: string;
 }
 
+// Étape 1 = configuration du programme de fidélité : la première action
+// essentielle d'un nouveau commerçant (sa carte Wallet est créée
+// automatiquement dès qu'il l'enregistre). Le reste est une visite rapide.
 const STEPS: TutorialStep[] = [
+  { tab: 'loyalty',    titleKey: 'tutorial.loyaltyTitle',    descKey: 'tutorial.loyaltyDesc' },
   { tab: 'overview',   titleKey: 'tutorial.overviewTitle',   descKey: 'tutorial.overviewDesc' },
   { tab: 'clients',    titleKey: 'tutorial.clientsTitle',    descKey: 'tutorial.clientsDesc' },
-  { tab: 'loyalty',    titleKey: 'tutorial.loyaltyTitle',    descKey: 'tutorial.loyaltyDesc' },
   { tab: 'campaigns',  titleKey: 'tutorial.campaignsTitle',  descKey: 'tutorial.campaignsDesc' },
   { tab: 'analytics',  titleKey: 'tutorial.analyticsTitle',  descKey: 'tutorial.analyticsDesc' },
   { tab: 'settings',   titleKey: 'tutorial.settingsTitle',   descKey: 'tutorial.settingsDesc' },
