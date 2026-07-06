@@ -64,7 +64,7 @@ function LoginForm() {
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     setStatus('loading');
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       email,
       token: otp,
       type: 'magiclink',
@@ -72,9 +72,22 @@ function LoginForm() {
     if (error) {
       setErrorMsg(t('auth.codeInvalid'));
       setStatus('error');
-    } else {
-      window.location.href = `/${locale}/dashboard`;
+      return;
     }
+    // Email connu (possède déjà un restaurant réel) → dashboard.
+    // Email inconnu / sans restaurant → onboarding.
+    const userId = data.session?.user?.id ?? data.user?.id ?? null;
+    let hasRestaurant = false;
+    if (userId) {
+      const { data: restos } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('owner_id', userId)
+        .eq('is_demo', false)
+        .limit(1);
+      hasRestaurant = !!restos && restos.length > 0;
+    }
+    window.location.href = `/${locale}/${hasRestaurant ? 'dashboard' : 'onboarding'}`;
   }
 
   return (

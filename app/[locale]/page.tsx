@@ -10,17 +10,25 @@ export default function Home() {
   useEffect(() => {
     async function checkAuth() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        router.replace('/dashboard');
+
+      if (!session) {
+        // Pas de session : lien magique (#access_token=…) → /auth/confirm le
+        // parse ; sinon → page de LOGIN (jamais le spinner de confirmation).
+        const hasMagicHash =
+          typeof window !== 'undefined' && window.location.hash.includes('access_token');
+        router.replace(hasMagicHash ? '/auth/confirm' : '/dashboard/login');
         return;
       }
-      // Pas de session : si l'URL contient un hash de lien magique
-      // (#access_token=…), laisser /auth/confirm le parser. Sinon, un simple
-      // visiteur qui veut se connecter doit arriver sur la page de LOGIN, pas
-      // sur le spinner de confirmation (qui finit en « lien expiré »).
-      const hasMagicHash =
-        typeof window !== 'undefined' && window.location.hash.includes('access_token');
-      router.replace(hasMagicHash ? '/auth/confirm' : '/dashboard/login');
+
+      // Session active : email connu (a un restaurant réel) → dashboard,
+      // sinon → onboarding. Décision unique et déterministe.
+      const { data: restos } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('owner_id', session.user.id)
+        .eq('is_demo', false)
+        .limit(1);
+      router.replace(restos && restos.length > 0 ? '/dashboard' : '/onboarding');
     }
     checkAuth();
   }, [router]);
