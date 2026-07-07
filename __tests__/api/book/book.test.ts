@@ -93,7 +93,7 @@ function awaitableChain(resolvedValue: { data: unknown; error: unknown }, overri
 function setupHappyPath() {
   const restaurantChain = chain({
     single: vi.fn().mockResolvedValue({
-      data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, primary_color: RESTAURANT.primary_color },
+      data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, business_type: 'salon_coiffure', primary_color: RESTAURANT.primary_color },
       error: null,
     }),
   });
@@ -190,6 +190,20 @@ describe('POST /api/book/[slug]/book', () => {
     expect(sendBookingConfirmationEmail).toHaveBeenCalled();
   });
 
+  // ── Gate type d'activité : booking = prestations uniquement ──────────────
+  it('returns 404 for a non-eligible business type (café)', async () => {
+    const chains = setupHappyPath();
+    chains.restaurantChain.single.mockResolvedValue({
+      data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, business_type: 'cafe', primary_color: RESTAURANT.primary_color },
+      error: null,
+    });
+
+    const res = await POST(postReq(), slug());
+    expect(res.status).toBe(404);
+    const json = await res.json();
+    expect(json.error).toContain('pas disponible');
+  });
+
   // ── 2. Restaurant not found → 404 ────────────────────────────────────────
   it('returns 404 when restaurant slug does not exist', async () => {
     mockFrom.mockImplementation((table: string) => {
@@ -245,7 +259,7 @@ describe('POST /api/book/[slug]/book', () => {
     // Build a fresh happy path but override the conflict check to return a conflict
     const restaurantChain = chain({
       single: vi.fn().mockResolvedValue({
-        data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, primary_color: RESTAURANT.primary_color },
+        data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, business_type: 'salon_coiffure', primary_color: RESTAURANT.primary_color },
         error: null,
       }),
     });

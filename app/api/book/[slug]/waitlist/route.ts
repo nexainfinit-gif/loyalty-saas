@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { isBookingEligible } from '@/lib/booking-eligibility';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 // Rate limit: 5 waitlist joins per IP per minute
@@ -36,13 +37,19 @@ export async function POST(
   // Resolve restaurant
   const { data: restaurant } = await supabaseAdmin
     .from('restaurants')
-    .select('id')
+    .select('id, business_type')
     .eq('slug', slug)
     .maybeSingle();
 
   if (!restaurant) {
     return NextResponse.json({ error: 'Établissement introuvable.' }, { status: 404 });
   }
+  // Réservation limitée aux activités de prestation (coiffure, beauté, spa…)
+  // — jamais cafés/restaurants (fidélité seule pour eux). Gate serveur.
+  if (!isBookingEligible(restaurant.business_type)) {
+    return NextResponse.json({ error: "La réservation en ligne n'est pas disponible pour cet établissement." }, { status: 404 });
+  }
+
 
   let body: unknown;
   try {

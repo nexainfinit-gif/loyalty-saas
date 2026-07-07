@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { isBookingEligible } from '@/lib/booking-eligibility';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 const limiter = rateLimit({ prefix: 'book-page', limit: 30, windowMs: 60_000 });
@@ -28,13 +29,19 @@ export async function GET(
   // 1. Resolve restaurant by slug
   const { data: restaurant, error: restErr } = await supabaseAdmin
     .from('restaurants')
-    .select('id, name, slug, primary_color, logo_url')
+    .select('id, name, slug, business_type, primary_color, logo_url')
     .eq('slug', slug)
     .single();
 
   if (restErr || !restaurant) {
     return NextResponse.json({ error: 'Établissement introuvable.' }, { status: 404 });
   }
+  // Réservation limitée aux activités de prestation (coiffure, beauté, spa…)
+  // — jamais cafés/restaurants (fidélité seule pour eux). Gate serveur.
+  if (!isBookingEligible(restaurant.business_type)) {
+    return NextResponse.json({ error: "La réservation en ligne n'est pas disponible pour cet établissement." }, { status: 404 });
+  }
+
 
   // 2. Parallel fetch: services, staff, availability, settings
   const [servicesRes, staffRes, availabilityRes, settingsRes] = await Promise.all([
