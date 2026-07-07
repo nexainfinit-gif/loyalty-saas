@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useParams } from 'next/navigation'
 import { Check, Calendar, Clock, Euro, User, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
@@ -24,6 +24,25 @@ function SuccessContent() {
   const businessName = sp.get('business') ?? ''
   const message = sp.get('message')
 
+  // ── Acompte : au retour du Checkout Stripe, confirmer le paiement côté
+  //    serveur (vérité Stripe) avant d'afficher le succès ─────────────────
+  const depositSession = sp.get('deposit_session')
+  const aptId = sp.get('apt')
+  const [depositState, setDepositState] = useState<'idle' | 'verifying' | 'ok' | 'failed'>(
+    depositSession && aptId ? 'verifying' : 'idle'
+  )
+  useEffect(() => {
+    if (!depositSession || !aptId) return
+    fetch('/api/book/deposit-confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointmentId: aptId, sessionId: depositSession }),
+    })
+      .then(r => r.json().then(j => ({ ok: r.ok, j })))
+      .then(({ ok }) => setDepositState(ok ? 'ok' : 'failed'))
+      .catch(() => setDepositState('failed'))
+  }, [depositSession, aptId])
+
   // Build display date (e.g. "Samedi 15 mars 2026")
   const displayDate = (() => {
     if (!date) return ''
@@ -45,6 +64,36 @@ function SuccessContent() {
       + `&details=${encodeURIComponent(`Service : ${serviceName}\nAvec : ${staffName}\nDurée : ${duration} min\nPrix : ${price}€`)}`
       + `&location=${encodeURIComponent(businessName)}`
   })()
+
+  if (depositState === 'verifying') {
+    return (
+      <div className={`${isEmbed ? 'min-h-[200px]' : 'min-h-screen'} bg-surface flex items-center justify-center px-4`}>
+        <div className="text-center">
+          <div className="w-10 h-10 border-3 border-gray-200 border-t-gray-900 rounded-full animate-ds-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-500">{t('bookingSuccess.verifyingPayment')}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (depositState === 'failed') {
+    return (
+      <div className={`${isEmbed ? 'min-h-[200px]' : 'min-h-screen'} bg-surface flex items-center justify-center px-4`}>
+        <div className="text-center max-w-sm">
+          <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-5 text-2xl">⚠️</div>
+          <h1 className="text-xl font-semibold mb-2">{t('bookingSuccess.paymentIssueTitle')}</h1>
+          <p className="text-sm text-gray-500 mb-6">{t('bookingSuccess.paymentIssueDesc')}</p>
+          <Link
+            href={`/${locale}/book/${slug}`}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+          >
+            {t('bookingSuccess.bookAnother')}
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   // If no data in search params, show a fallback
   if (!serviceName) {

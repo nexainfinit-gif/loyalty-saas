@@ -917,7 +917,19 @@
     "socialTitle": "Reserveringslink (sociale media)",
     "socialDesc": "Voeg deze link toe aan uw Instagram-bio, Facebook-pagina of Google Business om directe reservering mogelijk te maken.",
     "reviewUrlLabel": "Google-reviewlink",
-    "reviewUrlHint": "Plak de link “Review achterlaten” van je Google-vermelding. Deze wordt aangeboden in de follow-up e-mail na de afspraak."
+    "reviewUrlHint": "Plak de link “Review achterlaten” van je Google-vermelding. Deze wordt aangeboden in de follow-up e-mail na de afspraak.",
+    "depositTitle": "Voorschot bij reservering",
+    "depositDesc": "Vraag een online voorschot bij het boeken — het beste wapen tegen no-shows. Het geld gaat rechtstreeks naar je Stripe-account.",
+    "connectRequired": "Om voorschotten te innen, koppel je Stripe-account (gratis, 5 minuten).",
+    "connectBtn": "Mijn Stripe-account koppelen",
+    "connectOk": "Stripe-account gekoppeld — betalingen actief",
+    "depositToggle": "Voorschot vereisen bij boeking",
+    "depositType": "Type",
+    "depositFixed": "Vast bedrag (€)",
+    "depositPercent": "% van de prijs",
+    "depositValueFixed": "Bedrag (€)",
+    "depositValuePercent": "Percentage (%)",
+    "depositInactiveHint": "Het voorschot wordt pas actief zodra je Stripe-account gekoppeld is."
   },
   "appointmentStaff": {
     "title": "Personeel",
@@ -987,7 +999,10 @@
     "price": "Prijs",
     "modifyCancel": "Wilt u wijzigen of annuleren?",
     "contactBusiness": "Neem rechtstreeks contact op met {business} per telefoon of door te antwoorden op de bevestigingsmail.",
-    "addToCalendar": "Toevoegen aan Google Calendar"
+    "addToCalendar": "Toevoegen aan Google Calendar",
+    "verifyingPayment": "Je betaling wordt gecontroleerd…",
+    "paymentIssueTitle": "Betaling niet bevestigd",
+    "paymentIssueDesc": "Je betaling kon niet worden geverifieerd. Als er is afgeschreven, neem contact op met de zaak — probeer anders opnieuw te boeken."
   },
   "bookingCancel": {
     "title": "Afspraak annuleren",

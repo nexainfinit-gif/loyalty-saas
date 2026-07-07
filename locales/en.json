@@ -934,7 +934,19 @@
     "socialTitle": "Booking link (social media)",
     "socialDesc": "Add this link to your Instagram bio, Facebook page, or Google Business to enable direct booking.",
     "reviewUrlLabel": "Google review link",
-    "reviewUrlHint": "Paste the “Leave a review” link from your Google listing. It will be offered to clients in the post-appointment follow-up email."
+    "reviewUrlHint": "Paste the “Leave a review” link from your Google listing. It will be offered to clients in the post-appointment follow-up email.",
+    "depositTitle": "Booking deposit",
+    "depositDesc": "Require an online deposit at booking time — the most effective weapon against no-shows. Money goes straight to your Stripe account.",
+    "connectRequired": "To collect deposits, connect your Stripe account (free, 5 minutes).",
+    "connectBtn": "Connect my Stripe account",
+    "connectOk": "Stripe account connected — payments active",
+    "depositToggle": "Require a deposit at booking",
+    "depositType": "Type",
+    "depositFixed": "Fixed amount (€)",
+    "depositPercent": "% of service price",
+    "depositValueFixed": "Amount (€)",
+    "depositValuePercent": "Percentage (%)",
+    "depositInactiveHint": "The deposit will only be active once your Stripe account is connected."
   },
   "appointmentStaff": {
     "title": "Staff",
@@ -1004,7 +1016,10 @@
     "price": "Price",
     "modifyCancel": "Need to modify or cancel?",
     "contactBusiness": "Contact {business} directly by phone or by replying to the confirmation email.",
-    "addToCalendar": "Add to Google Calendar"
+    "addToCalendar": "Add to Google Calendar",
+    "verifyingPayment": "Verifying your payment…",
+    "paymentIssueTitle": "Payment not confirmed",
+    "paymentIssueDesc": "Your payment could not be verified. If you were charged, contact the business — otherwise try booking again."
   },
   "bookingCancel": {
     "title": "Cancel your appointment",

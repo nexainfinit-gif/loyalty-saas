@@ -105,7 +105,7 @@ export async function GET(
       .eq('staff_id', staffId)
       .eq('restaurant_id', restaurant.id)
       .eq('date', date)
-      .in('status', ['confirmed']),
+      .in('status', ['confirmed', 'pending_payment']),
   ]);
 
   const settings = settingsRes.data ?? {

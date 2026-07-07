@@ -914,7 +914,19 @@
     "socialTitle": "Enlace de reserva (redes sociales)",
     "socialDesc": "Añade este enlace a tu bio de Instagram, página de Facebook o Google Business para permitir la reserva directa.",
     "reviewUrlLabel": "Enlace de reseña de Google",
-    "reviewUrlHint": "Pega el enlace “Dejar una reseña” de tu ficha de Google. Se ofrecerá a los clientes en el correo de seguimiento tras la cita."
+    "reviewUrlHint": "Pega el enlace “Dejar una reseña” de tu ficha de Google. Se ofrecerá a los clientes en el correo de seguimiento tras la cita.",
+    "depositTitle": "Depósito al reservar",
+    "depositDesc": "Exige un depósito pagado en línea al reservar — el arma más eficaz contra las ausencias. El dinero va directo a tu cuenta de Stripe.",
+    "connectRequired": "Para cobrar depósitos, conecta tu cuenta de Stripe (gratis, 5 minutos).",
+    "connectBtn": "Conectar mi cuenta de Stripe",
+    "connectOk": "Cuenta de Stripe conectada — cobros activos",
+    "depositToggle": "Exigir depósito al reservar",
+    "depositType": "Tipo",
+    "depositFixed": "Importe fijo (€)",
+    "depositPercent": "% del precio",
+    "depositValueFixed": "Importe (€)",
+    "depositValuePercent": "Porcentaje (%)",
+    "depositInactiveHint": "El depósito solo estará activo cuando tu cuenta de Stripe esté conectada."
   },
   "appointmentStaff": {
     "title": "Personal",
@@ -983,7 +995,10 @@
     "price": "Precio",
     "modifyCancel": "¿Necesitas modificar o cancelar?",
     "contactBusiness": "Contacta directamente con {business} por teléfono o respondiendo al email de confirmación.",
-    "addToCalendar": "Añadir a Google Calendar"
+    "addToCalendar": "Añadir a Google Calendar",
+    "verifyingPayment": "Verificando tu pago…",
+    "paymentIssueTitle": "Pago no confirmado",
+    "paymentIssueDesc": "No se pudo verificar tu pago. Si se te cobró, contacta con el negocio — si no, intenta reservar de nuevo."
   },
   "bookingCancel": {
     "title": "Cancelar tu cita",

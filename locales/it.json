@@ -917,7 +917,19 @@
     "socialTitle": "Link di prenotazione (social media)",
     "socialDesc": "Aggiungi questo link alla tua bio Instagram, pagina Facebook o Google Business per consentire la prenotazione diretta.",
     "reviewUrlLabel": "Link recensione Google",
-    "reviewUrlHint": "Incolla il link “Lascia una recensione” della tua scheda Google. Verrà proposto ai clienti nell’email di follow-up dopo l’appuntamento."
+    "reviewUrlHint": "Incolla il link “Lascia una recensione” della tua scheda Google. Verrà proposto ai clienti nell’email di follow-up dopo l’appuntamento.",
+    "depositTitle": "Acconto alla prenotazione",
+    "depositDesc": "Richiedi un acconto online al momento della prenotazione — l’arma più efficace contro i no-show. I soldi vanno direttamente sul tuo account Stripe.",
+    "connectRequired": "Per incassare acconti, collega il tuo account Stripe (gratuito, 5 minuti).",
+    "connectBtn": "Collega il mio account Stripe",
+    "connectOk": "Account Stripe collegato — incassi attivi",
+    "depositToggle": "Richiedi un acconto alla prenotazione",
+    "depositType": "Tipo",
+    "depositFixed": "Importo fisso (€)",
+    "depositPercent": "% del prezzo",
+    "depositValueFixed": "Importo (€)",
+    "depositValuePercent": "Percentuale (%)",
+    "depositInactiveHint": "L’acconto sarà attivo solo dopo il collegamento del tuo account Stripe."
   },
   "appointmentStaff": {
     "title": "Personale",
@@ -987,7 +999,10 @@
     "price": "Prezzo",
     "modifyCancel": "Devi modificare o cancellare?",
     "contactBusiness": "Contatta {business} direttamente per telefono o rispondendo all'email di conferma.",
-    "addToCalendar": "Aggiungi a Google Calendar"
+    "addToCalendar": "Aggiungi a Google Calendar",
+    "verifyingPayment": "Verifica del pagamento…",
+    "paymentIssueTitle": "Pagamento non confermato",
+    "paymentIssueDesc": "Impossibile verificare il pagamento. Se sei stato addebitato, contatta l’attività — altrimenti riprova a prenotare."
   },
   "bookingCancel": {
     "title": "Annulla il tuo appuntamento",

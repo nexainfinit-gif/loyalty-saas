@@ -180,6 +180,14 @@ export default function BookingPage() {
       }
 
       const data = await res.json()
+
+      // Acompte requis → redirection vers le paiement Stripe (le RDV est
+      // réservé 30 min ; il sera confirmé au retour de paiement).
+      if (data.requiresPayment && data.paymentUrl) {
+        window.location.href = data.paymentUrl
+        return
+      }
+
       const successParams = new URLSearchParams({
         service: data.serviceName ?? selectedService.name,
         staff: data.staffName ?? selectedStaff.name,

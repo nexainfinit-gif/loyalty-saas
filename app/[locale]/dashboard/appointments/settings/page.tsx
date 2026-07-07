@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Save, Clock, Calendar, Bell, Star, Shield, Loader2, Code, Copy, Check as CheckIcon } from 'lucide-react'
+import { Save, Clock, Calendar, Bell, Star, Shield, Loader2, Code, Copy, Check as CheckIcon, Euro } from 'lucide-react'
 import { toast } from 'sonner'
 import type { AppointmentSettings } from '@/types/appointments'
 import { api } from '@/lib/use-api'
@@ -35,6 +35,8 @@ export default function SettingsPage() {
   const [reviewUrl, setReviewUrl] = useState('')
   const [reviewSaving, setReviewSaving] = useState(false)
   const [reviewSaved, setReviewSaved] = useState(false)
+  const [connect, setConnect] = useState<{ accountId: string | null; chargesEnabled: boolean } | null>(null)
+  const [connectLoading, setConnectLoading] = useState(false)
 
   useEffect(() => {
     // URL d'avis Google (stockée en KV restaurant_settings)
@@ -43,6 +45,28 @@ export default function SettingsPage() {
       .then(j => { if (j?.settings?.google_review_url) setReviewUrl(j.settings.google_review_url) })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    // Statut Stripe Connect (encaissement des acomptes par le commerçant)
+    fetch('/api/stripe/connect')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j) setConnect({ accountId: j.accountId, chargesEnabled: j.chargesEnabled }) })
+      .catch(() => {})
+  }, [])
+
+  async function startConnectOnboarding() {
+    setConnectLoading(true)
+    try {
+      const res = await fetch('/api/stripe/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale }),
+      })
+      const j = await res.json()
+      if (res.ok && j.url) window.location.href = j.url
+      else toast.error(j.error || 'Erreur Stripe')
+    } finally { setConnectLoading(false) }
+  }
 
   async function saveReviewUrl() {
     setReviewSaving(true); setReviewSaved(false)
@@ -468,6 +492,76 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+        </section>
+
+        {/* ── Acompte à la réservation (Stripe Connect) ─────────── */}
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Euro size={16} className="text-gray-400" />
+            <h3 className="text-sm font-semibold text-gray-900">{t('appointmentSettings.depositTitle')}</h3>
+          </div>
+          <p className="text-xs text-gray-400">{t('appointmentSettings.depositDesc')}</p>
+
+          {/* Statut Stripe Connect */}
+          {connect && !connect.chargesEnabled ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm text-amber-800 mb-3">{t('appointmentSettings.connectRequired')}</p>
+              <button
+                type="button"
+                onClick={startConnectOnboarding}
+                disabled={connectLoading}
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
+              >
+                {connectLoading ? '…' : t('appointmentSettings.connectBtn')}
+              </button>
+            </div>
+          ) : connect?.chargesEnabled ? (
+            <p className="text-xs font-medium text-emerald-600">✓ {t('appointmentSettings.connectOk')}</p>
+          ) : null}
+
+          {/* Toggle + montant */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-700">{t('appointmentSettings.depositToggle')}</span>
+            <button
+              type="button"
+              onClick={() => update('deposit_enabled', !settings.deposit_enabled)}
+              className={`relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings.deposit_enabled ? 'bg-gray-900' : 'bg-gray-200'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${settings.deposit_enabled ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+
+          {settings.deposit_enabled && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1.5 block">{t('appointmentSettings.depositType')}</label>
+                <select
+                  value={settings.deposit_type}
+                  onChange={(e) => update('deposit_type', e.target.value as 'fixed' | 'percent')}
+                  className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                >
+                  <option value="fixed">{t('appointmentSettings.depositFixed')}</option>
+                  <option value="percent">{t('appointmentSettings.depositPercent')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1.5 block">
+                  {settings.deposit_type === 'percent' ? t('appointmentSettings.depositValuePercent') : t('appointmentSettings.depositValueFixed')}
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={settings.deposit_type === 'percent' ? 100 : 1000}
+                  value={settings.deposit_value}
+                  onChange={(e) => update('deposit_value', parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+                />
+              </div>
+            </div>
+          )}
+          {settings.deposit_enabled && connect && !connect.chargesEnabled && (
+            <p className="text-[11px] text-amber-600">{t('appointmentSettings.depositInactiveHint')}</p>
+          )}
         </section>
 
         {/* ── Google Calendar ──────────────────────────────────── */}

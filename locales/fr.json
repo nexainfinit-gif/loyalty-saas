@@ -934,7 +934,19 @@
     "socialTitle": "Lien de réservation (réseaux sociaux)",
     "socialDesc": "Ajoutez ce lien dans votre bio Instagram, page Facebook, ou Google Business pour permettre la réservation directe.",
     "reviewUrlLabel": "Lien avis Google",
-    "reviewUrlHint": "Collez le lien « Laisser un avis » de votre fiche Google. Il sera proposé aux clients dans l'email de suivi après leur rendez-vous."
+    "reviewUrlHint": "Collez le lien « Laisser un avis » de votre fiche Google. Il sera proposé aux clients dans l'email de suivi après leur rendez-vous.",
+    "depositTitle": "Acompte à la réservation",
+    "depositDesc": "Demandez un acompte payé en ligne au moment de la réservation — l’arme la plus efficace contre les no-shows. L’argent est versé directement sur votre compte Stripe.",
+    "connectRequired": "Pour encaisser des acomptes, connectez votre compte Stripe (gratuit, 5 minutes).",
+    "connectBtn": "Connecter mon compte Stripe",
+    "connectOk": "Compte Stripe connecté — encaissements actifs",
+    "depositToggle": "Exiger un acompte à la réservation",
+    "depositType": "Type",
+    "depositFixed": "Montant fixe (€)",
+    "depositPercent": "% du prix du service",
+    "depositValueFixed": "Montant (€)",
+    "depositValuePercent": "Pourcentage (%)",
+    "depositInactiveHint": "L’acompte ne sera actif qu’une fois votre compte Stripe connecté."
   },
   "appointmentStaff": {
     "title": "Équipe",
@@ -1004,7 +1016,10 @@
     "price": "Prix",
     "modifyCancel": "Besoin de modifier ou annuler ?",
     "contactBusiness": "Contactez directement {business} par téléphone ou en répondant à l'email de confirmation.",
-    "addToCalendar": "Ajouter à Google Calendar"
+    "addToCalendar": "Ajouter à Google Calendar",
+    "verifyingPayment": "Vérification de votre paiement…",
+    "paymentIssueTitle": "Paiement non confirmé",
+    "paymentIssueDesc": "Votre paiement n’a pas pu être vérifié. Si vous avez été débité, contactez l’établissement — sinon, réessayez de réserver."
   },
   "bookingCancel": {
     "title": "Annuler votre rendez-vous",
