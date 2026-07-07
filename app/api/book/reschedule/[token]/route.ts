@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { sendBookingConfirmationEmail, sendStaffNotificationEmail } from '@/lib/email';
+import { refreshAppointmentOnPass } from '@/lib/booking-wallet';
 
 const getLimiter = rateLimit({ prefix: 'reschedule-get', limit: 15, windowMs: 60_000 });
 const postLimiter = rateLimit({ prefix: 'reschedule-post', limit: 5, windowMs: 60_000 });
@@ -260,6 +261,9 @@ export async function POST(
     .single();
 
   // Send updated confirmation email
+  // Met à jour le RDV affiché sur la carte Wallet (nouvelle date/heure)
+  await refreshAppointmentOnPass(appointment.restaurant_id, appointment.client_email);
+
   if (restaurant && appointment.client_email) {
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://rebites.be';
     const cancelUrl = `${APP_URL}/book/cancel/${appointment.cancel_token}`;

@@ -44,7 +44,9 @@ export async function GET(request: NextRequest) {
     cancellation_deadline_hours: 24,
     confirmation_message: null,
     reminder_hours_before: 24,
-    auto_loyalty_points: false,
+    // ON par défaut : chaque visite honorée crédite des points fidélité —
+    // synergie booking × fidélité au cœur du produit (Phase A, 2026-07-07).
+    auto_loyalty_points: true,
     loyalty_points_per_visit: 10,
     no_show_block_threshold: 3,
     working_days: [1, 2, 3, 4, 5, 6],

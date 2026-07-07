@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
 import DashboardTutorial from '@/components/DashboardTutorial';
 import LoyaltySetupModal from '@/components/LoyaltySetupModal';
+import { BOOKING_ELIGIBLE_TYPES } from '@/lib/booking-eligibility';
 import PlanSelection from '@/components/PlanSelection';
 import LoyaltyTab from '@/components/LoyaltyTab';
 import OverviewTab, { RETURN_GRACE_DAYS, DEFAULT_GRACE_DAYS } from '@/components/OverviewTab';
@@ -141,13 +142,6 @@ const BUSINESS_TYPE_EMOJI: Record<string, string> = {
 };
 
 /* Business types that can use the Booking module */
-const BOOKING_ELIGIBLE_TYPES = new Set([
-  'salon_coiffure',
-  'salon_beaute',
-  'barbershop',
-  'spa',
-  'bien_etre',
-]);
 
 /* ─── Helpers ────────────────────────────────────────────── */
 function getCustomerStatus(

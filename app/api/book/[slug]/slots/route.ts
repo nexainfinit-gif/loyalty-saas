@@ -146,7 +146,27 @@ export async function GET(
     dateObj.getDate() === now.getDate();
   const nowMinutes = isToday ? now.getHours() * 60 + now.getMinutes() : 0;
 
-  const slots: { time: string; available: boolean }[] = [];
+  // ── Multiplicateurs de points actifs ce jour-là (synergie fidélité) ──
+  // Un créneau couvert par un multiplicateur est badgé « points ×N » sur la
+  // page publique → incite à réserver les heures creuses.
+  // (dayOfWeek déjà déclaré plus haut pour les disponibilités staff.)
+  const { data: multipliers } = await supabaseAdmin
+    .from('point_multipliers')
+    .select('multiplier, day_of_week, start_time, end_time')
+    .eq('restaurant_id', restaurant.id)
+    .eq('active', true);
+
+  const multiplierFor = (slotMin: number): number | undefined => {
+    for (const mult of multipliers ?? []) {
+      if (mult.day_of_week !== null && mult.day_of_week !== dayOfWeek) continue;
+      const from = mult.start_time ? timeToMinutes(String(mult.start_time).slice(0, 5)) : 0;
+      const to   = mult.end_time   ? timeToMinutes(String(mult.end_time).slice(0, 5))   : 24 * 60;
+      if (slotMin >= from && slotMin < to && (mult.multiplier ?? 1) > 1) return mult.multiplier;
+    }
+    return undefined;
+  };
+
+  const slots: { time: string; available: boolean; multiplier?: number }[] = [];
 
   for (let m = openMinutes; m + slotDuration <= closeMinutes; m += settings.slot_duration_minutes) {
     // Skip past slots
@@ -162,9 +182,11 @@ export async function GET(
       return slotStartMin < apptEnd && slotEndMin > apptStart;
     });
 
+    const mult = multiplierFor(slotStartMin);
     slots.push({
       time: minutesToTime(m),
       available: !hasConflict,
+      ...(mult ? { multiplier: mult } : {}),
     });
   }
 

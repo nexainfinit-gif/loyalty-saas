@@ -912,7 +912,9 @@
     "embedDesc": "Integra el formulario de reservas directamente en tu sitio web. Copia el código de abajo y pégalo en tu página HTML.",
     "embedTip": "Consejo: Ajusta la altura (height) según tus necesidades. 700px funciona bien para la mayoría de los sitios.",
     "socialTitle": "Enlace de reserva (redes sociales)",
-    "socialDesc": "Añade este enlace a tu bio de Instagram, página de Facebook o Google Business para permitir la reserva directa."
+    "socialDesc": "Añade este enlace a tu bio de Instagram, página de Facebook o Google Business para permitir la reserva directa.",
+    "reviewUrlLabel": "Enlace de reseña de Google",
+    "reviewUrlHint": "Pega el enlace “Dejar una reseña” de tu ficha de Google. Se ofrecerá a los clientes en el correo de seguimiento tras la cita."
   },
   "appointmentStaff": {
     "title": "Personal",
@@ -966,7 +968,8 @@
     "bookError": "Error en la reserva.",
     "bookTitle": "Reserva online",
     "pageNotFound": "Página no encontrada",
-    "businessNotFound": "Este negocio no existe."
+    "businessNotFound": "Este negocio no existe.",
+    "multiplierHint": "¡Puntos de fidelidad ×{n} en esta franja!"
   },
   "bookingSuccess": {
     "title": "Cita confirmada",

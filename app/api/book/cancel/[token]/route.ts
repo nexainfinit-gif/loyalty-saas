@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { sendWaitlistNotifyEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
+import { refreshAppointmentOnPass } from '@/lib/booking-wallet';
 
 const getLimiter = rateLimit({ prefix: 'cancel-get', limit: 15, windowMs: 60_000 });
 const postLimiter = rateLimit({ prefix: 'cancel-post', limit: 5, windowMs: 60_000 });
@@ -115,7 +116,7 @@ export async function POST(
   // Look up appointment
   const { data: appointment, error: aptErr } = await supabaseAdmin
     .from('appointments')
-    .select('id, restaurant_id, date, start_time, status')
+    .select('id, restaurant_id, date, start_time, status, client_email')
     .eq('cancel_token', token)
     .single();
 
@@ -239,6 +240,9 @@ export async function POST(
     // Non-blocking: waitlist notification failure shouldn't break the cancellation
     logger.error({ ctx: 'cancel', msg: 'Waitlist notification failed', err: err instanceof Error ? err.message : String(err) });
   }
+
+  // Met à jour le prochain RDV affiché sur la carte Wallet du client
+  await refreshAppointmentOnPass(appointment.restaurant_id, (appointment as { client_email?: string | null }).client_email);
 
   return NextResponse.json({ success: true });
 }

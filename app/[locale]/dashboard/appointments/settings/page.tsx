@@ -32,6 +32,29 @@ export default function SettingsPage() {
   const [gcalConnected, setGcalConnected] = useState(false)
   const [gcalConfigured, setGcalConfigured] = useState(false)
   const [gcalAuthUrl, setGcalAuthUrl] = useState<string | null>(null)
+  const [reviewUrl, setReviewUrl] = useState('')
+  const [reviewSaving, setReviewSaving] = useState(false)
+  const [reviewSaved, setReviewSaved] = useState(false)
+
+  useEffect(() => {
+    // URL d'avis Google (stockée en KV restaurant_settings)
+    fetch('/api/restaurant-settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j?.settings?.google_review_url) setReviewUrl(j.settings.google_review_url) })
+      .catch(() => {})
+  }, [])
+
+  async function saveReviewUrl() {
+    setReviewSaving(true); setReviewSaved(false)
+    try {
+      const res = await fetch('/api/restaurant-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ google_review_url: reviewUrl.trim() }),
+      })
+      if (res.ok) { setReviewSaved(true); setTimeout(() => setReviewSaved(false), 2500) }
+    } finally { setReviewSaving(false) }
+  }
 
   useEffect(() => {
     async function fetchSettings() {
@@ -420,6 +443,31 @@ export default function SettingsPage() {
               />
             </div>
           )}
+
+          {/* Lien avis Google — utilisé dans l'email de suivi post-RDV */}
+          <div className="pt-2 border-t border-gray-50">
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">
+              {t('appointmentSettings.reviewUrlLabel')}
+            </label>
+            <p className="text-[11px] text-gray-400 mb-2">{t('appointmentSettings.reviewUrlHint')}</p>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={reviewUrl}
+                onChange={(e) => setReviewUrl(e.target.value)}
+                placeholder="https://g.page/r/…/review"
+                className="flex-1 px-3 py-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors"
+              />
+              <button
+                type="button"
+                onClick={saveReviewUrl}
+                disabled={reviewSaving}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                {reviewSaving ? '…' : reviewSaved ? '✓' : t('common.save')}
+              </button>
+            </div>
+          </div>
         </section>
 
         {/* ── Google Calendar ──────────────────────────────────── */}

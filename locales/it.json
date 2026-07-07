@@ -915,7 +915,9 @@
     "embedDesc": "Integra il modulo di prenotazione direttamente nel tuo sito web. Copia il codice qui sotto e incollalo nella tua pagina HTML.",
     "embedTip": "Suggerimento: Regola l'altezza (height) secondo le tue esigenze. 700px funziona bene per la maggior parte dei siti.",
     "socialTitle": "Link di prenotazione (social media)",
-    "socialDesc": "Aggiungi questo link alla tua bio Instagram, pagina Facebook o Google Business per consentire la prenotazione diretta."
+    "socialDesc": "Aggiungi questo link alla tua bio Instagram, pagina Facebook o Google Business per consentire la prenotazione diretta.",
+    "reviewUrlLabel": "Link recensione Google",
+    "reviewUrlHint": "Incolla il link “Lascia una recensione” della tua scheda Google. Verrà proposto ai clienti nell’email di follow-up dopo l’appuntamento."
   },
   "appointmentStaff": {
     "title": "Personale",
@@ -970,7 +972,8 @@
     "blockedNoShow": "Il tuo account ha troppi appuntamenti mancati. Contatta direttamente la struttura.",
     "bookTitle": "Prenotazione online",
     "pageNotFound": "Pagina non trovata",
-    "businessNotFound": "Questa attività non esiste."
+    "businessNotFound": "Questa attività non esiste.",
+    "multiplierHint": "Punti fedeltà ×{n} su questa fascia!"
   },
   "bookingSuccess": {
     "title": "Appuntamento confermato",

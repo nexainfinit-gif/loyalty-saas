@@ -932,7 +932,9 @@
     "embedDesc": "Intégrez le formulaire de réservation directement sur votre site web. Copiez le code ci-dessous et collez-le dans votre page HTML.",
     "embedTip": "Astuce : Ajustez la hauteur (height) selon vos besoins. 700px fonctionne bien pour la plupart des sites.",
     "socialTitle": "Lien de réservation (réseaux sociaux)",
-    "socialDesc": "Ajoutez ce lien dans votre bio Instagram, page Facebook, ou Google Business pour permettre la réservation directe."
+    "socialDesc": "Ajoutez ce lien dans votre bio Instagram, page Facebook, ou Google Business pour permettre la réservation directe.",
+    "reviewUrlLabel": "Lien avis Google",
+    "reviewUrlHint": "Collez le lien « Laisser un avis » de votre fiche Google. Il sera proposé aux clients dans l'email de suivi après leur rendez-vous."
   },
   "appointmentStaff": {
     "title": "Équipe",
@@ -987,7 +989,8 @@
     "blockedNoShow": "Votre compte a trop de rendez-vous manqués. Veuillez contacter directement l'établissement.",
     "bookTitle": "Réservation en ligne",
     "pageNotFound": "Page introuvable",
-    "businessNotFound": "Cet établissement n'existe pas."
+    "businessNotFound": "Cet établissement n'existe pas.",
+    "multiplierHint": "Points fidélité ×{n} sur ce créneau !"
   },
   "bookingSuccess": {
     "title": "Rendez-vous confirmé",

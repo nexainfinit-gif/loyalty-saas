@@ -88,6 +88,14 @@ export async function GET(req: NextRequest) {
       const staff = apt.staff as unknown as { name: string } | null;
 
       try {
+        // URL d'avis Google configurée par le commerçant (restaurant_settings KV)
+        const { data: reviewSetting } = await supabaseAdmin
+          .from('restaurant_settings')
+          .select('value')
+          .eq('restaurant_id', apt.restaurant_id)
+          .eq('key', 'google_review_url')
+          .maybeSingle();
+
         await sendFollowUpEmail({
           to: apt.client_email,
           clientName: apt.client_name,
@@ -96,6 +104,7 @@ export async function GET(req: NextRequest) {
           businessName: resto.name,
           businessColor: resto.primary_color ?? '#FF6B35',
           businessSlug: resto.slug,
+          reviewUrl: reviewSetting?.value || null,
         });
 
         // Record followup to prevent duplicates

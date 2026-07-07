@@ -932,7 +932,9 @@
     "embedDesc": "Embed the booking form directly on your website. Copy the code below and paste it into your HTML page.",
     "embedTip": "Tip: Adjust the height as needed. 700px works well for most websites.",
     "socialTitle": "Booking link (social media)",
-    "socialDesc": "Add this link to your Instagram bio, Facebook page, or Google Business to enable direct booking."
+    "socialDesc": "Add this link to your Instagram bio, Facebook page, or Google Business to enable direct booking.",
+    "reviewUrlLabel": "Google review link",
+    "reviewUrlHint": "Paste the “Leave a review” link from your Google listing. It will be offered to clients in the post-appointment follow-up email."
   },
   "appointmentStaff": {
     "title": "Staff",
@@ -987,7 +989,8 @@
     "blockedNoShow": "Your account has too many missed appointments. Please contact the business directly.",
     "bookTitle": "Online booking",
     "pageNotFound": "Page not found",
-    "businessNotFound": "This business does not exist."
+    "businessNotFound": "This business does not exist.",
+    "multiplierHint": "Loyalty points ×{n} on this slot!"
   },
   "bookingSuccess": {
     "title": "Appointment confirmed",

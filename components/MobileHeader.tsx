@@ -2,6 +2,7 @@
 import { useEffect, useCallback } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import LocaleLink from '@/components/LocaleLink';
+import { BOOKING_ELIGIBLE_TYPES } from '@/lib/booking-eligibility';
 
 type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings' | 'wallet';
 
@@ -25,9 +26,6 @@ const BUSINESS_TYPE_EMOJI: Record<string, string> = {
   restaurant: '🍽️', cafe: '☕', salon_beaute: '💅', salon_coiffure: '💇', boutique: '🛍️',
 };
 
-const BOOKING_ELIGIBLE_TYPES = new Set([
-  'salon_coiffure', 'salon_beaute', 'barbershop', 'spa', 'bien_etre',
-]);
 
 export default function MobileHeader({
   restaurantName, logoUrl, primaryColor, businessType, planName,

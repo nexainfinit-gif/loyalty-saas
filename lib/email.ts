@@ -816,6 +816,8 @@ interface FollowUpEmailProps {
   businessName: string;
   businessColor: string;
   businessSlug: string;
+  /** Lien d'avis Google du commerçant (optionnel) */
+  reviewUrl?: string | null;
 }
 
 export async function sendFollowUpEmail({
@@ -826,6 +828,7 @@ export async function sendFollowUpEmail({
   businessName,
   businessColor,
   businessSlug,
+  reviewUrl,
 }: FollowUpEmailProps) {
   const safeColor   = safeCssColor(businessColor);
   const safeBizName = esc(businessName);
@@ -859,6 +862,13 @@ export async function sendFollowUpEmail({
             Reprendre rendez-vous
           </a>
         </div>
+        ${reviewUrl && /^https:\/\//.test(reviewUrl) ? `
+        <div style="text-align: center; margin: 0 0 2rem;">
+          <p style="color: #374151; font-size: 0.9rem; margin-bottom: 0.75rem;">Votre avis compte énormément pour nous 🙏</p>
+          <a href="${reviewUrl}" target="_blank" style="display: inline-block; border: 1px solid #e5e7eb; color: #374151; text-decoration: none; padding: 0.75rem 1.75rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
+            ⭐ Laisser un avis Google
+          </a>
+        </div>` : ''}
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
         <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
           ${safeBizName} — Réservation en ligne par <a href="https://rebites.be" style="color: #9ca3af; text-decoration: underline;">Rebites</a>

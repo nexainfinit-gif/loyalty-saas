@@ -65,7 +65,7 @@ export default function BookingPage() {
   const [clientForm, setClientForm] = useState({ name: '', email: '', phone: '' })
 
   // ── Slots state ─────────────────────────────────────────────────────────
-  const [timeSlots, setTimeSlots] = useState<{ time: string; available: boolean }[]>([])
+  const [timeSlots, setTimeSlots] = useState<{ time: string; available: boolean; multiplier?: number }[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [bookingLoading, setBookingLoading] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
@@ -588,13 +588,21 @@ export default function BookingPage() {
                           setSelectedTime(slot.time)
                           setStep(4)
                         }}
-                        className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        className={`relative px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                           selectedTime === slot.time
                             ? 'bg-gray-900 text-white'
                             : 'bg-gray-50 text-gray-900 hover:bg-gray-200'
                         }`}
                       >
                         {slot.time}
+                        {(slot.multiplier ?? 1) > 1 && (
+                          <span
+                            className="absolute -top-1.5 -right-1.5 text-[9px] font-bold px-1 py-0.5 rounded-md bg-amber-100 text-amber-700 leading-none"
+                            title={t('booking.multiplierHint', { n: slot.multiplier })}
+                          >
+                            ×{slot.multiplier}
+                          </span>
+                        )}
                       </button>
                     ))}
                 </div>

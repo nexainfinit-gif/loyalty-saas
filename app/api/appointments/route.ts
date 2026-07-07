@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { refreshAppointmentOnPass } from '@/lib/booking-wallet';
 import { requireAuth } from '@/lib/server-auth';
 import { sendStaffNotificationEmail } from '@/lib/email';
 import { syncAppointmentToCalendar, updateCalendarEvent } from '@/lib/google-calendar-sync';
@@ -320,6 +321,11 @@ export async function PUT(request: NextRequest) {
           .eq('client_email', email);
       }
     }
+  }
+
+  // Statut modifié → resynchronise le prochain RDV sur la carte Wallet
+  if (newStatus !== oldStatus && current.client_email) {
+    await refreshAppointmentOnPass(auth.restaurantId, current.client_email);
   }
 
   // ── Loyalty points on completion ────────────────────────────────────────

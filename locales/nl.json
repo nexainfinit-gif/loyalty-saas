@@ -915,7 +915,9 @@
     "embedDesc": "Integreer het reserveringsformulier rechtstreeks op uw website. Kopieer onderstaande code en plak deze in uw HTML-pagina.",
     "embedTip": "Tip: Pas de hoogte (height) aan naar wens. 700px werkt goed voor de meeste websites.",
     "socialTitle": "Reserveringslink (sociale media)",
-    "socialDesc": "Voeg deze link toe aan uw Instagram-bio, Facebook-pagina of Google Business om directe reservering mogelijk te maken."
+    "socialDesc": "Voeg deze link toe aan uw Instagram-bio, Facebook-pagina of Google Business om directe reservering mogelijk te maken.",
+    "reviewUrlLabel": "Google-reviewlink",
+    "reviewUrlHint": "Plak de link “Review achterlaten” van je Google-vermelding. Deze wordt aangeboden in de follow-up e-mail na de afspraak."
   },
   "appointmentStaff": {
     "title": "Personeel",
@@ -970,7 +972,8 @@
     "blockedNoShow": "Uw account heeft te veel gemiste afspraken. Neem rechtstreeks contact op met de zaak.",
     "bookTitle": "Online reservering",
     "pageNotFound": "Pagina niet gevonden",
-    "businessNotFound": "Deze zaak bestaat niet."
+    "businessNotFound": "Deze zaak bestaat niet.",
+    "multiplierHint": "Klantenpunten ×{n} op dit tijdslot!"
   },
   "bookingSuccess": {
     "title": "Afspraak bevestigd",

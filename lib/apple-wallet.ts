@@ -43,6 +43,8 @@ export interface PassBuildInput {
   referralCode?: string | null;
   /** Current promo/marketing message — shown on pass back, triggers lock-screen notification via changeMessage */
   promoMessage?: string | null;
+  /** Public booking URL (restaurants booking-eligible) — « Réserver » back link */
+  bookingUrl?: string | null;
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -127,11 +129,23 @@ function buildPassJson(
     { key: 'terms',   label: 'Conditions',            value: 'Ce pass est personnel et non transférable.' },
   ];
 
-  // Promo / marketing message — triggers iOS lock-screen notification via changeMessage
+  // Lien « Réserver » — boucle de re-booking dans la poche du client
+  // (iOS rend les URLs des back fields cliquables via les data detectors).
+  if (input.bookingUrl) {
+    defaultBackFields.unshift({
+      key:   'booking',
+      label: 'Réserver',
+      value: `Reprenez rendez-vous en un tap :\n${input.bookingUrl}`,
+    });
+  }
+
+  // Promo / marketing message — triggers iOS lock-screen notification via changeMessage.
+  // Convention : un message préfixé 📅 est un rappel de rendez-vous (écrit par
+  // lib/booking-wallet.ts) → label dédié au lieu de « Offre du moment ».
   if (input.promoMessage) {
     defaultBackFields.unshift({
       key:           'promo',
-      label:         'Offre du moment',
+      label:         input.promoMessage.startsWith('📅') ? 'Prochain rendez-vous' : 'Offre du moment',
       value:         input.promoMessage,
       changeMessage: '%@',
     });

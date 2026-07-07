@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { buildPkpass, pkpassResponse } from '@/lib/apple-wallet';
+import { isBookingEligible } from '@/lib/booking-eligibility';
 import type { PassBuildInput } from '@/lib/apple-wallet';
 import { logger } from '@/lib/logger';
 
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   // ── Fetch restaurant ─────────────────────────────────────────────────────
   const { data: restaurant } = await supabaseAdmin
     .from('restaurants')
-    .select('id, name, primary_color, logo_url')
+    .select('id, name, slug, business_type, primary_color, logo_url')
     .eq('id', pass.restaurant_id)
     .single();
 
@@ -162,6 +163,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     rewardPending:       (pass as { reward_pending?: boolean }).reward_pending ?? (customer as { reward_pending?: boolean }).reward_pending ?? false,
     referralCode:        (customer as { referral_code?: string | null }).referral_code ?? null,
     promoMessage:        (pass as { promo_message?: string | null }).promo_message ?? null,
+    bookingUrl:          isBookingEligible((restaurant as { business_type?: string | null }).business_type)
+      ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/fr/book/${(restaurant as { slug?: string }).slug}`
+      : null,
   };
 
   try {

@@ -46,7 +46,7 @@ export class FakeDb {
 class FakeQuery implements PromiseLike<{ data: unknown; error: unknown }> {
   private op: 'select' | 'insert' | 'update' | 'upsert' | 'delete' = 'select';
   private filters: Filter[] = [];
-  private orderBy: { col: string; ascending: boolean } | null = null;
+  private orderBys: { col: string; ascending: boolean }[] = [];
   private limitN: number | null = null;
   private insertRows: Row[] = [];
   private updatePatch: Row = {};
@@ -75,8 +75,9 @@ class FakeQuery implements PromiseLike<{ data: unknown; error: unknown }> {
   in(col: string, val: unknown[]) { this.filters.push({ col, op: 'in', val }); return this; }
   is(col: string, val: unknown)  { this.filters.push({ col, op: 'is', val }); return this; }
 
+  // Supabase cumule les .order() successifs (tri multi-colonnes) — idem ici.
   order(col: string, opts?: { ascending?: boolean }) {
-    this.orderBy = { col, ascending: opts?.ascending ?? true };
+    this.orderBys.push({ col, ascending: opts?.ascending ?? true });
     return this;
   }
   limit(n: number) { this.limitN = n; return this; }
@@ -134,11 +135,14 @@ class FakeQuery implements PromiseLike<{ data: unknown; error: unknown }> {
 
     // select
     let rows = all.filter((r) => this.matches(r)).map((r) => ({ ...r }));
-    if (this.orderBy) {
-      const { col, ascending } = this.orderBy;
+    if (this.orderBys.length > 0) {
       rows = rows.sort((a, b) => {
-        const x = a[col] as never, y = b[col] as never;
-        return (x < y ? -1 : x > y ? 1 : 0) * (ascending ? 1 : -1);
+        for (const { col, ascending } of this.orderBys) {
+          const x = a[col] as never, y = b[col] as never;
+          const cmp = (x < y ? -1 : x > y ? 1 : 0) * (ascending ? 1 : -1);
+          if (cmp !== 0) return cmp;
+        }
+        return 0;
       });
     }
     if (this.limitN !== null) rows = rows.slice(0, this.limitN);

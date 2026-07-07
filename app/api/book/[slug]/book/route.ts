@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { sendBookingConfirmationEmail, sendStaffNotificationEmail } from '@/lib/email';
+import { refreshAppointmentOnPass } from '@/lib/booking-wallet';
 
 const limiter = rateLimit({ prefix: 'book-create', limit: 5, windowMs: 60_000 });
 
@@ -228,6 +229,9 @@ export async function POST(
       businessColor: restaurant.primary_color ?? '#111827',
     }).catch((err) => console.error('[book] Staff notification error:', err));
   }
+
+  // Synchronise le prochain RDV sur la carte Wallet du client (rappel gratuit)
+  await refreshAppointmentOnPass(restaurant.id, clientEmail);
 
   return NextResponse.json({
     success: true,
