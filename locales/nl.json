@@ -1697,5 +1697,21 @@
     "revenue_kpis_locked": "Omzetschattingen vergrendeld",
     "analytics_upgrade": "Geavanceerde analytics beschikbaar op Pro",
     "ltv_upgrade": "Geschatte LTV beschikbaar op Pro"
+  },
+  "loyaltySetup": {
+    "title": "Stel je klantenkaartprogramma in",
+    "subtitle": "Verplichte stap om je klantenkaart te activeren en klanten te scannen.",
+    "typeLabel": "Type programma",
+    "modePoints": "Punten",
+    "modePointsDesc": "Klanten sparen punten bij elk bezoek",
+    "modeStamps": "Stempels",
+    "modeStampsDesc": "Een stempelkaart, beloond zodra vol",
+    "stampsTotalLabel": "Aantal stempels voor de beloning",
+    "thresholdLabel": "Punten voor de beloning",
+    "perScanLabel": "Punten per scan",
+    "rewardLabel": "Beloning",
+    "rewardPlaceholder": "bijv. een gratis koffie",
+    "walletHint": "Je Wallet-klantenkaart wordt automatisch aangemaakt bij het opslaan.",
+    "saveBtn": "Programma activeren"
   }
 }

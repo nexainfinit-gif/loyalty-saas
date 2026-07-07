@@ -1697,5 +1697,21 @@
     "revenue_kpis_locked": "Stime dei ricavi bloccate",
     "analytics_upgrade": "Analytics avanzati disponibili su Pro",
     "ltv_upgrade": "LTV stimata disponibile su Pro"
+  },
+  "loyaltySetup": {
+    "title": "Configura il tuo programma fedeltà",
+    "subtitle": "Passaggio obbligatorio per attivare la tua carta fedeltà e iniziare a scansionare i clienti.",
+    "typeLabel": "Tipo di programma",
+    "modePoints": "Punti",
+    "modePointsDesc": "Il cliente accumula punti a ogni visita",
+    "modeStamps": "Timbri",
+    "modeStampsDesc": "Una tessera da timbrare, premiata una volta piena",
+    "stampsTotalLabel": "Timbri necessari per il premio",
+    "thresholdLabel": "Punti per il premio",
+    "perScanLabel": "Punti per scansione",
+    "rewardLabel": "Ricompensa",
+    "rewardPlaceholder": "es. un caffè offerto",
+    "walletHint": "La tua carta fedeltà Wallet verrà creata automaticamente al salvataggio.",
+    "saveBtn": "Attiva il mio programma"
   }
 }

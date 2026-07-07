@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 // Recharts imported by sub-components (OverviewTab, AnalyticsTab)
 import { Badge } from '@/components/ui/Badge';
 import DashboardTutorial from '@/components/DashboardTutorial';
+import LoyaltySetupModal from '@/components/LoyaltySetupModal';
 import PlanSelection from '@/components/PlanSelection';
 import LoyaltyTab from '@/components/LoyaltyTab';
 import OverviewTab, { RETURN_GRACE_DAYS, DEFAULT_GRACE_DAYS } from '@/components/OverviewTab';
@@ -276,6 +277,7 @@ export default function DashboardPage() {
   const [walletPassCustomerIds, setWalletPassCustomerIds] = useState<Set<string>>(new Set());
   // First-visit tutorial + plan selection
   const [showTutorial, setShowTutorial] = useState(false);
+  const [needsLoyaltySetup, setNeedsLoyaltySetup] = useState(false);
   const [showPlanSelection, setShowPlanSelection] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [hasTemplates, setHasTemplates] = useState(true); // assume true until checked
@@ -427,6 +429,10 @@ export default function DashboardPage() {
       } else if (ls) {
         setLoyaltySettings(ls);
       }
+      // Aucun programme configuré (pas de ligne loyalty_settings) → pop-up
+      // de configuration OBLIGATOIRE (bloque le dashboard, non-fermable).
+      const hasProgram = !lsError && !!ls;
+      setNeedsLoyaltySetup(!hasProgram);
 
       const { data: camps } = await supabase
         .from('campaigns').select('*')
@@ -454,8 +460,9 @@ export default function DashboardPage() {
 
       setLoading(false);
 
-      // Auto-launch tutorial if never completed
-      if (!resto.tutorial_completed_at) {
+      // Auto-launch tutorial if never completed — MAIS seulement si le
+      // programme est déjà configuré (sinon la pop-up obligatoire passe avant).
+      if (!resto.tutorial_completed_at && !lsError && !!ls) {
         // Clean billing param from URL if present
         const params = new URLSearchParams(window.location.search);
         if (params.has('billing')) {
@@ -681,6 +688,8 @@ export default function DashboardPage() {
       return;
     }
     toast.success(t('dashboard.toastLoyaltySaved'));
+    // Programme désormais configuré → lève la pop-up obligatoire.
+    setNeedsLoyaltySetup(false);
 
     // Auto-provisionne une carte Wallet générique si le restaurant n'en a pas
     // encore : le commerçant n'a jamais à concevoir un template manuellement.
@@ -937,7 +946,18 @@ export default function DashboardPage() {
       )}
 
       {/* ── TUTORIAL (first visit) ───────────────────── */}
-      {showTutorial && (
+      {/* Pop-up de configuration OBLIGATOIRE — bloque tout tant qu'aucun
+          programme de fidélité n'est enregistré. Prioritaire sur le tutoriel. */}
+      {needsLoyaltySetup && (
+        <LoyaltySetupModal
+          settings={loyaltySettings}
+          onChange={(partial) => setLoyaltySettings(prev => ({ ...prev, ...partial }))}
+          onSave={saveLoyaltySettings}
+          saving={savingSettings}
+        />
+      )}
+
+      {showTutorial && !needsLoyaltySetup && (
         <DashboardTutorial
           onComplete={async () => {
             setShowTutorial(false);

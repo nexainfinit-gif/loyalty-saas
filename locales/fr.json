@@ -1715,5 +1715,21 @@
     "revenue_kpis_locked": "Estimation de revenus verrouillée",
     "analytics_upgrade": "Analytics avancés disponibles en Pro",
     "ltv_upgrade": "LTV estimée disponible en Pro"
+  },
+  "loyaltySetup": {
+    "title": "Configurez votre programme de fidélité",
+    "subtitle": "Étape obligatoire pour activer votre carte de fidélité et commencer à scanner vos clients.",
+    "typeLabel": "Type de programme",
+    "modePoints": "Points",
+    "modePointsDesc": "Le client cumule des points à chaque passage",
+    "modeStamps": "Tampons",
+    "modeStampsDesc": "Une carte à tamponner, offerte une fois pleine",
+    "stampsTotalLabel": "Nombre de tampons pour la récompense",
+    "thresholdLabel": "Points pour la récompense",
+    "perScanLabel": "Points par scan",
+    "rewardLabel": "Récompense offerte",
+    "rewardPlaceholder": "Ex : un café offert",
+    "walletHint": "Votre carte de fidélité Wallet sera créée automatiquement à l’enregistrement.",
+    "saveBtn": "Activer mon programme"
   }
 }

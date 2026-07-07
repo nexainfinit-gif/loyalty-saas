@@ -1715,5 +1715,21 @@
     "revenue_kpis_locked": "Revenue estimates locked",
     "analytics_upgrade": "Advanced analytics available on Pro",
     "ltv_upgrade": "Estimated LTV available on Pro"
+  },
+  "loyaltySetup": {
+    "title": "Set up your loyalty program",
+    "subtitle": "Required step to activate your loyalty card and start scanning customers.",
+    "typeLabel": "Program type",
+    "modePoints": "Points",
+    "modePointsDesc": "Customers earn points on every visit",
+    "modeStamps": "Stamps",
+    "modeStampsDesc": "A stamp card, rewarded once full",
+    "stampsTotalLabel": "Stamps needed for the reward",
+    "thresholdLabel": "Points for the reward",
+    "perScanLabel": "Points per scan",
+    "rewardLabel": "Reward",
+    "rewardPlaceholder": "e.g. a free coffee",
+    "walletHint": "Your Wallet loyalty card will be created automatically on save.",
+    "saveBtn": "Activate my program"
   }
 }

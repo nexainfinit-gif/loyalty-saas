@@ -1693,5 +1693,21 @@
     "revenue_kpis_locked": "Estimaciones de ingresos bloqueadas",
     "analytics_upgrade": "Analytics avanzados disponibles en Pro",
     "ltv_upgrade": "LTV estimada disponible en Pro"
+  },
+  "loyaltySetup": {
+    "title": "Configura tu programa de fidelidad",
+    "subtitle": "Paso obligatorio para activar tu tarjeta de fidelidad y empezar a escanear clientes.",
+    "typeLabel": "Tipo de programa",
+    "modePoints": "Puntos",
+    "modePointsDesc": "El cliente acumula puntos en cada visita",
+    "modeStamps": "Sellos",
+    "modeStampsDesc": "Una tarjeta de sellos, premiada al completarse",
+    "stampsTotalLabel": "Sellos necesarios para la recompensa",
+    "thresholdLabel": "Puntos para la recompensa",
+    "perScanLabel": "Puntos por escaneo",
+    "rewardLabel": "Recompensa",
+    "rewardPlaceholder": "ej. un café gratis",
+    "walletHint": "Tu tarjeta de fidelidad Wallet se creará automáticamente al guardar.",
+    "saveBtn": "Activar mi programa"
   }
 }
