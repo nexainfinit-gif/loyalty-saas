@@ -8,13 +8,17 @@ interface TutorialStep {
   tab: Tab;
   titleKey: string;
   descKey: string;
+  /** Étape interactive : le voile ne bloque pas, le commerçant manipule
+   *  réellement l'écran (ici : configurer + enregistrer son programme). */
+  interactive?: boolean;
 }
 
 // Étape 1 = configuration du programme de fidélité : la première action
-// essentielle d'un nouveau commerçant (sa carte Wallet est créée
-// automatiquement dès qu'il l'enregistre). Le reste est une visite rapide.
+// essentielle d'un nouveau commerçant. Elle est INTERACTIVE — il remplit et
+// enregistre son programme en direct (sa carte Wallet est alors créée
+// automatiquement). Le reste est une visite rapide.
 const STEPS: TutorialStep[] = [
-  { tab: 'loyalty',    titleKey: 'tutorial.loyaltyTitle',    descKey: 'tutorial.loyaltyDesc' },
+  { tab: 'loyalty',    titleKey: 'tutorial.loyaltyTitle',    descKey: 'tutorial.loyaltyDesc', interactive: true },
   { tab: 'overview',   titleKey: 'tutorial.overviewTitle',   descKey: 'tutorial.overviewDesc' },
   { tab: 'clients',    titleKey: 'tutorial.clientsTitle',    descKey: 'tutorial.clientsDesc' },
   { tab: 'campaigns',  titleKey: 'tutorial.campaignsTitle',  descKey: 'tutorial.campaignsDesc' },
@@ -91,22 +95,30 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
 
   return (
     <>
-      {/* Full-screen overlay that blocks interaction */}
+      {/* Full-screen overlay.
+          - Étape normale : voile sombre qui bloque toute interaction.
+          - Étape interactive (loyalty) : transparent + pointer-events-none →
+            le commerçant peut réellement remplir/enregistrer le formulaire. */}
       <div
-        className="fixed inset-0 z-[90] bg-gray-900/50 transition-opacity duration-300"
+        className={[
+          'fixed inset-0 z-[90] transition-opacity duration-300',
+          step.interactive ? 'bg-transparent pointer-events-none' : 'bg-gray-900/50',
+        ].join(' ')}
         onClick={(e) => e.stopPropagation()}
       />
 
-      {/* Spotlight cutout on the active sidebar item */}
+      {/* Spotlight cutout on the active sidebar item.
+          Sur une étape interactive, on retire le voile plein écran (box-shadow)
+          pour que le contenu reste bien visible et cliquable. */}
       {highlightRect && (
         <div
-          className="fixed z-[95] rounded-xl ring-4 ring-primary-400/50 pointer-events-none transition-all duration-300 ease-out"
+          className="fixed z-[95] rounded-xl ring-4 ring-primary-400/60 pointer-events-none transition-all duration-300 ease-out"
           style={{
             top: highlightRect.top - 4,
             left: highlightRect.left - 4,
             width: highlightRect.width + 8,
             height: highlightRect.height + 8,
-            boxShadow: '0 0 0 9999px rgba(17, 24, 39, 0.5)',
+            boxShadow: step.interactive ? 'none' : '0 0 0 9999px rgba(17, 24, 39, 0.5)',
           }}
         />
       )}
