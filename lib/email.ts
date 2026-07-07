@@ -954,3 +954,52 @@ export async function sendNearRewardEmail({
     `,
   });
 }
+
+/* ── Bon cadeau ───────────────────────────────────────────────────────────── */
+
+interface GiftVoucherEmailProps {
+  to: string;
+  buyerName: string;
+  recipientName?: string | null;
+  personalMessage?: string | null;
+  code: string;
+  amount: number;
+  expiresAt?: string | null;
+  businessName: string;
+  businessColor: string;
+}
+
+export async function sendGiftVoucherEmail({
+  to, buyerName, recipientName, personalMessage, code, amount, expiresAt, businessName, businessColor,
+}: GiftVoucherEmailProps) {
+  const color = safeCssColor(businessColor);
+  const safeBiz = esc(businessName);
+  const safeBuyer = esc(buyerName);
+  const safeRecipient = recipientName ? esc(recipientName) : null;
+  const safeMsg = personalMessage ? esc(personalMessage) : null;
+  const expiry = expiresAt ? new Date(expiresAt).toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+
+  await resend.emails.send({
+    from: `${businessName} <noreply@rebites.be>`,
+    to,
+    subject: `Votre bon cadeau ${amount} € — ${businessName}`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+        <div style="background: ${color}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
+          <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase;">Bon cadeau</p>
+          <p style="color: white; margin: 0.4rem 0 0; font-size: 2.2rem; font-weight: 800;">${amount} €</p>
+          <p style="color: rgba(255,255,255,0.9); margin: 0.4rem 0 0;">${safeBiz}</p>
+        </div>
+        ${safeRecipient ? `<p style="color:#374151;">Pour <strong>${safeRecipient}</strong>, de la part de <strong>${safeBuyer}</strong> :</p>` : `<p style="color:#374151;">Merci pour votre achat, <strong>${safeBuyer}</strong> !</p>`}
+        ${safeMsg ? `<p style="color:#374151; font-style: italic; border-left: 3px solid ${color}; padding-left: 0.75rem;">« ${safeMsg} »</p>` : ''}
+        <div style="background:#f9fafb; border: 2px dashed #d1d5db; border-radius: 12px; padding: 1.25rem; text-align: center; margin: 1.5rem 0;">
+          <p style="color:#6b7280; font-size: 0.75rem; margin: 0 0 0.4rem; text-transform: uppercase; letter-spacing: 0.08em;">Code à présenter</p>
+          <p style="font-family: monospace; font-size: 1.6rem; font-weight: 700; letter-spacing: 0.15em; color: #111827; margin: 0;">${esc(code)}</p>
+        </div>
+        <p style="color:#6b7280; font-size: 0.85rem;">Présentez ce code chez ${safeBiz} pour utiliser votre bon.${expiry ? ` Valable jusqu'au <strong>${expiry}</strong>.` : ''}</p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">${safeBiz} — Bons cadeaux par <a href="https://rebites.be" style="color: #9ca3af;">Rebites</a></p>
+      </div>
+    `,
+  });
+}

@@ -929,7 +929,17 @@
     "depositPercent": "% van de prijs",
     "depositValueFixed": "Bedrag (€)",
     "depositValuePercent": "Percentage (%)",
-    "depositInactiveHint": "Het voorschot wordt pas actief zodra je Stripe-account gekoppeld is."
+    "depositInactiveHint": "Het voorschot wordt pas actief zodra je Stripe-account gekoppeld is.",
+    "giftTitle": "Cadeaubonnen",
+    "giftDesc": "Verkoop cadeaubonnen online, rechtstreeks op je Stripe-account. De klant krijgt een code per e-mail.",
+    "giftNeedsConnect": "Koppel eerst je Stripe-account (sectie Voorschot).",
+    "giftPageLink": "Je verkooppagina:",
+    "giftRedeemLabel": "Bon inwisselen (klantcode)",
+    "giftCheck": "Controleren",
+    "giftUse": "Inwisselen",
+    "giftValid": "geldig",
+    "giftExpired": "verlopen",
+    "giftRedeemed": "Bon van €{amount} ingewisseld!"
   },
   "appointmentStaff": {
     "title": "Personeel",
@@ -1732,5 +1742,25 @@
     "rewardPlaceholder": "bijv. een gratis koffie",
     "walletHint": "Je Wallet-klantenkaart wordt automatisch aangemaakt bij het opslaan.",
     "saveBtn": "Programma activeren"
+  },
+  "gift": {
+    "title": "Cadeaubon — {business}",
+    "subtitle": "Verwen iemand, 1 jaar geldig.",
+    "amountLabel": "Bedrag",
+    "customAmount": "Vrij bedrag (€5–500)",
+    "buyerName": "Je naam",
+    "buyerEmail": "Je e-mail (de code wordt hierheen gestuurd)",
+    "recipientName": "Voor wie? (optioneel)",
+    "message": "Kort bericht (optioneel)",
+    "payBtn": "Betaal €{amount}",
+    "securePayment": "Veilige betaling via Stripe — rechtstreeks aan de zaak.",
+    "verifying": "Je betaling wordt gecontroleerd…",
+    "successTitle": "Cadeaubon gekocht!",
+    "successDesc": "Hier is de code — ook per e-mail verstuurd.",
+    "codeLabel": "Code om te tonen",
+    "emailSent": "E-mail verstuurd met code en bericht.",
+    "paymentIssue": "Betaling niet bevestigd",
+    "paymentIssueDesc": "Als er is afgeschreven, neem contact op met de zaak.",
+    "unavailable": "Cadeaubonnen zijn niet beschikbaar voor deze zaak."
   }
 }

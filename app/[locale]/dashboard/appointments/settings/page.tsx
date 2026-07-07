@@ -37,12 +37,18 @@ export default function SettingsPage() {
   const [reviewSaved, setReviewSaved] = useState(false)
   const [connect, setConnect] = useState<{ accountId: string | null; chargesEnabled: boolean } | null>(null)
   const [connectLoading, setConnectLoading] = useState(false)
+  const [giftEnabled, setGiftEnabled] = useState(false)
+  const [giftCode, setGiftCode] = useState('')
+  const [giftResult, setGiftResult] = useState<string | null>(null)
 
   useEffect(() => {
     // URL d'avis Google (stockée en KV restaurant_settings)
     fetch('/api/restaurant-settings')
       .then(r => r.ok ? r.json() : null)
-      .then(j => { if (j?.settings?.google_review_url) setReviewUrl(j.settings.google_review_url) })
+      .then(j => {
+        if (j?.settings?.google_review_url) setReviewUrl(j.settings.google_review_url)
+        if (j?.settings?.gift_vouchers_enabled === 'true') setGiftEnabled(true)
+      })
       .catch(() => {})
   }, [])
 
@@ -78,6 +84,34 @@ export default function SettingsPage() {
       })
       if (res.ok) { setReviewSaved(true); setTimeout(() => setReviewSaved(false), 2500) }
     } finally { setReviewSaving(false) }
+  }
+
+  async function toggleGift() {
+    const next = !giftEnabled
+    setGiftEnabled(next)
+    await fetch('/api/restaurant-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gift_vouchers_enabled: next ? 'true' : 'false' }),
+    }).catch(() => setGiftEnabled(!next))
+  }
+
+  async function redeemGift(action: 'lookup' | 'redeem') {
+    setGiftResult(null)
+    const code = giftCode.trim().toUpperCase()
+    if (!code) return
+    const res = action === 'lookup'
+      ? await fetch('/api/gift/redeem?code=' + encodeURIComponent(code))
+      : await fetch('/api/gift/redeem', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) })
+    const j = await res.json()
+    if (!res.ok) { setGiftResult('\u274c ' + (j.error || 'Erreur')); return }
+    if (action === 'lookup') {
+      const v = j.voucher
+      setGiftResult(`\u2714 ${v.amount} \u20ac \u2014 ${v.status === 'active' ? t('appointmentSettings.giftValid') : v.status}${v.expired ? ' (' + t('appointmentSettings.giftExpired') + ')' : ''}`)
+    } else {
+      setGiftResult('\u2705 ' + t('appointmentSettings.giftRedeemed', { amount: j.amount }))
+      setGiftCode('')
+    }
   }
 
   useEffect(() => {
@@ -565,6 +599,53 @@ export default function SettingsPage() {
         </section>
 
         {/* ── Google Calendar ──────────────────────────────────── */}
+        {/* ── Bons cadeaux ──────────────────── */}
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Star size={16} className="text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-900">{t('appointmentSettings.giftTitle')}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={toggleGift}
+              className={`relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 ${giftEnabled ? 'bg-gray-900' : 'bg-gray-200'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${giftEnabled ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">{t('appointmentSettings.giftDesc')}</p>
+          {giftEnabled && connect && !connect.chargesEnabled && (
+            <p className="text-[11px] text-amber-600">{t('appointmentSettings.giftNeedsConnect')}</p>
+          )}
+          {giftEnabled && slug && (
+            <p className="text-xs text-gray-500">
+              {t('appointmentSettings.giftPageLink')}{' '}
+              <a href={`/${locale}/gift/${slug}`} target="_blank" className="text-primary-600 underline">/gift/{slug}</a>
+            </p>
+          )}
+          {giftEnabled && (
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1.5 block">{t('appointmentSettings.giftRedeemLabel')}</label>
+              <div className="flex gap-2">
+                <input
+                  value={giftCode}
+                  onChange={(e) => setGiftCode(e.target.value.toUpperCase())}
+                  placeholder="XXXX-XXXX"
+                  className="flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm font-mono tracking-wider focus:outline-none focus:border-gray-900 transition-colors"
+                />
+                <button type="button" onClick={() => redeemGift('lookup')} className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                  {t('appointmentSettings.giftCheck')}
+                </button>
+                <button type="button" onClick={() => redeemGift('redeem')} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800 transition-colors">
+                  {t('appointmentSettings.giftUse')}
+                </button>
+              </div>
+              {giftResult && <p className="text-sm mt-2 text-gray-700">{giftResult}</p>}
+            </div>
+          )}
+        </section>
+
         {gcalConfigured && (
           <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 space-y-4">
             <div className="flex items-center gap-2 mb-1">

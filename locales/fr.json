@@ -946,7 +946,17 @@
     "depositPercent": "% du prix du service",
     "depositValueFixed": "Montant (€)",
     "depositValuePercent": "Pourcentage (%)",
-    "depositInactiveHint": "L’acompte ne sera actif qu’une fois votre compte Stripe connecté."
+    "depositInactiveHint": "L’acompte ne sera actif qu’une fois votre compte Stripe connecté.",
+    "giftTitle": "Bons cadeaux",
+    "giftDesc": "Vendez des bons cadeaux en ligne, payés directement sur votre compte Stripe. Le client reçoit un code par email, à présenter en boutique.",
+    "giftNeedsConnect": "Connectez d’abord votre compte Stripe (section Acompte) pour activer la vente.",
+    "giftPageLink": "Votre page de vente :",
+    "giftRedeemLabel": "Utiliser un bon (code client)",
+    "giftCheck": "Vérifier",
+    "giftUse": "Utiliser",
+    "giftValid": "valide",
+    "giftExpired": "expiré",
+    "giftRedeemed": "Bon de {amount} € utilisé !"
   },
   "appointmentStaff": {
     "title": "Équipe",
@@ -1750,5 +1760,25 @@
     "rewardPlaceholder": "Ex : un café offert",
     "walletHint": "Votre carte de fidélité Wallet sera créée automatiquement à l’enregistrement.",
     "saveBtn": "Activer mon programme"
+  },
+  "gift": {
+    "title": "Bon cadeau — {business}",
+    "subtitle": "Offrez un moment à un proche, valable 1 an.",
+    "amountLabel": "Montant",
+    "customAmount": "Montant libre (5–500 €)",
+    "buyerName": "Votre nom",
+    "buyerEmail": "Votre email (le code y sera envoyé)",
+    "recipientName": "Pour qui ? (optionnel)",
+    "message": "Petit message (optionnel)",
+    "payBtn": "Payer {amount} €",
+    "securePayment": "Paiement sécurisé par Stripe — versé directement au commerçant.",
+    "verifying": "Vérification de votre paiement…",
+    "successTitle": "Bon cadeau acheté !",
+    "successDesc": "Voici le code du bon — il a aussi été envoyé par email.",
+    "codeLabel": "Code à présenter",
+    "emailSent": "Email envoyé avec le code et le message.",
+    "paymentIssue": "Paiement non confirmé",
+    "paymentIssueDesc": "Si vous avez été débité, contactez l’établissement.",
+    "unavailable": "Les bons cadeaux ne sont pas disponibles pour cet établissement."
   }
 }

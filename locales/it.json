@@ -929,7 +929,17 @@
     "depositPercent": "% del prezzo",
     "depositValueFixed": "Importo (€)",
     "depositValuePercent": "Percentuale (%)",
-    "depositInactiveHint": "L’acconto sarà attivo solo dopo il collegamento del tuo account Stripe."
+    "depositInactiveHint": "L’acconto sarà attivo solo dopo il collegamento del tuo account Stripe.",
+    "giftTitle": "Buoni regalo",
+    "giftDesc": "Vendi buoni regalo online, versati direttamente sul tuo account Stripe. Il cliente riceve un codice via email.",
+    "giftNeedsConnect": "Collega prima il tuo account Stripe (sezione Acconto).",
+    "giftPageLink": "La tua pagina di vendita:",
+    "giftRedeemLabel": "Usa un buono (codice cliente)",
+    "giftCheck": "Verifica",
+    "giftUse": "Usa",
+    "giftValid": "valido",
+    "giftExpired": "scaduto",
+    "giftRedeemed": "Buono da {amount} € utilizzato!"
   },
   "appointmentStaff": {
     "title": "Personale",
@@ -1732,5 +1742,25 @@
     "rewardPlaceholder": "es. un caffè offerto",
     "walletHint": "La tua carta fedeltà Wallet verrà creata automaticamente al salvataggio.",
     "saveBtn": "Attiva il mio programma"
+  },
+  "gift": {
+    "title": "Buono regalo — {business}",
+    "subtitle": "Regala un momento, valido 1 anno.",
+    "amountLabel": "Importo",
+    "customAmount": "Importo libero (5–500 €)",
+    "buyerName": "Il tuo nome",
+    "buyerEmail": "La tua email (il codice sarà inviato lì)",
+    "recipientName": "Per chi? (opzionale)",
+    "message": "Breve messaggio (opzionale)",
+    "payBtn": "Paga {amount} €",
+    "securePayment": "Pagamento sicuro con Stripe — versato direttamente all’attività.",
+    "verifying": "Verifica del pagamento…",
+    "successTitle": "Buono regalo acquistato!",
+    "successDesc": "Ecco il codice — inviato anche via email.",
+    "codeLabel": "Codice da presentare",
+    "emailSent": "Email inviata con codice e messaggio.",
+    "paymentIssue": "Pagamento non confermato",
+    "paymentIssueDesc": "Se sei stato addebitato, contatta l’attività.",
+    "unavailable": "I buoni regalo non sono disponibili per questa attività."
   }
 }

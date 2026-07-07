@@ -946,7 +946,17 @@
     "depositPercent": "% of service price",
     "depositValueFixed": "Amount (€)",
     "depositValuePercent": "Percentage (%)",
-    "depositInactiveHint": "The deposit will only be active once your Stripe account is connected."
+    "depositInactiveHint": "The deposit will only be active once your Stripe account is connected.",
+    "giftTitle": "Gift vouchers",
+    "giftDesc": "Sell gift vouchers online, paid straight to your Stripe account. The customer gets a code by email to present in store.",
+    "giftNeedsConnect": "Connect your Stripe account first (Deposit section) to enable sales.",
+    "giftPageLink": "Your sales page:",
+    "giftRedeemLabel": "Redeem a voucher (customer code)",
+    "giftCheck": "Check",
+    "giftUse": "Redeem",
+    "giftValid": "valid",
+    "giftExpired": "expired",
+    "giftRedeemed": "€{amount} voucher redeemed!"
   },
   "appointmentStaff": {
     "title": "Staff",
@@ -1750,5 +1760,25 @@
     "rewardPlaceholder": "e.g. a free coffee",
     "walletHint": "Your Wallet loyalty card will be created automatically on save.",
     "saveBtn": "Activate my program"
+  },
+  "gift": {
+    "title": "Gift voucher — {business}",
+    "subtitle": "Give someone a treat, valid for 1 year.",
+    "amountLabel": "Amount",
+    "customAmount": "Custom amount (€5–500)",
+    "buyerName": "Your name",
+    "buyerEmail": "Your email (the code will be sent there)",
+    "recipientName": "For whom? (optional)",
+    "message": "Short message (optional)",
+    "payBtn": "Pay €{amount}",
+    "securePayment": "Secure payment by Stripe — paid directly to the business.",
+    "verifying": "Verifying your payment…",
+    "successTitle": "Gift voucher purchased!",
+    "successDesc": "Here is the voucher code — also sent by email.",
+    "codeLabel": "Code to present",
+    "emailSent": "Email sent with the code and message.",
+    "paymentIssue": "Payment not confirmed",
+    "paymentIssueDesc": "If you were charged, contact the business.",
+    "unavailable": "Gift vouchers are not available for this business."
   }
 }

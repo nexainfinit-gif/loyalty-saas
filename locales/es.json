@@ -926,7 +926,17 @@
     "depositPercent": "% del precio",
     "depositValueFixed": "Importe (€)",
     "depositValuePercent": "Porcentaje (%)",
-    "depositInactiveHint": "El depósito solo estará activo cuando tu cuenta de Stripe esté conectada."
+    "depositInactiveHint": "El depósito solo estará activo cuando tu cuenta de Stripe esté conectada.",
+    "giftTitle": "Tarjetas regalo",
+    "giftDesc": "Vende tarjetas regalo en línea, cobradas directamente en tu cuenta de Stripe. El cliente recibe un código por email.",
+    "giftNeedsConnect": "Conecta primero tu cuenta de Stripe (sección Depósito).",
+    "giftPageLink": "Tu página de venta:",
+    "giftRedeemLabel": "Canjear un bono (código del cliente)",
+    "giftCheck": "Verificar",
+    "giftUse": "Canjear",
+    "giftValid": "válido",
+    "giftExpired": "caducado",
+    "giftRedeemed": "¡Bono de {amount} € canjeado!"
   },
   "appointmentStaff": {
     "title": "Personal",
@@ -1728,5 +1738,25 @@
     "rewardPlaceholder": "ej. un café gratis",
     "walletHint": "Tu tarjeta de fidelidad Wallet se creará automáticamente al guardar.",
     "saveBtn": "Activar mi programa"
+  },
+  "gift": {
+    "title": "Tarjeta regalo — {business}",
+    "subtitle": "Regala un momento, válido 1 año.",
+    "amountLabel": "Importe",
+    "customAmount": "Importe libre (5–500 €)",
+    "buyerName": "Tu nombre",
+    "buyerEmail": "Tu email (el código se enviará allí)",
+    "recipientName": "¿Para quién? (opcional)",
+    "message": "Mensaje corto (opcional)",
+    "payBtn": "Pagar {amount} €",
+    "securePayment": "Pago seguro con Stripe — directo al negocio.",
+    "verifying": "Verificando tu pago…",
+    "successTitle": "¡Tarjeta regalo comprada!",
+    "successDesc": "Aquí está el código — también enviado por email.",
+    "codeLabel": "Código a presentar",
+    "emailSent": "Email enviado con el código y el mensaje.",
+    "paymentIssue": "Pago no confirmado",
+    "paymentIssueDesc": "Si se te cobró, contacta con el negocio.",
+    "unavailable": "Las tarjetas regalo no están disponibles para este negocio."
   }
 }
