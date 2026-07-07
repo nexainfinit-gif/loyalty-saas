@@ -86,7 +86,8 @@
     "toastWalletPushSent": "Wallet notification sent to {pushed}/{total} pass(es)",
     "toastCampaignError": "Error: {error}",
     "toastNetworkError": "Network error",
-    "manualAddLabel": "Manual dashboard add"
+    "manualAddLabel": "Manual dashboard add",
+    "switchRestaurant": "Switch restaurant"
   },
   "clients": {
     "title": "Customers",

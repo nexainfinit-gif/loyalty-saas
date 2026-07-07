@@ -86,7 +86,8 @@
     "toastWalletPushSent": "Wallet-notificatie verzonden naar {pushed}/{total} pas(sen)",
     "toastCampaignError": "Fout: {error}",
     "toastNetworkError": "Netwerkfout",
-    "manualAddLabel": "Handmatige toevoeging dashboard"
+    "manualAddLabel": "Handmatige toevoeging dashboard",
+    "switchRestaurant": "Wissel van restaurant"
   },
   "clients": {
     "title": "Klanten",

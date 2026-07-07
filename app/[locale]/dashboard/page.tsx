@@ -279,6 +279,16 @@ export default function DashboardPage() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [needsLoyaltySetup, setNeedsLoyaltySetup] = useState(false);
   const [showPlanSelection, setShowPlanSelection] = useState(false);
+  // Multi-restaurant : liste des restaurants de l'owner + menu de bascule
+  const [myRestaurants, setMyRestaurants] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [restaurantMenuOpen, setRestaurantMenuOpen] = useState(false);
+
+  /** Bascule vers un autre restaurant possédé : mémorise le choix en cookie
+   *  (lu par getAuthContext côté serveur) et recharge pour tout resynchroniser. */
+  function switchRestaurant(id: string) {
+    document.cookie = `selected_restaurant=${id}; path=/; max-age=31536000; samesite=lax`;
+    window.location.reload();
+  }
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [hasTemplates, setHasTemplates] = useState(true); // assume true until checked
   const [templateBannerDismissed, setTemplateBannerDismissed] = useState(() => {
@@ -359,14 +369,19 @@ export default function DashboardPage() {
         // If proxy fails, fall through to normal loading
       }
 
-      // Load own restaurant (impersonation already handled above with return)
+      // Load ALL own restaurants (impersonation already handled above with return).
+      // Un owner peut en posséder plusieurs → sélecteur de restaurant.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let resto: any = null;
       {
         const { data: restos } = await supabase
           .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
-          .eq('owner_id', session.user.id).eq('is_demo', false).order('created_at', { ascending: true }).limit(1);
-        resto = restos?.[0] ?? null;
+          .eq('owner_id', session.user.id).eq('is_demo', false).order('created_at', { ascending: true });
+        const list = restos ?? [];
+        setMyRestaurants(list.map((r: { id: string; name: string | null; slug: string }) => ({ id: r.id, name: r.name ?? r.slug, slug: r.slug })));
+        // Restaurant actif = celui du cookie `selected_restaurant` s'il est possédé, sinon le plus ancien.
+        const selectedId = document.cookie.match(/(?:^|;\s*)selected_restaurant=([^;]+)/)?.[1];
+        resto = (selectedId && list.find((r: { id: string }) => r.id === selectedId)) || list[0] || null;
       }
       if (!resto) { router.replace('/onboarding'); return; }
 
@@ -1024,8 +1039,35 @@ export default function DashboardPage() {
               : (BUSINESS_TYPE_EMOJI[restaurant?.business_type ?? ''] ?? '🏪')}
           </div>
           {sidebarOpen && (
-            <div className="min-w-0 flex-1">
-              <p className="text-base font-semibold text-gray-900 truncate">{restaurant?.name}</p>
+            <div className="min-w-0 flex-1 relative">
+              {myRestaurants.length > 1 ? (
+                <>
+                  <button
+                    onClick={() => setRestaurantMenuOpen(o => !o)}
+                    className="flex items-center gap-1 max-w-full text-left group"
+                  >
+                    <span className="text-base font-semibold text-gray-900 truncate">{restaurant?.name}</span>
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0 group-hover:text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                  </button>
+                  {restaurantMenuOpen && (
+                    <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-xl border border-gray-100 shadow-[0_8px_24px_rgba(0,0,0,0.12)] py-1 z-50">
+                      <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('dashboard.switchRestaurant')}</p>
+                      {myRestaurants.map(r => (
+                        <button
+                          key={r.id}
+                          onClick={() => r.id === restaurant?.id ? setRestaurantMenuOpen(false) : switchRestaurant(r.id)}
+                          className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 transition-colors ${r.id === restaurant?.id ? 'text-primary-600 font-semibold' : 'text-gray-700'}`}
+                        >
+                          <span className="truncate flex-1">{r.name}</span>
+                          {r.id === restaurant?.id && <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-base font-semibold text-gray-900 truncate">{restaurant?.name}</p>
+              )}
               <span className={[
                 'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md',
                 (restaurant?.plans?.key ?? restaurant?.plan) === 'pro'     ? 'bg-purple-100 text-purple-700' :

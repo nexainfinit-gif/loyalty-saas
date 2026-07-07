@@ -71,11 +71,29 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
       .maybeSingle(),
   ]);
 
-  const restaurant = restaurants?.[0] ?? null;
+  let restaurant = restaurants?.[0] ?? null;
   const role = (profile?.platform_role ?? 'restaurant_admin') as PlatformRole;
 
-  // ── Impersonation: platform owner can override restaurant context via cookie ──
   const cookieHeader = request.headers.get('cookie') ?? '';
+
+  // ── Restaurant switch: an owner with several restaurants can pick which one
+  //    to manage via the `selected_restaurant` cookie. Only honoured if the
+  //    caller actually OWNS that restaurant (security) — this is distinct from
+  //    impersonation (platform-owner cross-tenant, below). ──
+  const selectedMatch = cookieHeader.match(/(?:^|;\s*)selected_restaurant=([^;]+)/);
+  const selectedId = selectedMatch?.[1]?.trim() || null;
+  if (selectedId && selectedId !== restaurant?.id) {
+    const { data: sel } = await supabaseAdmin
+      .from('restaurants')
+      .select('id, plan, plan_id, wallet_studio_enabled')
+      .eq('id', selectedId)
+      .eq('owner_id', userId)
+      .neq('is_demo', true)
+      .maybeSingle();
+    if (sel) restaurant = sel;
+  }
+
+  // ── Impersonation: platform owner can override restaurant context via cookie ──
   const impersonateMatch = cookieHeader.match(/(?:^|;\s*)x-admin-impersonate=([^;]+)/);
   const impersonateId = impersonateMatch?.[1]?.trim() || null;
 
