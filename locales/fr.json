@@ -1548,6 +1548,8 @@
     "planDetailMaxTemplates": "Templates de pass",
     "planDetailMaxCampaigns": "Campagnes / mois",
     "planDetailMaxCustomers": "Clients max",
+    "planDetailMaxEmails": "Emails / mois",
+    "planDetailMaxReminders": "Rappels WhatsApp / mois",
     "planDetailUnlimitedHint": "Laisser vide = illimité. Source unique des limites appliquées aux restaurants.",
     "planDetailPublicLabel": "Public",
     "planDetailActiveLabel": "Actif",

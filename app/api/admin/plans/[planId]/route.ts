@@ -21,7 +21,7 @@ export async function GET(
 
   const { data: plan, error } = await supabaseAdmin
     .from('plans')
-    .select('id, key, name, price_monthly, is_public, is_active, sort_order, created_at, max_templates, max_campaigns_per_month, max_customers')
+    .select('id, key, name, price_monthly, is_public, is_active, sort_order, created_at, max_templates, max_campaigns_per_month, max_customers, max_emails_per_month, included_reminders_per_month')
     .eq('id', planId)
     .maybeSingle();
 
@@ -56,7 +56,7 @@ export async function GET(
  *         max_templates?, max_campaigns_per_month?, max_customers? }
  * Les limites acceptent null = illimité, sinon un entier ≥ 0.
  */
-const LIMIT_FIELDS = ['max_templates', 'max_campaigns_per_month', 'max_customers'];
+const LIMIT_FIELDS = ['max_templates', 'max_campaigns_per_month', 'max_customers', 'max_emails_per_month', 'included_reminders_per_month'];
 
 export async function PATCH(
   request: Request,

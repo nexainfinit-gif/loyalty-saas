@@ -20,6 +20,8 @@ interface Plan {
   max_templates:           number | null;
   max_campaigns_per_month: number | null;
   max_customers:           number | null;
+  max_emails_per_month:    number | null;
+  included_reminders_per_month: number | null;
 }
 
 /* ── Toggle row ─────────────────────────────────────────────────────────────── */
@@ -83,6 +85,7 @@ export default function AdminPlanEditPage() {
   const [meta, setMeta] = useState({
     name: '', price_monthly: '', is_public: true, is_active: true, sort_order: '0',
     max_templates: '', max_campaigns_per_month: '', max_customers: '',
+    max_emails_per_month: '', included_reminders_per_month: '',
   });
 
   useEffect(() => {
@@ -106,6 +109,8 @@ export default function AdminPlanEditPage() {
           max_templates:           p.max_templates != null ? String(p.max_templates) : '',
           max_campaigns_per_month: p.max_campaigns_per_month != null ? String(p.max_campaigns_per_month) : '',
           max_customers:           p.max_customers != null ? String(p.max_customers) : '',
+          max_emails_per_month:    p.max_emails_per_month != null ? String(p.max_emails_per_month) : '',
+          included_reminders_per_month: p.included_reminders_per_month != null ? String(p.included_reminders_per_month) : '',
         });
         setFeatures(p.features ?? {});
       })
@@ -130,6 +135,8 @@ export default function AdminPlanEditPage() {
           max_templates:           meta.max_templates !== '' ? Number(meta.max_templates) : null,
           max_campaigns_per_month: meta.max_campaigns_per_month !== '' ? Number(meta.max_campaigns_per_month) : null,
           max_customers:           meta.max_customers !== '' ? Number(meta.max_customers) : null,
+          max_emails_per_month:    meta.max_emails_per_month !== '' ? Number(meta.max_emails_per_month) : null,
+          included_reminders_per_month: meta.included_reminders_per_month !== '' ? Number(meta.included_reminders_per_month) : null,
         }),
       });
       const json = await res.json();
@@ -294,6 +301,28 @@ export default function AdminPlanEditPage() {
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20"
                   />
                   <p className="text-[11px] text-gray-400 mt-1">{t('admin.planDetailMaxCustomers')}</p>
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={meta.max_emails_per_month}
+                    onChange={(e) => setMeta({ ...meta, max_emails_per_month: e.target.value })}
+                    placeholder="∞"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">{t('admin.planDetailMaxEmails')}</p>
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={meta.included_reminders_per_month}
+                    onChange={(e) => setMeta({ ...meta, included_reminders_per_month: e.target.value })}
+                    placeholder="∞"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">{t('admin.planDetailMaxReminders')}</p>
                 </div>
               </div>
               <p className="text-[11px] text-gray-400 mt-2">{t('admin.planDetailUnlimitedHint')}</p>

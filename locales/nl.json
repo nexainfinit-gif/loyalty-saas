@@ -1530,6 +1530,8 @@
     "planDetailMaxTemplates": "Pastemplates",
     "planDetailMaxCampaigns": "Campagnes / maand",
     "planDetailMaxCustomers": "Max klanten",
+    "planDetailMaxEmails": "E-mails / maand",
+    "planDetailMaxReminders": "WhatsApp-herinneringen / maand",
     "planDetailUnlimitedHint": "Leeg laten = onbeperkt. Enige bron van de limieten voor restaurants.",
     "planDetailPublicLabel": "Openbaar",
     "planDetailActiveLabel": "Actief",
