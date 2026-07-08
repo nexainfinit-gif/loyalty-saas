@@ -52,6 +52,8 @@ interface Controls {
   bgColor:        string;
   foregroundColor: string;
   labelColor:     string;
+  /** Fond de l'icône de notification ('' = suit bgColor) */
+  iconBgColor:    string;
   // Fields
   stampsTotal:    number;
   currentStamps:  number;
@@ -168,6 +170,7 @@ function metaToControls(meta: PassMeta): Controls {
     bgColor:         meta.primaryColor,
     foregroundColor: '#ffffff',
     labelColor:      '#c8d7ff',
+    iconBgColor:     '',
     stampsTotal:     meta.stampsTotal,
     currentStamps:   meta.exampleStamps,
     currentPoints:   meta.examplePoints,
@@ -208,6 +211,7 @@ function configJsonToControls(base: Controls, cfg: Record<string, unknown>): Con
     bgColor:         (cfg.bgColor as string) ?? base.bgColor,
     foregroundColor: (cfg.foregroundColor as string) ?? base.foregroundColor,
     labelColor:      (cfg.labelColor as string) ?? base.labelColor,
+    iconBgColor:     (cfg.iconBgColor as string) ?? '',
     rewardText:      (cfg.rewardText as string) ?? base.rewardText,
     headerFields:    Array.isArray(cfg.headerFields) ? cfg.headerFields as PassField[] : base.headerFields,
     secondaryFields: Array.isArray(cfg.secondaryFields) ? cfg.secondaryFields as PassField[] : base.secondaryFields,
@@ -1046,6 +1050,7 @@ function controlsToConfigJson(c: Controls): Record<string, unknown> {
     bgColor:         c.bgColor,
     foregroundColor: c.foregroundColor,
     labelColor:      c.labelColor,
+    ...(c.iconBgColor ? { iconBgColor: c.iconBgColor } : {}),
     stampsTotal:     c.stampsTotal,
     currentPoints:   c.currentPoints,
     rewardThreshold: c.rewardThreshold,
@@ -1846,6 +1851,12 @@ function WalletPreviewInner() {
               <ColorPicker label={t('walletPreview.fieldBgColor')} value={controls.bgColor} onChange={v => handleChange('bgColor', v)} />
               <ColorPicker label={t('walletPreview.fieldFgColor')} value={controls.foregroundColor} onChange={v => handleChange('foregroundColor', v)} />
               <ColorPicker label={t('walletPreview.fieldLabelColor')} value={controls.labelColor} onChange={v => handleChange('labelColor', v)} />
+              <ColorPicker label={t('walletPreview.fieldIconBgColor')} value={controls.iconBgColor || controls.bgColor} onChange={v => handleChange('iconBgColor', v)} />
+              {controls.iconBgColor ? (
+                <button type="button" onClick={() => handleChange('iconBgColor', '')} className="text-[11px] text-gray-400 underline -mt-2 text-left">{t('walletPreview.iconBgReset')}</button>
+              ) : (
+                <p className="text-[11px] text-gray-400 -mt-2">{t('walletPreview.iconBgFollows')}</p>
+              )}
             </Section>
 
             {/* ── Progression ────────────────────────────────────────────── */}
