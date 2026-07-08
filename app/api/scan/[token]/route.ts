@@ -432,6 +432,7 @@ export async function POST(
       points_added:         0,
       reward_triggered:     false,
       reward_redeemed:      true,
+      reward_still_pending: stillPending,
       stamps_added:         0,
       stamps_total:         stampsTotal,
       stamp_card_completed: false,

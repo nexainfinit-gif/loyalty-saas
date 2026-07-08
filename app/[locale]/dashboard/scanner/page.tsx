@@ -20,6 +20,7 @@ interface IdentifiedCustomer {
   total_points: number;
   stamps_count?: number;
   last_visit_at?: string;
+  reward_pending?: boolean;
 }
 
 interface ScanResult {
@@ -37,6 +38,7 @@ interface ScanResult {
   stamp_card_completed: boolean;
   reward_triggered: boolean;
   reward_redeemed: boolean;
+  reward_still_pending?: boolean;
   reward_message: string;
   scan_action_label: string | null;
 }
@@ -376,7 +378,13 @@ export default function ScannerPage() {
             <>
               <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🎁</div>
               <h2 style={{ color: '#7C3AED', fontWeight: 700, margin: '0 0 0.5rem' }}>{t('scanner.rewardRedeemed')}</h2>
-              <p style={{ color: '#5B21B6', background: '#EDE9FE', padding: '0.75rem', borderRadius: '10px', fontSize: '0.9rem', margin: '0 0 1.25rem' }}>{result.reward_message}</p>
+              <p style={{ color: '#5B21B6', background: '#EDE9FE', padding: '0.75rem', borderRadius: '10px', fontSize: '0.9rem', margin: '0 0 0.75rem' }}>{result.reward_message}</p>
+              <p style={{ color: '#374151', fontSize: '0.9rem', margin: '0 0 0.5rem' }}>
+                {t('scanner.newBalance')} : <strong>{result.customer.total_points} {result.program_type === 'stamps' ? '' : 'pts'}</strong>
+              </p>
+              {result.reward_still_pending && (
+                <p style={{ color: '#92400E', background: '#FEF3C7', padding: '0.5rem 0.75rem', borderRadius: '10px', fontSize: '0.8rem', margin: '0 0 1rem', fontWeight: 600 }}>🎁 {t('scanner.stillPending')}</p>
+              )}
             </>
           ) : result.stamp_card_completed ? (
             <>
@@ -456,6 +464,24 @@ export default function ScannerPage() {
               : `${identifiedCustomer.total_points} points`}
           </p>
 
+          {identifiedCustomer.reward_pending ? (
+            <div style={{ marginBottom: '0.5rem' }}>
+              <div style={{ background: '#EDE9FE', border: '1.5px solid #DDD6FE', borderRadius: '14px', padding: '1rem', marginBottom: '0.75rem' }}>
+                <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#5B21B6' }}>🎁 {t('scanner.rewardPendingTitle')}</p>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#7C3AED' }}>{t('scanner.rewardPendingDesc')}</p>
+              </div>
+              <button
+                className="action-btn"
+                onClick={() => applyAction(pendingScanToken, null)}
+                style={{
+                  background: '#7C3AED', color: 'white', border: 'none',
+                  padding: '1rem 1.25rem', borderRadius: '14px', width: '100%',
+                  fontSize: '1rem', fontWeight: 700, cursor: 'pointer', minHeight: '56px',
+                  boxShadow: '0 2px 8px rgba(124,58,237,0.25)',
+                }}
+              >🎁 {t('scanner.collectReward')}</button>
+            </div>
+          ) : (<>
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', fontWeight: 600, color: '#374151' }}>
             {t('scanner.chooseAction')}
           </p>
@@ -488,6 +514,7 @@ export default function ScannerPage() {
               </button>
             ))}
           </div>
+          </>)}
 
           <button
             onClick={reset}
