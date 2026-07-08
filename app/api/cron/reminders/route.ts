@@ -169,6 +169,7 @@ export async function GET(req: NextRequest) {
             clientName: apt.client_name,
             businessName: restaurant.name,
             dateTimeLabel,
+            cancelToken: apt.cancel_token, // → boutons Confirmer / Annuler
           })
             .then(async (r) => {
               if (!r.ok) return;

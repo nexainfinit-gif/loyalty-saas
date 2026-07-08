@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'crypto';
 import { logger } from '@/lib/logger';
 
 /**
@@ -62,6 +63,13 @@ export interface WhatsAppTemplateParams {
   template: string;
   languageCode?: string;
   bodyParams: string[];
+  /**
+   * Payloads dynamiques des boutons quick-reply du template (dans l'ordre où
+   * ils sont définis côté Meta). Ex. ['CONFIRM:<token>', 'CANCEL:<token>'].
+   * Le template DOIT déclarer autant de boutons quick-reply. Omettre pour un
+   * template sans bouton.
+   */
+  buttonPayloads?: string[];
 }
 
 type SendResult = { ok: boolean; skipped?: string; error?: string };
@@ -75,6 +83,22 @@ export async function sendWhatsAppTemplate(params: WhatsAppTemplateParams): Prom
 
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID!;
   const token = process.env.WHATSAPP_TOKEN!;
+
+  const components: unknown[] = [
+    {
+      type: 'body',
+      parameters: params.bodyParams.map((text) => ({ type: 'text', text })),
+    },
+  ];
+  // Boutons quick-reply avec payload dynamique (Confirmer / Annuler).
+  (params.buttonPayloads ?? []).forEach((payload, index) => {
+    components.push({
+      type: 'button',
+      sub_type: 'quick_reply',
+      index: String(index),
+      parameters: [{ type: 'payload', payload }],
+    });
+  });
 
   try {
     const res = await fetch(
@@ -92,12 +116,7 @@ export async function sendWhatsAppTemplate(params: WhatsAppTemplateParams): Prom
           template: {
             name: params.template,
             language: { code: params.languageCode ?? 'fr' },
-            components: [
-              {
-                type: 'body',
-                parameters: params.bodyParams.map((text) => ({ type: 'text', text })),
-              },
-            ],
+            components,
           },
         }),
       },
@@ -134,11 +153,111 @@ export async function sendAppointmentReminderWhatsApp(args: {
   businessName: string;
   dateTimeLabel: string;
   languageCode?: string;
+  /** cancel_token du RDV — active les boutons Confirmer / Annuler s'il est fourni. */
+  cancelToken?: string | null;
 }): Promise<SendResult> {
   return sendWhatsAppTemplate({
     to: args.to,
     template: process.env.WHATSAPP_REMINDER_TEMPLATE ?? 'appointment_reminder',
     languageCode: args.languageCode ?? 'fr',
     bodyParams: [args.clientName || 'client', args.businessName, args.dateTimeLabel],
+    buttonPayloads: args.cancelToken
+      ? [`CONFIRM:${args.cancelToken}`, `CANCEL:${args.cancelToken}`]
+      : undefined,
   });
+}
+
+/**
+ * Message texte libre (hors template). Autorisé — et GRATUIT — uniquement dans
+ * la fenêtre de service de 24 h ouverte par un message entrant du client (ex.
+ * un tap sur un bouton). Utilisé pour accuser réception d'un Confirmer/Annuler.
+ */
+export async function sendWhatsAppText(to: string, body: string): Promise<SendResult> {
+  if (!isWhatsAppConfigured()) return { ok: false, skipped: 'not_configured' };
+  const normalized = normalizePhone(to);
+  if (!normalized) return { ok: false, skipped: 'invalid_phone' };
+
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID!;
+  const token = process.env.WHATSAPP_TOKEN!;
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: normalized,
+          type: 'text',
+          text: { body },
+        }),
+      },
+    );
+    if (!res.ok) return { ok: false, error: `http_${res.status}` };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'exception' };
+  }
+}
+
+/**
+ * Vérifie la signature Meta (X-Hub-Signature-256) d'un webhook entrant, en
+ * timing-safe. Retourne false si le secret n'est pas configuré (on refuse de
+ * traiter un webhook non authentifiable).
+ */
+export function verifyWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
+  const secret = process.env.WHATSAPP_APP_SECRET;
+  if (!secret || !signatureHeader) return false;
+  const expected = 'sha256=' + createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signatureHeader);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+export interface InboundButtonTap {
+  from: string;      // numéro E.164 de l'expéditeur
+  action: string;    // ex. 'CONFIRM' | 'CANCEL'
+  token: string;     // cancel_token du RDV
+}
+
+/**
+ * Extrait les taps de boutons quick-reply d'un payload webhook Meta. Gère à la
+ * fois les boutons de template (type 'button') et les boutons interactifs
+ * (type 'interactive' → button_reply). Ignore silencieusement tout le reste
+ * (accusés de livraison, messages texte, payloads malformés).
+ */
+export function parseInboundButtonTaps(webhookBody: unknown): InboundButtonTap[] {
+  const taps: InboundButtonTap[] = [];
+  try {
+    const entries = (webhookBody as { entry?: unknown[] })?.entry ?? [];
+    for (const entry of entries) {
+      const changes = (entry as { changes?: unknown[] })?.changes ?? [];
+      for (const change of changes) {
+        const messages = (change as { value?: { messages?: unknown[] } })?.value?.messages ?? [];
+        for (const msg of messages) {
+          const m = msg as {
+            from?: string;
+            type?: string;
+            button?: { payload?: string };
+            interactive?: { button_reply?: { id?: string } };
+          };
+          const payload =
+            m.type === 'button' ? m.button?.payload :
+            m.type === 'interactive' ? m.interactive?.button_reply?.id :
+            undefined;
+          if (!m.from || !payload) continue;
+          const sep = payload.indexOf(':');
+          if (sep <= 0) continue;
+          const action = payload.slice(0, sep);
+          const tokenPart = payload.slice(sep + 1);
+          if (!action || !tokenPart) continue;
+          taps.push({ from: m.from, action, token: tokenPart });
+        }
+      }
+    }
+  } catch {
+    /* payload malformé → aucun tap */
+  }
+  return taps;
 }
