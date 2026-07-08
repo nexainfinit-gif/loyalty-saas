@@ -744,6 +744,9 @@
     "cityLabel": "Città *",
     "phoneLabel": "Telefono",
     "colorLabel": "Colore principale",
+    "iconBgLabel": "Sfondo dell'icona (notifiche)",
+    "iconBgReset": "reimposta",
+    "iconBgFollows": "segue il colore della carta",
     "colorHint": "Usato sulla tua carta fedeltà",
     "creating": "Creazione...",
     "createBtn": "Crea la mia attività →"

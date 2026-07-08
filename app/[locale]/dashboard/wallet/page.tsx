@@ -142,6 +142,7 @@ function CreateTemplateModal({ token, restaurantId, loyaltySettings, onCreated, 
   const [name,        setName]        = useState('');
   const [type,        setType]        = useState<PassKind>('stamps');
   const [color,       setColor]       = useState('#4f6bed');
+  const [iconBgColor, setIconBgColor] = useState(''); // '' = suit la couleur de la carte
   const [repeatable,  setRepeatable]  = useState(false);
   const [validFrom,   setValidFrom]   = useState('');
   const [validTo,     setValidTo]     = useState('');
@@ -167,6 +168,7 @@ function CreateTemplateModal({ token, restaurantId, loyaltySettings, onCreated, 
       type === 'stamps' ? { stamps_total: stampsTotal, reward_message: rewardMessage } :
       type === 'points' ? { reward_threshold: rewardThreshold, points_per_scan: pointsPerScan, reward_message: rewardMessage } :
                           { event_name: eventName, event_date: eventDate };
+    if (iconBgColor) config_json.iconBgColor = iconBgColor; // fond de l'icône de notification
 
     const res = await fetch('/api/wallet/templates', {
       method:  'POST',
@@ -281,7 +283,19 @@ function CreateTemplateModal({ token, restaurantId, loyaltySettings, onCreated, 
                 <span className="text-sm text-gray-500 font-mono">{color}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2 pt-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.iconBgLabel')} <span className="text-gray-400 font-normal">{t('common.optional')}</span></label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={iconBgColor || color} onChange={e => setIconBgColor(e.target.value)}
+                  className="h-9 w-16 rounded-lg border border-gray-200 cursor-pointer p-0.5" />
+                {iconBgColor ? (
+                  <button type="button" onClick={() => setIconBgColor('')} className="text-xs text-gray-400 underline">{t('wallet.iconBgReset')}</button>
+                ) : (
+                  <span className="text-xs text-gray-400">{t('wallet.iconBgFollows')}</span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-6 col-span-2">
               <input type="checkbox" id="repeatable" checked={repeatable} onChange={e => setRepeatable(e.target.checked)}
                 className="rounded" />
               <label htmlFor="repeatable" className="text-sm text-gray-700">{t('wallet.repeatableLabel2')}</label>

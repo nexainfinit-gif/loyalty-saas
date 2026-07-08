@@ -761,6 +761,9 @@
     "cityLabel": "Ville *",
     "phoneLabel": "Téléphone",
     "colorLabel": "Couleur principale",
+    "iconBgLabel": "Fond de l'icône (notifications)",
+    "iconBgReset": "réinitialiser",
+    "iconBgFollows": "suit la couleur de la carte",
     "colorHint": "Utilisée sur votre carte fidélité",
     "creating": "Création...",
     "createBtn": "Créer mon commerce →"

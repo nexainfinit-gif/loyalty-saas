@@ -742,6 +742,9 @@
     "cityLabel": "Ciudad *",
     "phoneLabel": "Teléfono",
     "colorLabel": "Color principal",
+    "iconBgLabel": "Fondo del icono (notificaciones)",
+    "iconBgReset": "restablecer",
+    "iconBgFollows": "sigue el color de la tarjeta",
     "colorHint": "Usado en tu tarjeta de fidelización",
     "creating": "Creando...",
     "createBtn": "Crear mi negocio →"

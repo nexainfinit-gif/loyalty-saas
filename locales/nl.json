@@ -744,6 +744,9 @@
     "cityLabel": "Stad *",
     "phoneLabel": "Telefoon",
     "colorLabel": "Hoofdkleur",
+    "iconBgLabel": "Achtergrond pictogram (meldingen)",
+    "iconBgReset": "resetten",
+    "iconBgFollows": "volgt de kaartkleur",
     "colorHint": "Gebruikt op uw klantenkaart",
     "creating": "Aanmaken...",
     "createBtn": "Mijn zaak aanmaken →"

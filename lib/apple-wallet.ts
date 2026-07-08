@@ -686,6 +686,8 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
   const stripImageUrl = cfg.stripImageUrl as string | undefined;
   const logoImageUrl  = (cfg.logoImageUrl as string | undefined) || input.logoUrl;
   const fgHex = (cfg.foregroundColor as string) ?? '#ffffff';
+  const iconBg = (cfg.iconBgColor as string) || color;
+  const iconImageUrl = (cfg.iconImageUrl as string | undefined) || logoImageUrl;
 
   // Auto-generate stamp grid strip for stamps mode (unless custom strip is set)
   const autoStampStrip = input.passKind === 'stamps' && !stripImageUrl;
@@ -700,9 +702,11 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
   // ── 1. Generate all pass files ─────────────────────────────────────────────
   const imagePromises: Promise<Buffer>[] = [
     Promise.resolve(buildPassJson(input, passTypeId, teamId)),
-    fetchIconOrSolid(logoImageUrl, 29, color),   // icon.png    (required — affichée dans les notifs)
-    fetchIconOrSolid(logoImageUrl, 58, color),   // icon@2x.png (required)
-    fetchIconOrSolid(logoImageUrl, 87, color),   // icon@3x.png (recommended)
+    // Icône de notification configurable à part : image et fond dédiés
+    // (cfg.iconImageUrl / cfg.iconBgColor), repli logo + couleur de la carte.
+    fetchIconOrSolid(iconImageUrl, 29, iconBg),   // icon.png    (required — affichée dans les notifs)
+    fetchIconOrSolid(iconImageUrl, 58, iconBg),   // icon@2x.png (required)
+    fetchIconOrSolid(iconImageUrl, 87, iconBg),   // icon@3x.png (recommended)
     fetchOrSolid(logoImageUrl, 160,  50, color),  // logo.png
     fetchOrSolid(logoImageUrl, 320, 100, color),  // logo@2x.png
   ];

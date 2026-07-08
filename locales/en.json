@@ -761,6 +761,9 @@
     "cityLabel": "City *",
     "phoneLabel": "Phone",
     "colorLabel": "Primary color",
+    "iconBgLabel": "Icon background (notifications)",
+    "iconBgReset": "reset",
+    "iconBgFollows": "follows the card color",
     "colorHint": "Used on your loyalty card",
     "creating": "Creating...",
     "createBtn": "Create my business →"
