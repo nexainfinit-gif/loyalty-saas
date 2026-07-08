@@ -356,17 +356,22 @@ export async function POST(
   const isRewardPending = targetPass?.reward_pending ?? customer.reward_pending ?? false;
 
   // ── Reward redemption: if reward is pending, this scan collects it ────
-  if (programType === 'stamps' && isRewardPending) {
-    // Reset stamps to 0 via negative delta (triggers completed_cards increment)
-    const resetDelta = -currentStamps;
+  // Points : les points sont une MONNAIE — la récolte déduit le seuil
+  // (74/30 → récolte → 44) et re-signale s'il reste ≥ seuil.
+  // Stamps : reset à 0 (le trigger DB incrémente completed_cards).
+  if (isRewardPending) {
+    const redeemThreshold = settings?.reward_threshold ?? 100;
+    const isPointsMode = programType === 'points';
+    const pointsRedeemDelta = isPointsMode ? -Math.min(redeemThreshold, balanceBefore) : 0;
+    const resetDelta = isPointsMode ? 0 : -currentStamps;
     const { error: redeemErr } = await supabaseAdmin.from('transactions').insert({
       restaurant_id:  restaurantId,
       customer_id:    customer.id,
       wallet_pass_id: targetPass?.id ?? null,
       type:           'reward_redeem',
-      points_delta:   0,
+      points_delta:   pointsRedeemDelta,
       stamps_delta:   resetDelta,
-      balance_after:  balanceBefore,
+      balance_after:  balanceBefore + pointsRedeemDelta,
       metadata:       { reason: 'Récompense récoltée' },
     });
 
@@ -375,15 +380,25 @@ export async function POST(
       return Response.json({ error: t('api.scanError') }, { status: 500 });
     }
 
-    // Clear reward_pending flag on both pass and customer
+    // Points : re-signale immédiatement si le solde restant couvre encore le
+    // seuil ; incrémente completed_cards explicitement (trigger = stamps only).
+    const remainingAfterRedeem = balanceBefore + pointsRedeemDelta;
+    const stillPending = isPointsMode && redeemThreshold > 0 && remainingAfterRedeem >= redeemThreshold;
     if (targetPass) {
       await supabaseAdmin.from('wallet_passes')
-        .update({ reward_pending: false })
+        .update({ reward_pending: stillPending })
         .eq('id', targetPass.id);
     }
     await supabaseAdmin.from('customers')
-      .update({ reward_pending: false })
+      .update({ reward_pending: stillPending })
       .eq('id', customer.id);
+    if (isPointsMode) {
+      const { data: cc } = await supabaseAdmin.from('customers')
+        .select('completed_cards').eq('id', customer.id).maybeSingle();
+      await supabaseAdmin.from('customers')
+        .update({ completed_cards: (cc?.completed_cards ?? 0) + 1 })
+        .eq('id', customer.id);
+    }
 
     // Re-read balances after reset — from pass if available, else customer
     const { data: freshRedeemPass } = targetPass
@@ -473,7 +488,7 @@ export async function POST(
   // Points-mode reward
   const rewardThreshold = settings?.reward_threshold ?? 100;
   const rewardTriggered = programType === 'points'
-    && balanceBefore < rewardThreshold
+    && rewardThreshold > 0
     && newBalance >= rewardThreshold;
 
   // Stamps-mode completion (pointsToAdd acts as stamps count in stamps mode)
@@ -508,8 +523,8 @@ export async function POST(
     );
   }
 
-  // If stamp card just completed, set reward_pending = true on pass + customer
-  if (stampCardCompleted) {
+  // Récompense atteinte (points) ou carte complétée (stamps) → flag pending
+  if (stampCardCompleted || rewardTriggered) {
     if (targetPass) {
       await supabaseAdmin.from('wallet_passes')
         .update({ reward_pending: true })

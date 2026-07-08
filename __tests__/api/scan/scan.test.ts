@@ -134,10 +134,26 @@ describe('POST /api/scan/[token] — points mode', () => {
     expect(json.customer.total_points).toBe(105);
   });
 
-  it('does NOT trigger the reward when already past the threshold', async () => {
+  it('triggers the reward when ALREADY past the threshold (bug 74/30)', async () => {
+    // Un solde déjà ≥ seuil (ex. seuil abaissé après coup) doit signaler la
+    // récompense — l'ancien comportement « franchissement uniquement » laissait
+    // le client bloqué au-dessus du seuil sans jamais récolter.
     seedDb({ customers: [{ ...CUSTOMER, total_points: 150, reward_pending: false }, { ...CUSTOMER_B }] });
     const json = await (await scan(CUSTOMER.qr_token)).json();
-    expect(json.reward_triggered).toBe(false);
+    expect(json.reward_triggered).toBe(true);
+  });
+
+  it('récolte en mode points : déduit le seuil et re-signale si solde restant ≥ seuil', async () => {
+    // reward_pending → ce scan récolte : -100 pts (seuil), completed_cards +1.
+    // 150 - 100 = 50 < 100 → plus de récompense en attente.
+    seedDb({ customers: [{ ...CUSTOMER, total_points: 150, reward_pending: true }, { ...CUSTOMER_B }] });
+    const json = await (await scan(CUSTOMER.qr_token)).json();
+    expect(json.reward_redeemed).toBe(true);
+    const tx = dbHolder.db.rows('transactions').find((t: { type: string }) => t.type === 'reward_redeem');
+    expect(tx.points_delta).toBe(-100);
+    const cust = dbHolder.db.rows('customers').find((c: { id: string }) => c.id === CUSTOMER.id);
+    expect(cust.reward_pending).toBe(false);
+    expect(cust.completed_cards ?? 0).toBeGreaterThanOrEqual(1);
   });
 
   it('returns 404 for an unknown token', async () => {
