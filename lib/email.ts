@@ -350,7 +350,9 @@ export async function sendBookingConfirmationEmail({
             Ajouter à Google Calendar
           </a>
           <p style="margin: 0.6rem 0 0; font-size: 0.78rem;">
-            <a href="${icsUrl}" style="color: #6b7280; text-decoration: underline;">Sur iPhone ? Ajouter via Calendrier Apple (.ics)</a>
+            <a href="${icsUrl}" style="color: #6b7280; text-decoration: underline;">Sur iPhone ? Ajouter via Calendrier Apple (.ics)</a></p>
+          <p style="margin: 0.4rem 0 0; font-size: 0.78rem;">
+            ${cancelUrl ? `<a href="${cancelUrl.replace('/cancel/', '/status/')}" style="color: #6b7280; text-decoration: underline;">⏱ Suivre mon rendez-vous en temps réel</a>` : ''}
           </p>
         </div>
 
@@ -611,7 +613,9 @@ export async function sendReminderEmail({
             Voir dans Google Calendar
           </a>
           <p style="margin: 0.6rem 0 0; font-size: 0.78rem;">
-            <a href="${icsUrl}" style="color: #6b7280; text-decoration: underline;">Sur iPhone ? Ajouter via Calendrier Apple (.ics)</a>
+            <a href="${icsUrl}" style="color: #6b7280; text-decoration: underline;">Sur iPhone ? Ajouter via Calendrier Apple (.ics)</a></p>
+          <p style="margin: 0.4rem 0 0; font-size: 0.78rem;">
+            ${cancelUrl ? `<a href="${cancelUrl.replace('/cancel/', '/status/')}" style="color: #6b7280; text-decoration: underline;">⏱ Suivre mon rendez-vous en temps réel</a>` : ''}
           </p>
         </div>
 
