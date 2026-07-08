@@ -32,7 +32,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#f6f8fb" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <link rel="apple-touch-icon" href="/wallet/icon.svg" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Rebites" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
