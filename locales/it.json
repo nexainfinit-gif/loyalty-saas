@@ -946,7 +946,14 @@
     "waIncluded": "Inclusi questo mese",
     "waCredits": "Crediti aggiuntivi",
     "waBuyLabel": "Aggiungi crediti",
-    "waWalletFree": "I promemoria tramite carta Wallet non consumano mai la tua quota."
+    "waWalletFree": "I promemoria tramite carta Wallet non consumano mai la tua quota.",
+    "pkgTitle": "Pacchetti",
+    "pkgDesc": "Vendi pacchetti prepagati (es. \"5 sedute\"), pagati sul tuo conto Stripe. Il cliente mostra un codice, decrementato ad ogni seduta.",
+    "pkgName": "Nome dell'offerta",
+    "pkgSessions": "Sedute",
+    "pkgRedeemLabel": "Usa una seduta (codice cliente)",
+    "pkgUse": "Usa",
+    "pkgRedeemed": "Seduta usata — {remaining} rimaste"
   },
   "appointmentStaff": {
     "title": "Personale",
@@ -1772,5 +1779,22 @@
     "paymentIssue": "Pagamento non confermato",
     "paymentIssueDesc": "Se sei stato addebitato, contatta l’attività.",
     "unavailable": "I buoni regalo non sono disponibili per questa attività."
+  },
+  "pkg": {
+    "title": "Pacchetti — {business}",
+    "subtitle": "Acquista un pacchetto prepagato, valido 1 anno.",
+    "sessions": "sedute",
+    "buyerName": "Il tuo nome",
+    "buyerEmail": "La tua email (il codice sarà inviato lì)",
+    "payBtn": "Paga",
+    "securePayment": "Pagamento sicuro con Stripe — versato direttamente all'attività.",
+    "verifying": "Verifica del pagamento…",
+    "successTitle": "Pacchetto acquistato!",
+    "successDesc": "Ecco il tuo codice — inviato anche via email.",
+    "codeLabel": "Codice da mostrare",
+    "emailSent": "Email inviata con il tuo codice.",
+    "paymentIssue": "Pagamento non confermato",
+    "paymentIssueDesc": "Se ti è stato addebitato, contatta l'attività.",
+    "unavailable": "I pacchetti non sono disponibili per questa attività."
   }
 }

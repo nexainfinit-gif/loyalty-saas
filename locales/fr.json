@@ -963,7 +963,14 @@
     "waIncluded": "Inclus ce mois-ci",
     "waCredits": "Crédits supplémentaires",
     "waBuyLabel": "Ajouter des crédits",
-    "waWalletFree": "Les rappels via la carte Wallet ne consomment jamais votre quota."
+    "waWalletFree": "Les rappels via la carte Wallet ne consomment jamais votre quota.",
+    "pkgTitle": "Forfaits",
+    "pkgDesc": "Vendez des forfaits prépayés (ex. « 5 séances »), payés sur votre compte Stripe. Le client présente un code, décrémenté à chaque séance.",
+    "pkgName": "Nom de l'offre",
+    "pkgSessions": "Séances",
+    "pkgRedeemLabel": "Utiliser une séance (code client)",
+    "pkgUse": "Utiliser",
+    "pkgRedeemed": "Séance utilisée — {remaining} restante(s)"
   },
   "appointmentStaff": {
     "title": "Équipe",
@@ -1790,5 +1797,22 @@
     "paymentIssue": "Paiement non confirmé",
     "paymentIssueDesc": "Si vous avez été débité, contactez l’établissement.",
     "unavailable": "Les bons cadeaux ne sont pas disponibles pour cet établissement."
+  },
+  "pkg": {
+    "title": "Forfaits — {business}",
+    "subtitle": "Achetez un forfait prépayé, valable 1 an.",
+    "sessions": "séances",
+    "buyerName": "Votre nom",
+    "buyerEmail": "Votre email (le code y sera envoyé)",
+    "payBtn": "Payer",
+    "securePayment": "Paiement sécurisé par Stripe — versé directement au commerçant.",
+    "verifying": "Vérification de votre paiement…",
+    "successTitle": "Forfait acheté !",
+    "successDesc": "Voici votre code — il a aussi été envoyé par email.",
+    "codeLabel": "Code à présenter",
+    "emailSent": "Email envoyé avec votre code.",
+    "paymentIssue": "Paiement non confirmé",
+    "paymentIssueDesc": "Si vous avez été débité, contactez l'établissement.",
+    "unavailable": "Les forfaits ne sont pas disponibles pour cet établissement."
   }
 }

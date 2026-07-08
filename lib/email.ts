@@ -1003,3 +1003,48 @@ export async function sendGiftVoucherEmail({
     `,
   });
 }
+
+interface PackageEmailProps {
+  to: string;
+  customerName: string;
+  packageName: string;
+  sessions: number;
+  code: string;
+  expiresAt: string | null;
+  businessName: string;
+  businessColor: string;
+}
+
+/** Email de confirmation d'achat d'un forfait prépayé (code + nb de séances). */
+export async function sendPackageEmail({
+  to, customerName, packageName, sessions, code, expiresAt, businessName, businessColor,
+}: PackageEmailProps) {
+  const color = safeCssColor(businessColor);
+  const safeBiz = esc(businessName);
+  const safeCustomer = esc(customerName);
+  const safeName = esc(packageName);
+  const expiry = expiresAt ? new Date(expiresAt).toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+
+  await resend.emails.send({
+    from: `${businessName} <noreply@rebites.be>`,
+    to,
+    subject: `Votre forfait ${safeName} — ${businessName}`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+        <div style="background: ${color}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
+          <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase;">Forfait</p>
+          <p style="color: white; margin: 0.4rem 0 0; font-size: 1.6rem; font-weight: 800;">${safeName}</p>
+          <p style="color: rgba(255,255,255,0.9); margin: 0.4rem 0 0;">${sessions} séance${sessions > 1 ? 's' : ''} — ${safeBiz}</p>
+        </div>
+        <p style="color:#374151;">Merci pour votre achat, <strong>${safeCustomer}</strong> !</p>
+        <div style="background:#f9fafb; border: 2px dashed #d1d5db; border-radius: 12px; padding: 1.25rem; text-align: center; margin: 1.5rem 0;">
+          <p style="color:#6b7280; font-size: 0.75rem; margin: 0 0 0.4rem; text-transform: uppercase; letter-spacing: 0.08em;">Code à présenter</p>
+          <p style="font-family: monospace; font-size: 1.6rem; font-weight: 700; letter-spacing: 0.15em; color: #111827; margin: 0;">${esc(code)}</p>
+        </div>
+        <p style="color:#6b7280; font-size: 0.85rem;">Présentez ce code chez ${safeBiz} à chaque séance.${expiry ? ` Valable jusqu'au <strong>${expiry}</strong>.` : ''}</p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">${safeBiz} — Forfaits par <a href="https://rebites.be" style="color: #9ca3af;">Rebites</a></p>
+      </div>
+    `,
+  });
+}

@@ -46,6 +46,15 @@ export default function SettingsPage() {
   }
   const [reminderStatus, setReminderStatus] = useState<ReminderStatus | null>(null)
   const [buyingPack, setBuyingPack] = useState<string | null>(null)
+  // Forfaits (C2)
+  type Offer = { id: string; name: string; sessions_count: number; price: number; active: boolean }
+  const [pkgEnabled, setPkgEnabled] = useState(false)
+  const [offers, setOffers] = useState<Offer[]>([])
+  const [offerName, setOfferName] = useState('')
+  const [offerSessions, setOfferSessions] = useState('')
+  const [offerPrice, setOfferPrice] = useState('')
+  const [pkgCode, setPkgCode] = useState('')
+  const [pkgResult, setPkgResult] = useState<string | null>(null)
 
   useEffect(() => {
     // URL d'avis Google (stockée en KV restaurant_settings)
@@ -73,6 +82,67 @@ export default function SettingsPage() {
       .then(j => { if (j) setReminderStatus(j) })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    // Forfaits : toggle KV + liste des offres
+    fetch('/api/restaurant-settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j?.settings?.packages_enabled === 'true') setPkgEnabled(true) })
+      .catch(() => {})
+    fetch('/api/packages')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j?.packages) setOffers(j.packages) })
+      .catch(() => {})
+  }, [])
+
+  async function togglePackages() {
+    const next = !pkgEnabled
+    setPkgEnabled(next)
+    await fetch('/api/restaurant-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ packages_enabled: next ? 'true' : 'false' }),
+    }).catch(() => setPkgEnabled(!next))
+  }
+
+  async function createOffer() {
+    const sessions = parseInt(offerSessions, 10)
+    const price = parseFloat(offerPrice)
+    if (!offerName.trim() || !Number.isInteger(sessions) || !Number.isFinite(price)) return
+    const res = await fetch('/api/packages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: offerName.trim(), sessions, price }),
+    })
+    const j = await res.json()
+    if (res.ok && j.package) {
+      setOffers(o => [j.package, ...o])
+      setOfferName(''); setOfferSessions(''); setOfferPrice('')
+    } else { toast.error(j.error || 'Erreur') }
+  }
+
+  async function deleteOffer(id: string) {
+    setOffers(o => o.filter(x => x.id !== id))
+    await fetch(`/api/packages?id=${id}`, { method: 'DELETE' }).catch(() => {})
+  }
+
+  async function redeemPackage(action: 'lookup' | 'redeem') {
+    setPkgResult(null)
+    const code = pkgCode.trim().toUpperCase()
+    if (!code) return
+    const res = action === 'lookup'
+      ? await fetch('/api/packages/redeem?code=' + encodeURIComponent(code))
+      : await fetch('/api/packages/redeem', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) })
+    const j = await res.json()
+    if (!res.ok) { setPkgResult('❌ ' + (j.error || 'Erreur')); return }
+    if (action === 'lookup') {
+      const p = j.package
+      setPkgResult(`✔ ${p.name} — ${p.remaining}/${p.sessions_total} ${t('pkg.sessions')}${p.expired ? ' (' + t('appointmentSettings.giftExpired') + ')' : ''}`)
+    } else {
+      setPkgResult('✅ ' + t('appointmentSettings.pkgRedeemed', { remaining: j.remaining }))
+      setPkgCode('')
+    }
+  }
 
   async function buyReminderPack(pack: string) {
     setBuyingPack(pack)
@@ -671,6 +741,83 @@ export default function SettingsPage() {
               </div>
               {giftResult && <p className="text-sm mt-2 text-gray-700">{giftResult}</p>}
             </div>
+          )}
+        </section>
+
+        {/* ── Forfaits (offres prépayées) ──────────────────── */}
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckIcon size={16} className="text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-900">{t('appointmentSettings.pkgTitle')}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={togglePackages}
+              className={`relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 ${pkgEnabled ? 'bg-gray-900' : 'bg-gray-200'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${pkgEnabled ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">{t('appointmentSettings.pkgDesc')}</p>
+          {pkgEnabled && connect && !connect.chargesEnabled && (
+            <p className="text-[11px] text-amber-600">{t('appointmentSettings.giftNeedsConnect')}</p>
+          )}
+          {pkgEnabled && slug && (
+            <p className="text-xs text-gray-500">
+              {t('appointmentSettings.giftPageLink')}{' '}
+              <a href={`/${locale}/package/${slug}`} target="_blank" className="text-primary-600 underline">/package/{slug}</a>
+            </p>
+          )}
+
+          {pkgEnabled && (
+            <>
+              {/* Liste des offres */}
+              {offers.filter(o => o.active).length > 0 && (
+                <div className="space-y-1.5">
+                  {offers.filter(o => o.active).map(o => (
+                    <div key={o.id} className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                      <span className="text-sm text-gray-700">{o.name}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500">{o.sessions_count} {t('pkg.sessions')} · {Number(o.price).toLocaleString('fr-FR')} €</span>
+                        <button type="button" onClick={() => deleteOffer(o.id)} className="text-gray-300 hover:text-red-500 transition-colors text-xs">✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Créer une offre */}
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                <input value={offerName} onChange={e => setOfferName(e.target.value)} maxLength={80}
+                  placeholder={t('appointmentSettings.pkgName')} className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors" />
+                <input value={offerSessions} onChange={e => setOfferSessions(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
+                  placeholder={t('appointmentSettings.pkgSessions')} className="w-16 px-2 py-2 rounded-lg border border-gray-200 text-sm text-center focus:outline-none focus:border-gray-900 transition-colors" />
+                <input value={offerPrice} onChange={e => setOfferPrice(e.target.value)} inputMode="decimal"
+                  placeholder="€" className="w-16 px-2 py-2 rounded-lg border border-gray-200 text-sm text-center focus:outline-none focus:border-gray-900 transition-colors" />
+                <button type="button" onClick={createOffer} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800 transition-colors">+</button>
+              </div>
+
+              {/* Rachat d'une séance */}
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1.5 block">{t('appointmentSettings.pkgRedeemLabel')}</label>
+                <div className="flex gap-2">
+                  <input
+                    value={pkgCode}
+                    onChange={(e) => setPkgCode(e.target.value.toUpperCase())}
+                    placeholder="XXXX-XXXX"
+                    className="flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm font-mono tracking-wider focus:outline-none focus:border-gray-900 transition-colors"
+                  />
+                  <button type="button" onClick={() => redeemPackage('lookup')} className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                    {t('appointmentSettings.giftCheck')}
+                  </button>
+                  <button type="button" onClick={() => redeemPackage('redeem')} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800 transition-colors">
+                    {t('appointmentSettings.pkgUse')}
+                  </button>
+                </div>
+                {pkgResult && <p className="text-sm mt-2 text-gray-700">{pkgResult}</p>}
+              </div>
+            </>
           )}
         </section>
 

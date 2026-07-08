@@ -963,7 +963,14 @@
     "waIncluded": "Included this month",
     "waCredits": "Extra credits",
     "waBuyLabel": "Add credits",
-    "waWalletFree": "Wallet card reminders never use up your quota."
+    "waWalletFree": "Wallet card reminders never use up your quota.",
+    "pkgTitle": "Packages",
+    "pkgDesc": "Sell prepaid packages (e.g. \"5 sessions\"), paid to your Stripe account. The client shows a code, decremented at each session.",
+    "pkgName": "Offer name",
+    "pkgSessions": "Sessions",
+    "pkgRedeemLabel": "Use a session (client code)",
+    "pkgUse": "Use",
+    "pkgRedeemed": "Session used — {remaining} left"
   },
   "appointmentStaff": {
     "title": "Staff",
@@ -1790,5 +1797,22 @@
     "paymentIssue": "Payment not confirmed",
     "paymentIssueDesc": "If you were charged, contact the business.",
     "unavailable": "Gift vouchers are not available for this business."
+  },
+  "pkg": {
+    "title": "Packages — {business}",
+    "subtitle": "Buy a prepaid package, valid 1 year.",
+    "sessions": "sessions",
+    "buyerName": "Your name",
+    "buyerEmail": "Your email (the code will be sent there)",
+    "payBtn": "Pay",
+    "securePayment": "Secure payment by Stripe — paid directly to the business.",
+    "verifying": "Verifying your payment…",
+    "successTitle": "Package purchased!",
+    "successDesc": "Here is your code — it was also sent by email.",
+    "codeLabel": "Code to show",
+    "emailSent": "Email sent with your code.",
+    "paymentIssue": "Payment not confirmed",
+    "paymentIssueDesc": "If you were charged, contact the business.",
+    "unavailable": "Packages are not available for this business."
   }
 }

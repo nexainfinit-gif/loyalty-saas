@@ -946,7 +946,14 @@
     "waIncluded": "Deze maand inbegrepen",
     "waCredits": "Extra tegoeden",
     "waBuyLabel": "Tegoeden toevoegen",
-    "waWalletFree": "Herinneringen via de Wallet-kaart verbruiken nooit uw quotum."
+    "waWalletFree": "Herinneringen via de Wallet-kaart verbruiken nooit uw quotum.",
+    "pkgTitle": "Pakketten",
+    "pkgDesc": "Verkoop voorafbetaalde pakketten (bijv. \"5 sessies\"), betaald op uw Stripe-account. De klant toont een code, verminderd bij elke sessie.",
+    "pkgName": "Naam van het aanbod",
+    "pkgSessions": "Sessies",
+    "pkgRedeemLabel": "Een sessie gebruiken (klantcode)",
+    "pkgUse": "Gebruiken",
+    "pkgRedeemed": "Sessie gebruikt — {remaining} over"
   },
   "appointmentStaff": {
     "title": "Personeel",
@@ -1772,5 +1779,22 @@
     "paymentIssue": "Betaling niet bevestigd",
     "paymentIssueDesc": "Als er is afgeschreven, neem contact op met de zaak.",
     "unavailable": "Cadeaubonnen zijn niet beschikbaar voor deze zaak."
+  },
+  "pkg": {
+    "title": "Pakketten — {business}",
+    "subtitle": "Koop een voorafbetaald pakket, 1 jaar geldig.",
+    "sessions": "sessies",
+    "buyerName": "Uw naam",
+    "buyerEmail": "Uw e-mail (de code wordt daar verzonden)",
+    "payBtn": "Betalen",
+    "securePayment": "Veilige betaling via Stripe — rechtstreeks aan de zaak betaald.",
+    "verifying": "Uw betaling wordt geverifieerd…",
+    "successTitle": "Pakket gekocht!",
+    "successDesc": "Hier is uw code — ook per e-mail verzonden.",
+    "codeLabel": "Te tonen code",
+    "emailSent": "E-mail met uw code verzonden.",
+    "paymentIssue": "Betaling niet bevestigd",
+    "paymentIssueDesc": "Als u bent gedebiteerd, neem contact op met de zaak.",
+    "unavailable": "Pakketten zijn niet beschikbaar voor deze zaak."
   }
 }
