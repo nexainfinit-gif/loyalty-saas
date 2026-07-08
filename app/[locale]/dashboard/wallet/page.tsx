@@ -513,11 +513,141 @@ function IssuePassModal({ token, templates, customers, onIssued, onClose, presel
 
 /* ── Templates Table ──────────────────────────────────────────────────────── */
 
+/* ── Edit template modal ─────────────────────────────────────────────────── */
+
+interface EditTemplateModalProps {
+  token:    string;
+  template: Template;
+  onSaved:  (t: Template) => void;
+  onClose:  () => void;
+}
+
+function EditTemplateModal({ token, template, onSaved, onClose }: EditTemplateModalProps) {
+  const { t } = useTranslation();
+  const cfg = template.config_json ?? {};
+  const [name,  setName]  = useState(template.name);
+  const [color, setColor] = useState(template.primary_color ?? '#4f6bed');
+  const [iconBgColor, setIconBgColor] = useState((cfg.iconBgColor as string) ?? '');
+  const [rewardMessage, setRewardMessage] = useState((cfg.reward_message as string) ?? '');
+  const [stampsTotal, setStampsTotal] = useState(Number(cfg.stamps_total ?? 10));
+  const [rewardThreshold, setRewardThreshold] = useState(Number(cfg.reward_threshold ?? 100));
+  const [pointsPerScan, setPointsPerScan] = useState(Number(cfg.points_per_scan ?? 10));
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState('');
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    // Fusion : preserve les cles existantes du config (logo, strip, champs...)
+    const config_json: Record<string, unknown> = { ...cfg };
+    if (template.pass_kind === 'stamps') {
+      config_json.stamps_total = stampsTotal;
+      config_json.reward_message = rewardMessage;
+    } else if (template.pass_kind === 'points') {
+      config_json.reward_threshold = rewardThreshold;
+      config_json.points_per_scan = pointsPerScan;
+      config_json.reward_message = rewardMessage;
+    }
+    if (iconBgColor) config_json.iconBgColor = iconBgColor;
+    else delete config_json.iconBgColor;
+
+    const res = await fetch(`/api/wallet/templates/${template.id}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ name, primary_color: color, config_json }),
+    });
+    const json = await res.json();
+    if (!res.ok) { setError(json.error ?? t('wallet.unknownError')); setSaving(false); return; }
+    onSaved({ ...template, ...json.template });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <form onSubmit={submit} onClick={e => e.stopPropagation()}
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-base font-semibold text-gray-900">{t('wallet.editTemplate')}</h3>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.tmplName')}</label>
+          <input value={name} onChange={e => setName(e.target.value)} required
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.colorLabel')}</label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={color} onChange={e => setColor(e.target.value)}
+                className="h-9 w-16 rounded-lg border border-gray-200 cursor-pointer p-0.5" />
+              <span className="text-sm text-gray-500 font-mono">{color}</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.iconBgLabel')}</label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={iconBgColor || color} onChange={e => setIconBgColor(e.target.value)}
+                className="h-9 w-16 rounded-lg border border-gray-200 cursor-pointer p-0.5" />
+              {iconBgColor ? (
+                <button type="button" onClick={() => setIconBgColor('')} className="text-xs text-gray-400 underline">{t('wallet.iconBgReset')}</button>
+              ) : (
+                <span className="text-[11px] text-gray-400">{t('wallet.iconBgFollows')}</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {template.pass_kind !== 'event' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.tmplReward')}</label>
+            <input value={rewardMessage} onChange={e => setRewardMessage(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+        )}
+        {template.pass_kind === 'stamps' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.tmplStamps')}</label>
+            <input type="number" min={1} max={30} value={stampsTotal} onChange={e => setStampsTotal(parseInt(e.target.value) || 1)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+        )}
+        {template.pass_kind === 'points' && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.tmplThreshold')}</label>
+              <input type="number" min={1} value={rewardThreshold} onChange={e => setRewardThreshold(parseInt(e.target.value) || 1)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('wallet.tmplPointsScan')}</label>
+              <input type="number" min={1} value={pointsPerScan} onChange={e => setPointsPerScan(parseInt(e.target.value) || 1)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+          </div>
+        )}
+
+        <p className="text-[11px] text-gray-400">{t('wallet.editTemplateHint')}</p>
+        {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+
+        <div className="flex gap-2 justify-end pt-1">
+          <button type="button" onClick={onClose}
+            className="px-4 py-2 rounded-xl text-sm border border-gray-200 text-gray-600 hover:bg-gray-50">{t('common.cancel')}</button>
+          <button type="submit" disabled={saving}
+            className="px-4 py-2 rounded-xl text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50">
+            {saving ? '...' : t('common.save')}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 interface TemplatesTableProps {
   templates:    Template[];
   token:        string;
   onIssue:      (templateId: string) => void;
   onSetDefault: (templateId: string) => void;
+  onEdit: (template: Template) => void;
   onArchive:    (templateId: string) => void;
 }
 
@@ -536,7 +666,7 @@ interface TemplatePassEntry {
   } | null;
 }
 
-function TemplatesTable({ templates, token, onIssue, onSetDefault, onArchive }: TemplatesTableProps) {
+function TemplatesTable({ templates, token, onIssue, onSetDefault, onArchive, onEdit }: TemplatesTableProps) {
   const { t, locale } = useTranslation();
   const [settingDefault, setSettingDefault] = useState<string | null>(null);
   const [archiving,      setArchiving]      = useState<string | null>(null);
@@ -688,6 +818,12 @@ function TemplatesTable({ templates, token, onIssue, onSetDefault, onArchive }: 
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => onEdit(tmpl)}
+                      className="text-xs text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 px-2.5 py-1 rounded-full transition-colors"
+                    >
+                      {t('wallet.editBtn')}
+                    </button>
                     {!tmpl.is_default && tmpl.status === 'published' && (
                       <button
                         onClick={() => handleSetDefault(tmpl.id)}
@@ -1173,6 +1309,7 @@ export default function WalletStudioPage() {
   const [error,        setError]        = useState<string | null>(null);
   const [planBlocked,  setPlanBlocked]  = useState(false);
   const [showCreate,   setShowCreate]   = useState(false);
+  const [editTemplate, setEditTemplate] = useState<Template | null>(null);
   const [showIssue,    setShowIssue]    = useState(false);
   const [issueTemplateId, setIssueTemplateId] = useState<string | undefined>(undefined);
   const [issuedCount,  setIssuedCount]  = useState(0);
@@ -1498,6 +1635,7 @@ export default function WalletStudioPage() {
             onIssue={(id) => { setIssueTemplateId(id); setShowIssue(true); }}
             onSetDefault={() => fetchTemplates(token).then(tmpl => setTemplates(tmpl)).catch(() => {})}
             onArchive={(id) => setTemplates(prev => prev.filter(t => t.id !== id))}
+            onEdit={(tmpl) => setEditTemplate(tmpl)}
           />
         </section>
 
@@ -1597,6 +1735,17 @@ export default function WalletStudioPage() {
       </main>
 
       {/* ── Modals ── */}
+      {editTemplate && token && (
+        <EditTemplateModal
+          token={token}
+          template={editTemplate}
+          onClose={() => setEditTemplate(null)}
+          onSaved={(u) => {
+            setTemplates(prev => prev.map(x => x.id === u.id ? { ...x, ...u } : x));
+            setEditTemplate(null);
+          }}
+        />
+      )}
       {showCreate && (
         <CreateTemplateModal
           token={token}
