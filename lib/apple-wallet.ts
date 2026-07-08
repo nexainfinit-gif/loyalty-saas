@@ -505,6 +505,44 @@ async function fetchWithAutoResign(url: string): Promise<Response> {
   throw new Error(`fetch ${res.status}`);
 }
 
+/**
+ * Icône carrée du pass (icon.png) : le logo du salon centré sur un fond de la
+ * couleur du template — c'est CETTE image qu'iOS affiche dans les
+ * notifications lockscreen du pass. Repli : carré de couleur unie.
+ */
+async function fetchIconOrSolid(
+  url:      string | null | undefined,
+  size:     number,
+  fallback: string,
+): Promise<Buffer> {
+  if (url) {
+    try {
+      const res = await fetchWithAutoResign(url);
+      const raw = Buffer.from(await res.arrayBuffer());
+      const c = fallback.replace('#', '').padEnd(6, '0');
+      const bg = {
+        r: parseInt(c.slice(0, 2), 16) || 0,
+        g: parseInt(c.slice(2, 4), 16) || 0,
+        b: parseInt(c.slice(4, 6), 16) || 0,
+        alpha: 1,
+      };
+      // Logo à ~78 % de la surface, centré sur le fond couleur (petite marge).
+      const inner = Math.round(size * 0.78);
+      const logo = await sharp(raw)
+        .resize(inner, inner, { fit: 'inside', background: { ...bg, alpha: 0 } })
+        .png()
+        .toBuffer();
+      return sharp({ create: { width: size, height: size, channels: 4, background: bg } })
+        .composite([{ input: logo, gravity: 'centre' }])
+        .png()
+        .toBuffer();
+    } catch (err) {
+      console.warn('[pkpass] Failed to fetch icon image:', url, err instanceof Error ? err.message : err);
+    }
+  }
+  return solidSquare(fallback, size, size);
+}
+
 async function fetchOrSolid(
   url:      string | null | undefined,
   width:    number,
@@ -662,9 +700,9 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
   // ── 1. Generate all pass files ─────────────────────────────────────────────
   const imagePromises: Promise<Buffer>[] = [
     Promise.resolve(buildPassJson(input, passTypeId, teamId)),
-    solidSquare(color,  29,  29),   // icon.png       (required)
-    solidSquare(color,  58,  58),   // icon@2x.png    (required)
-    solidSquare(color,  87,  87),   // icon@3x.png    (recommended)
+    fetchIconOrSolid(logoImageUrl, 29, color),   // icon.png    (required — affichée dans les notifs)
+    fetchIconOrSolid(logoImageUrl, 58, color),   // icon@2x.png (required)
+    fetchIconOrSolid(logoImageUrl, 87, color),   // icon@3x.png (recommended)
     fetchOrSolid(logoImageUrl, 160,  50, color),  // logo.png
     fetchOrSolid(logoImageUrl, 320, 100, color),  // logo@2x.png
   ];
