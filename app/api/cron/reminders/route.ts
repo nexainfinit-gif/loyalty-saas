@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendReminderEmail } from '@/lib/email';
-import { refreshAppointmentOnPass } from '@/lib/booking-wallet';
+import { refreshAppointmentOnPass, frDateLabel } from '@/lib/booking-wallet';
+import { isWhatsAppConfigured, sendAppointmentReminderWhatsApp } from '@/lib/whatsapp';
 
 function timingSafeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
   }
 
   const now = new Date();
-  const results = { sent24h: 0, sent2h: 0, failed: 0 };
+  const results = { sent24h: 0, sent2h: 0, whatsapp: 0, failed: 0 };
 
   // Window: appointments between now and now+25h (covers both 24h and 2h reminders)
   const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000);
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
     .from('appointments')
     .select(`
       id, restaurant_id, date, start_time, end_time, status,
-      client_name, client_email, cancel_token,
+      client_name, client_email, client_phone, cancel_token,
       service:services(name, duration_minutes),
       staff:staff_members(name)
     `)
@@ -80,13 +81,21 @@ export async function GET(req: NextRequest) {
   const aptIds = eligible.map((a) => a.id);
   const { data: existingReminders } = await supabaseAdmin
     .from('appointment_reminders')
-    .select('appointment_id, scheduled_for')
+    .select('appointment_id, scheduled_for, type')
     .in('appointment_id', aptIds)
-    .eq('type', 'email')
+    .in('type', ['email', 'whatsapp'])
     .not('sent_at', 'is', null);
 
   const sentSet = new Set(
-    (existingReminders ?? []).map((r) => `${r.appointment_id}_${r.scheduled_for}`)
+    (existingReminders ?? [])
+      .filter((r) => r.type === 'email')
+      .map((r) => `${r.appointment_id}_${r.scheduled_for}`)
+  );
+  // Dedup WhatsApp indépendant de l'email (un envoi payant par créneau max).
+  const waSentSet = new Set(
+    (existingReminders ?? [])
+      .filter((r) => r.type === 'whatsapp')
+      .map((r) => `${r.appointment_id}_${r.scheduled_for}`)
   );
 
   // Fetch restaurant details for email templates
@@ -102,6 +111,7 @@ export async function GET(req: NextRequest) {
 
   // Process each appointment
   const emailPromises: Promise<void>[] = [];
+  const waConfigured = isWhatsAppConfigured();
 
   for (const apt of eligible) {
     const aptTime = parseAppointmentTime(apt.date, apt.start_time);
@@ -137,11 +147,46 @@ export async function GET(req: NextRequest) {
     const cancelUrl = apt.cancel_token ? `${APP_URL}/book/cancel/${apt.cancel_token}` : null;
     const rescheduleUrl = apt.cancel_token ? `${APP_URL}/book/reschedule/${apt.cancel_token}` : null;
 
-    for (const reminder of remindersToSend) {
-      // Rappel Wallet gratuit : le texte de la carte passe à « Demain à HH:MM »
-      // → changeMessage déclenche la notification lockscreen (cascade niveau 1).
-      await refreshAppointmentOnPass(apt.restaurant_id, apt.client_email);
+    // Cascade niveau 1 (gratuit) — une seule fois par RDV : le texte de la
+    // carte passe à « Demain à HH:MM » → changeMessage déclenche la notif
+    // lockscreen. Retourne true si le client a une carte Apple active.
+    const walletCovered = remindersToSend.length > 0
+      ? await refreshAppointmentOnPass(apt.restaurant_id, apt.client_email)
+      : false;
 
+    // Cascade niveau 2 (payant, ~0,04 €) — WhatsApp UNIQUEMENT si le client
+    // n'est pas déjà couvert par la notif Wallet gratuite, a un numéro, et le
+    // provider est configuré. Aligné sur la cadence des rappels (24h/2h).
+    if (!walletCovered && waConfigured && apt.client_phone) {
+      for (const reminder of remindersToSend) {
+        const waKey = `${apt.id}_${reminder.scheduledFor}`;
+        if (waSentSet.has(waKey)) continue;
+        waSentSet.add(waKey); // évite un doublon 24h/2h dans le même run
+        const dateTimeLabel = `${frDateLabel(apt.date)} à ${String(apt.start_time).slice(0, 5)}`;
+        emailPromises.push(
+          sendAppointmentReminderWhatsApp({
+            to: apt.client_phone,
+            clientName: apt.client_name,
+            businessName: restaurant.name,
+            dateTimeLabel,
+          })
+            .then(async (r) => {
+              if (!r.ok) return;
+              await supabaseAdmin.from('appointment_reminders').insert({
+                appointment_id: apt.id,
+                restaurant_id: apt.restaurant_id,
+                type: 'whatsapp',
+                sent_at: new Date().toISOString(),
+                scheduled_for: reminder.scheduledFor,
+              });
+              results.whatsapp++;
+            })
+            .catch(() => { /* whatsapp best-effort, ne bloque pas les emails */ }),
+        );
+      }
+    }
+
+    for (const reminder of remindersToSend) {
       const promise = sendReminderEmail({
         to: apt.client_email,
         clientName: apt.client_name,
@@ -181,7 +226,7 @@ export async function GET(req: NextRequest) {
 
   await Promise.allSettled(emailPromises);
 
-  console.log(`[cron/reminders] sent24h=${results.sent24h} sent2h=${results.sent2h} failed=${results.failed}`);
+  console.log(`[cron/reminders] sent24h=${results.sent24h} sent2h=${results.sent2h} whatsapp=${results.whatsapp} failed=${results.failed}`);
 
   return NextResponse.json({ success: true, ...results });
 }

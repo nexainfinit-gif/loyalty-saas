@@ -110,6 +110,6 @@ describe('refreshAppointmentOnPass', () => {
 
   it('never throws even if the DB layer fails', async () => {
     dbHolder.db = { from: () => { throw new Error('boom'); } } as unknown as FakeDb;
-    await expect(refreshAppointmentOnPass(RID, EMAIL)).resolves.toBeUndefined();
+    await expect(refreshAppointmentOnPass(RID, EMAIL)).resolves.toBe(false);
   });
 });

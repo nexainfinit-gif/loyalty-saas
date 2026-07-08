@@ -176,7 +176,8 @@
       "Bash(xargs echo \"JSON-LD:\")",
       "Bash(xargs echo \"noindex:\")",
       "Bash(xargs echo \"fix waitlist:\")",
-      "Bash(python -)"
+      "Bash(python -)",
+      "Bash(npx eslint *)"
     ]
   },
   "enabledPlugins": {
