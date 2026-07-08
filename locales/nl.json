@@ -939,7 +939,14 @@
     "giftUse": "Inwisselen",
     "giftValid": "geldig",
     "giftExpired": "verlopen",
-    "giftRedeemed": "Bon van €{amount} ingewisseld!"
+    "giftRedeemed": "Bon van €{amount} ingewisseld!",
+    "waTitle": "WhatsApp-herinneringen",
+    "waDesc": "Afspraakherinneringen via WhatsApp voor klanten zonder Wallet-kaart. De Wallet-kaart blijft het gratis, prioritaire kanaal.",
+    "waUnlimited": "Onbeperkte WhatsApp-herinneringen inbegrepen in uw abonnement.",
+    "waIncluded": "Deze maand inbegrepen",
+    "waCredits": "Extra tegoeden",
+    "waBuyLabel": "Tegoeden toevoegen",
+    "waWalletFree": "Herinneringen via de Wallet-kaart verbruiken nooit uw quotum."
   },
   "appointmentStaff": {
     "title": "Personeel",

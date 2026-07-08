@@ -19,6 +19,7 @@ export type PlanLimits = {
   maxCampaignsPerMonth: number;  // -1 = illimité
   maxCustomers: number;          // -1 = illimité
   maxEmailsPerMonth: number;     // -1 = illimité (migration 036)
+  includedRemindersPerMonth: number; // -1 = illimité (migration 041)
 };
 
 type PlanEntry = {
@@ -33,6 +34,7 @@ const FALLBACK_LIMITS: PlanLimits = {
   maxCampaignsPerMonth: 8,
   maxCustomers: 500,
   maxEmailsPerMonth: 5000,
+  includedRemindersPerMonth: 100,
 };
 
 const CACHE_TTL_MS = 60_000;
@@ -73,6 +75,7 @@ async function loadPlans(): Promise<Map<string, PlanEntry>> {
             maxCampaignsPerMonth: toLimit(p.max_campaigns_per_month),
             maxCustomers: toLimit(p.max_customers),
             maxEmailsPerMonth: toLimit(p.max_emails_per_month),
+            includedRemindersPerMonth: toLimit(p.included_reminders_per_month),
           }
         : FALLBACK_LIMITS,
       features,
@@ -201,6 +204,50 @@ export async function checkEmailQuota(
 
   if (max === -1) return { allowed: true, limit: -1, current };
   return { allowed: current + additional <= max, limit: max, current };
+}
+
+/**
+ * État du quota de rappels WhatsApp d'un restaurant pour le mois courant.
+ *
+ * Modèle hybride (migration 041) : chaque plan inclut `includedRemindersPerMonth`
+ * rappels/mois ; au-delà, on puise dans le solde `reminder_credits` (packs
+ * achetés). Le comptage des rappels déjà envoyés ce mois se dérive de la table
+ * appointment_reminders (type='whatsapp'). Le rappel Wallet gratuit n'y figure
+ * pas → il ne consomme jamais le quota.
+ *
+ * `canSend` = il reste du quota inclus OU au moins un crédit.
+ * `unlimited` = plan à quota illimité (inclus = -1).
+ */
+export async function getReminderQuotaState(
+  restaurantId: string,
+  plan: string | null,
+  reminderCredits: number,
+): Promise<{
+  included: number;   // -1 = illimité
+  used: number;       // rappels WhatsApp envoyés ce mois
+  credits: number;    // solde de crédits packs
+  canSend: boolean;
+  unlimited: boolean;
+}> {
+  const limits = await getPlanLimits(plan);
+  const included = limits.includedRemindersPerMonth;
+
+  if (included === -1) {
+    return { included: -1, used: 0, credits: reminderCredits, canSend: true, unlimited: true };
+  }
+
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const { count } = await supabaseAdmin
+    .from('appointment_reminders')
+    .select('id', { count: 'exact', head: true })
+    .eq('restaurant_id', restaurantId)
+    .eq('type', 'whatsapp')
+    .gte('sent_at', monthStart);
+
+  const used = count ?? 0;
+  const canSend = used < included || reminderCredits > 0;
+  return { included, used, credits: reminderCredits, canSend, unlimited: false };
 }
 
 /**

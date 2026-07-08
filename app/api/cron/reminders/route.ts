@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendReminderEmail } from '@/lib/email';
 import { refreshAppointmentOnPass, frDateLabel } from '@/lib/booking-wallet';
 import { isWhatsAppConfigured, sendAppointmentReminderWhatsApp } from '@/lib/whatsapp';
+import { getReminderQuotaState } from '@/lib/plan-limits';
 
 function timingSafeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
   }
 
   const now = new Date();
-  const results = { sent24h: 0, sent2h: 0, whatsapp: 0, failed: 0 };
+  const results = { sent24h: 0, sent2h: 0, whatsapp: 0, whatsappQuota: 0, failed: 0 };
 
   // Window: appointments between now and now+25h (covers both 24h and 2h reminders)
   const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000);
@@ -100,9 +101,11 @@ export async function GET(req: NextRequest) {
 
   // Fetch restaurant details for email templates
   const restaurantIds = [...new Set(eligible.map((a) => a.restaurant_id))];
+  // select('*') : tolère l'absence de reminder_credits tant que la migration
+  // 041 n'est pas appliquée (le champ tombe alors à 0 = aucun crédit).
   const { data: restaurants } = await supabaseAdmin
     .from('restaurants')
-    .select('id, name, slug, primary_color')
+    .select('*')
     .in('id', restaurantIds);
 
   const restaurantMap = new Map(
@@ -112,6 +115,25 @@ export async function GET(req: NextRequest) {
   // Process each appointment
   const emailPromises: Promise<void>[] = [];
   const waConfigured = isWhatsAppConfigured();
+
+  // Cascade niveau 2 — quota hybride (migration 041). État par restaurant,
+  // résolu paresseusement : quota inclus mensuel d'abord, puis crédits packs.
+  // reserveReminder() décrémente le compteur local et retourne false quand ni
+  // quota ni crédit ne reste (→ on retombe sur email + Wallet).
+  type QuotaState = { included: number; used: number; credits: number; creditsConsumed: number; unlimited: boolean };
+  const quotaCache = new Map<string, QuotaState>();
+  async function reserveReminder(rid: string, plan: string | null, credits: number): Promise<boolean> {
+    let st = quotaCache.get(rid);
+    if (!st) {
+      const q = await getReminderQuotaState(rid, plan, credits);
+      st = { included: q.included, used: q.used, credits: q.credits, creditsConsumed: 0, unlimited: q.unlimited };
+      quotaCache.set(rid, st);
+    }
+    if (st.unlimited) return true;
+    if (st.used < st.included) { st.used++; return true; }      // consomme le quota inclus
+    if (st.credits > 0) { st.credits--; st.creditsConsumed++; return true; } // consomme un crédit pack
+    return false;
+  }
 
   for (const apt of eligible) {
     const aptTime = parseAppointmentTime(apt.date, apt.start_time);
@@ -158,9 +180,14 @@ export async function GET(req: NextRequest) {
     // n'est pas déjà couvert par la notif Wallet gratuite, a un numéro, et le
     // provider est configuré. Aligné sur la cadence des rappels (24h/2h).
     if (!walletCovered && waConfigured && apt.client_phone) {
+      const restaurantPlan = (restaurant as { plan?: string | null }).plan ?? null;
+      const restaurantCredits = (restaurant as { reminder_credits?: number }).reminder_credits ?? 0;
       for (const reminder of remindersToSend) {
         const waKey = `${apt.id}_${reminder.scheduledFor}`;
         if (waSentSet.has(waKey)) continue;
+        // Réserve le quota AVANT d'envoyer (quota inclus puis crédit pack).
+        const reserved = await reserveReminder(apt.restaurant_id, restaurantPlan, restaurantCredits);
+        if (!reserved) { results.whatsappQuota++; break; } // quota épuisé → email + Wallet seuls
         waSentSet.add(waKey); // évite un doublon 24h/2h dans le même run
         const dateTimeLabel = `${frDateLabel(apt.date)} à ${String(apt.start_time).slice(0, 5)}`;
         emailPromises.push(
@@ -227,7 +254,19 @@ export async function GET(req: NextRequest) {
 
   await Promise.allSettled(emailPromises);
 
-  console.log(`[cron/reminders] sent24h=${results.sent24h} sent2h=${results.sent2h} whatsapp=${results.whatsapp} failed=${results.failed}`);
+  // Persiste les crédits packs consommés ce run (nouveau solde par restaurant).
+  const creditUpdates: Promise<unknown>[] = [];
+  for (const [rid, st] of quotaCache) {
+    if (st.creditsConsumed > 0) {
+      creditUpdates.push(
+        (async () =>
+          supabaseAdmin.from('restaurants').update({ reminder_credits: st.credits }).eq('id', rid))(),
+      );
+    }
+  }
+  if (creditUpdates.length) await Promise.allSettled(creditUpdates);
+
+  console.log(`[cron/reminders] sent24h=${results.sent24h} sent2h=${results.sent2h} whatsapp=${results.whatsapp} whatsappQuota=${results.whatsappQuota} failed=${results.failed}`);
 
   return NextResponse.json({ success: true, ...results });
 }

@@ -956,7 +956,14 @@
     "giftUse": "Redeem",
     "giftValid": "valid",
     "giftExpired": "expired",
-    "giftRedeemed": "€{amount} voucher redeemed!"
+    "giftRedeemed": "€{amount} voucher redeemed!",
+    "waTitle": "WhatsApp reminders",
+    "waDesc": "Appointment reminders sent via WhatsApp to clients without a Wallet card. The Wallet card stays the free, priority channel.",
+    "waUnlimited": "Unlimited WhatsApp reminders included in your plan.",
+    "waIncluded": "Included this month",
+    "waCredits": "Extra credits",
+    "waBuyLabel": "Add credits",
+    "waWalletFree": "Wallet card reminders never use up your quota."
   },
   "appointmentStaff": {
     "title": "Staff",

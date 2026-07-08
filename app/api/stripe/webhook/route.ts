@@ -68,6 +68,12 @@ export async function POST(request: Request) {
 /* ── Event Handlers ─────────────────────────────────────────────────────── */
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  // Achat de crédits de rappels (paiement unique) — pas un abonnement.
+  if (session.metadata?.type === 'reminder_credits') {
+    await handleReminderCreditsPurchase(session);
+    return;
+  }
+
   const restaurantId = session.metadata?.restaurantId;
   const planId = session.metadata?.planId;
   const planKey = session.metadata?.planKey;
@@ -99,6 +105,47 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       plan_id: planId,
       plan: planKey ?? 'pro',
     })
+    .eq('id', restaurantId);
+}
+
+async function handleReminderCreditsPurchase(session: Stripe.Checkout.Session) {
+  const restaurantId = session.metadata?.restaurantId;
+  const credits = parseInt(session.metadata?.credits ?? '', 10);
+  if (!restaurantId || !Number.isFinite(credits) || credits <= 0) {
+    console.error('[stripe-webhook] reminder_credits: missing/invalid metadata');
+    return;
+  }
+  if (session.payment_status !== 'paid') return;
+
+  // Solde courant + nouveau solde.
+  const { data: r } = await supabaseAdmin
+    .from('restaurants')
+    .select('reminder_credits')
+    .eq('id', restaurantId)
+    .single();
+  const newBalance = ((r?.reminder_credits as number) ?? 0) + credits;
+
+  // Idempotence : l'index unique sur stripe_checkout_session_id rejette un
+  // second webhook pour la même session (23505) → on n'ajoute pas deux fois.
+  const { error: ledgerErr } = await supabaseAdmin
+    .from('reminder_credit_ledger')
+    .insert({
+      restaurant_id: restaurantId,
+      delta: credits,
+      reason: 'purchase',
+      balance_after: newBalance,
+      stripe_checkout_session_id: session.id,
+    });
+
+  if (ledgerErr) {
+    if (ledgerErr.code === '23505') return; // déjà traité — ne pas recréditer
+    console.error('[stripe-webhook] reminder_credits ledger error:', ledgerErr.message);
+    return;
+  }
+
+  await supabaseAdmin
+    .from('restaurants')
+    .update({ reminder_credits: newBalance })
     .eq('id', restaurantId);
 }
 

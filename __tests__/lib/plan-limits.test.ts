@@ -51,7 +51,7 @@ beforeEach(() => {
 describe('getPlanLimits (DB source of truth)', () => {
   it('reads growth limits from the DB — the bug that motivated migration 035', async () => {
     const limits = await getPlanLimits('growth');
-    expect(limits).toEqual({ maxTemplates: 10, maxCampaignsPerMonth: 12, maxCustomers: 2000, maxEmailsPerMonth: 25000 });
+    expect(limits).toEqual({ maxTemplates: 10, maxCampaignsPerMonth: 12, maxCustomers: 2000, maxEmailsPerMonth: 25000, includedRemindersPerMonth: -1 });
   });
 
   it('treats NULL columns as unlimited (-1)', async () => {
@@ -62,7 +62,7 @@ describe('getPlanLimits (DB source of truth)', () => {
 
   it('falls back to restrictive limits for an unknown plan key', async () => {
     const limits = await getPlanLimits('free'); // no longer exists in DB
-    expect(limits).toEqual({ maxTemplates: 3, maxCampaignsPerMonth: 8, maxCustomers: 500, maxEmailsPerMonth: 5000 });
+    expect(limits).toEqual({ maxTemplates: 3, maxCampaignsPerMonth: 8, maxCustomers: 500, maxEmailsPerMonth: 5000, includedRemindersPerMonth: 100 });
   });
 
   it('falls back to restrictive limits when plan is null', async () => {

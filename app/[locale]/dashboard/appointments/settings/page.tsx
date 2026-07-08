@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Save, Clock, Calendar, Bell, Star, Shield, Loader2, Code, Copy, Check as CheckIcon, Euro } from 'lucide-react'
+import { Save, Clock, Calendar, Bell, Star, Shield, Loader2, Code, Copy, Check as CheckIcon, Euro, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { AppointmentSettings } from '@/types/appointments'
 import { api } from '@/lib/use-api'
@@ -40,6 +40,12 @@ export default function SettingsPage() {
   const [giftEnabled, setGiftEnabled] = useState(false)
   const [giftCode, setGiftCode] = useState('')
   const [giftResult, setGiftResult] = useState<string | null>(null)
+  type ReminderStatus = {
+    included: number; used: number; remainingIncluded: number; credits: number; unlimited: boolean
+    packs: { id: string; credits: number; priceCents: number; label: string }[]
+  }
+  const [reminderStatus, setReminderStatus] = useState<ReminderStatus | null>(null)
+  const [buyingPack, setBuyingPack] = useState<string | null>(null)
 
   useEffect(() => {
     // URL d'avis Google (stockée en KV restaurant_settings)
@@ -59,6 +65,28 @@ export default function SettingsPage() {
       .then(j => { if (j) setConnect({ accountId: j.accountId, chargesEnabled: j.chargesEnabled }) })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    // Quota + solde de rappels WhatsApp (modèle hybride)
+    fetch('/api/reminders/status')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j) setReminderStatus(j) })
+      .catch(() => {})
+  }, [])
+
+  async function buyReminderPack(pack: string) {
+    setBuyingPack(pack)
+    try {
+      const res = await fetch('/api/reminders/buy-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pack }),
+      })
+      const j = await res.json()
+      if (res.ok && j.url) window.location.href = j.url
+      else toast.error(j.error || 'Erreur Stripe')
+    } finally { setBuyingPack(null) }
+  }
 
   async function startConnectOnboarding() {
     setConnectLoading(true)
@@ -645,6 +673,55 @@ export default function SettingsPage() {
             </div>
           )}
         </section>
+
+        {/* ── Rappels WhatsApp (quota + crédits) ──────────────── */}
+        {reminderStatus && (
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <MessageCircle size={16} className="text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-900">{t('appointmentSettings.waTitle')}</h3>
+            </div>
+            <p className="text-xs text-gray-400">{t('appointmentSettings.waDesc')}</p>
+
+            {reminderStatus.unlimited ? (
+              <p className="text-sm font-medium text-emerald-600">✓ {t('appointmentSettings.waUnlimited')}</p>
+            ) : (
+              <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">{t('appointmentSettings.waIncluded')}</span>
+                  <span className="font-medium text-gray-900">
+                    {reminderStatus.remainingIncluded} / {reminderStatus.included}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">{t('appointmentSettings.waCredits')}</span>
+                  <span className="font-medium text-gray-900">{reminderStatus.credits}</span>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">{t('appointmentSettings.waBuyLabel')}</p>
+              <div className="grid grid-cols-2 gap-3">
+                {reminderStatus.packs.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => buyReminderPack(p.id)}
+                    disabled={buyingPack !== null}
+                    className="flex flex-col items-start px-4 py-3 rounded-xl border border-gray-200 hover:border-gray-900 hover:bg-gray-50 disabled:opacity-50 transition-colors text-left"
+                  >
+                    <span className="text-sm font-semibold text-gray-900">
+                      {buyingPack === p.id ? '…' : `+${p.credits}`}
+                    </span>
+                    <span className="text-xs text-gray-500">{(p.priceCents / 100).toFixed(0)} €</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-400">{t('appointmentSettings.waWalletFree')}</p>
+          </section>
+        )}
 
         {gcalConfigured && (
           <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 space-y-4">

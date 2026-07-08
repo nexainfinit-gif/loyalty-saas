@@ -939,7 +939,14 @@
     "giftUse": "Usa",
     "giftValid": "valido",
     "giftExpired": "scaduto",
-    "giftRedeemed": "Buono da {amount} € utilizzato!"
+    "giftRedeemed": "Buono da {amount} € utilizzato!",
+    "waTitle": "Promemoria WhatsApp",
+    "waDesc": "Promemoria degli appuntamenti inviati via WhatsApp ai clienti senza carta Wallet. La carta Wallet resta il canale gratuito e prioritario.",
+    "waUnlimited": "Promemoria WhatsApp illimitati inclusi nel tuo piano.",
+    "waIncluded": "Inclusi questo mese",
+    "waCredits": "Crediti aggiuntivi",
+    "waBuyLabel": "Aggiungi crediti",
+    "waWalletFree": "I promemoria tramite carta Wallet non consumano mai la tua quota."
   },
   "appointmentStaff": {
     "title": "Personale",

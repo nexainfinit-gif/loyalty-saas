@@ -956,7 +956,14 @@
     "giftUse": "Utiliser",
     "giftValid": "valide",
     "giftExpired": "expiré",
-    "giftRedeemed": "Bon de {amount} € utilisé !"
+    "giftRedeemed": "Bon de {amount} € utilisé !",
+    "waTitle": "Rappels WhatsApp",
+    "waDesc": "Rappels de RDV envoyés par WhatsApp aux clients sans carte Wallet. La carte Wallet reste le canal prioritaire et gratuit.",
+    "waUnlimited": "Rappels WhatsApp illimités inclus dans votre plan.",
+    "waIncluded": "Inclus ce mois-ci",
+    "waCredits": "Crédits supplémentaires",
+    "waBuyLabel": "Ajouter des crédits",
+    "waWalletFree": "Les rappels via la carte Wallet ne consomment jamais votre quota."
   },
   "appointmentStaff": {
     "title": "Équipe",

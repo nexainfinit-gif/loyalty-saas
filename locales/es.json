@@ -936,7 +936,14 @@
     "giftUse": "Canjear",
     "giftValid": "válido",
     "giftExpired": "caducado",
-    "giftRedeemed": "¡Bono de {amount} € canjeado!"
+    "giftRedeemed": "¡Bono de {amount} € canjeado!",
+    "waTitle": "Recordatorios WhatsApp",
+    "waDesc": "Recordatorios de cita enviados por WhatsApp a clientes sin tarjeta Wallet. La tarjeta Wallet sigue siendo el canal gratuito y prioritario.",
+    "waUnlimited": "Recordatorios de WhatsApp ilimitados incluidos en tu plan.",
+    "waIncluded": "Incluidos este mes",
+    "waCredits": "Créditos adicionales",
+    "waBuyLabel": "Añadir créditos",
+    "waWalletFree": "Los recordatorios por tarjeta Wallet nunca consumen tu cuota."
   },
   "appointmentStaff": {
     "title": "Personal",
