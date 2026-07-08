@@ -41,6 +41,9 @@ export function frDateLabel(dateStr: string): string {
 export async function refreshAppointmentOnPass(
   restaurantId: string,
   clientEmail: string | null | undefined,
+  /** V2 retard : suffixe « (~+X min) » si le prochain RDV est AUJOURD'HUI avec
+   *  ce praticien et que le retard arrondi (pas de 5) atteint 10 min. */
+  opts?: { delayMinutes?: number; staffId?: string },
 ): Promise<boolean> {
   try {
     if (!clientEmail) return false;
@@ -59,7 +62,7 @@ export async function refreshAppointmentOnPass(
     const today = new Date().toISOString().slice(0, 10);
     const { data: next } = await supabaseAdmin
       .from('appointments')
-      .select('date, start_time, service_id')
+      .select('date, start_time, service_id, staff_id')
       .eq('restaurant_id', restaurantId)
       .eq('client_email', email)
       .eq('status', 'confirmed')
@@ -87,7 +90,15 @@ export async function refreshAppointmentOnPass(
       const time = String(next.start_time).slice(0, 5);
       // Préfixe 📅 : convention lue par buildPassJson pour afficher le label
       // « Prochain rendez-vous » au lieu de « Offre du moment ».
-      message = `📅 ${dateFr} à ${time}${serviceName ? ` — ${serviceName}` : ''}`;
+      // V2 : retard estimé poussé sur la carte (changement de texte → notif)
+      let delaySuffix = '';
+      const rounded = Math.round((opts?.delayMinutes ?? 0) / 5) * 5;
+      const todayISO = new Date().toISOString().slice(0, 10);
+      if (rounded >= 10 && next.date === todayISO &&
+          (!opts?.staffId || next.staff_id === opts.staffId)) {
+        delaySuffix = ` (~+${rounded} min)`;
+      }
+      message = `📅 ${dateFr} à ${time}${delaySuffix}${serviceName ? ` — ${serviceName}` : ''}`;
     }
 
     // 3. Écrire sur les passes Apple actifs + push APNS (notif lockscreen)

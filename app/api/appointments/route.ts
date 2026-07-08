@@ -257,7 +257,7 @@ export async function PUT(request: NextRequest) {
   // Fetch current appointment to detect status transitions
   const { data: current } = await supabaseAdmin
     .from('appointments')
-    .select('status, client_email')
+    .select('status, client_email, staff_id, date')
     .eq('id', parsed.data.id)
     .eq('restaurant_id', auth.restaurantId)
     .single();
@@ -278,6 +278,26 @@ export async function PUT(request: NextRequest) {
   if (error) return NextResponse.json({ error: 'Erreur lors de la mise à jour.' }, { status: 500 });
 
   // Google Calendar sync (fire-and-forget)
+  // V2 retard : un RDV vient d'être terminé → recalcule le retard du praticien
+  // et met à jour la carte Wallet des clients RESTANTS du jour (notif si ≥10 min).
+  const todayISO = new Date().toISOString().slice(0, 10);
+  if (newStatus === 'completed' && current.staff_id && current.date === todayISO) {
+    (async () => {
+      const { estimateDelay } = await import('@/lib/delay-estimate');
+      const { data: day } = await supabaseAdmin
+        .from('appointments').select('*')
+        .eq('restaurant_id', auth.restaurantId!).eq('staff_id', current.staff_id)
+        .eq('date', todayISO).in('status', ['confirmed', 'completed']);
+      const { delayMinutes } = estimateDelay((day ?? []) as never, new Date());
+      const remaining = (day ?? []).filter((a) => a.status === 'confirmed' && a.client_email);
+      for (const a of remaining) {
+        await refreshAppointmentOnPass(auth.restaurantId!, a.client_email, {
+          delayMinutes, staffId: current.staff_id,
+        });
+      }
+    })().catch(() => {});
+  }
+
   // Heure réelle de fin (bêta « temps réel ») — best-effort : colonne de la
   // migration 044, l'échec pré-migration n'affecte pas le changement de statut.
   if (newStatus === 'completed' && oldStatus !== 'completed') {
