@@ -56,6 +56,31 @@ describe('refreshAppointmentOnPass', () => {
     expect(mockPush).toHaveBeenCalledWith('pass-1');
   });
 
+  it("uses « Demain » for next-day appointments (J-1 reminder trigger)", async () => {
+    seed({
+      appointments: [
+        { id: 'a1', restaurant_id: RID, client_email: EMAIL, status: 'confirmed', date: future(1), start_time: '14:30:00', service_id: 'svc-1' },
+      ],
+    });
+    await refreshAppointmentOnPass(RID, EMAIL);
+    const pass = dbHolder.db.rows('wallet_passes')[0];
+    expect(pass.promo_message).toContain('Demain');
+    expect(pass.promo_message).toContain('14:30');
+  });
+
+  it('uses "Demain" for a next-day appointment (drives the J-1 reminder)', async () => {
+    seed({
+      appointments: [
+        { id: 'a1', restaurant_id: RID, client_email: EMAIL, status: 'confirmed', date: future(1), start_time: '14:30:00', service_id: 'svc-1' },
+      ],
+    });
+    await refreshAppointmentOnPass(RID, EMAIL);
+    const pass = dbHolder.db.rows('wallet_passes')[0];
+    expect(pass.promo_message).toContain('Demain');
+    expect(pass.promo_message).toContain('14:30');
+    expect(mockPush).toHaveBeenCalledWith('pass-1');
+  });
+
   it('clears the message when no upcoming appointment remains', async () => {
     seed({
       appointments: [

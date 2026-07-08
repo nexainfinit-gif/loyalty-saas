@@ -60,9 +60,17 @@ export async function refreshAppointmentOnPass(
           .maybeSingle();
         serviceName = svc?.name ?? '';
       }
-      const dateFr = new Intl.DateTimeFormat('fr-BE', {
-        weekday: 'short', day: 'numeric', month: 'short',
-      }).format(new Date(`${next.date}T12:00:00`));
+      // « Aujourd'hui »/« Demain » quand le RDV est proche : le changement de
+      // texte déclenche la notification lockscreen (changeMessage) → c'est le
+      // RAPPEL J-1 gratuit quand le cron reminders rafraîchit la carte.
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const tomorrowStr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      const dateFr =
+        next.date === todayStr ? "Aujourd'hui" :
+        next.date === tomorrowStr ? 'Demain' :
+        new Intl.DateTimeFormat('fr-BE', {
+          weekday: 'short', day: 'numeric', month: 'short',
+        }).format(new Date(`${next.date}T12:00:00`));
       const time = String(next.start_time).slice(0, 5);
       // Préfixe 📅 : convention lue par buildPassJson pour afficher le label
       // « Prochain rendez-vous » au lieu de « Offre du moment ».

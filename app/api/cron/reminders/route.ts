@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendReminderEmail } from '@/lib/email';
+import { refreshAppointmentOnPass } from '@/lib/booking-wallet';
 
 function timingSafeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -137,6 +138,10 @@ export async function GET(req: NextRequest) {
     const rescheduleUrl = apt.cancel_token ? `${APP_URL}/book/reschedule/${apt.cancel_token}` : null;
 
     for (const reminder of remindersToSend) {
+      // Rappel Wallet gratuit : le texte de la carte passe à « Demain à HH:MM »
+      // → changeMessage déclenche la notification lockscreen (cascade niveau 1).
+      await refreshAppointmentOnPass(apt.restaurant_id, apt.client_email);
+
       const promise = sendReminderEmail({
         to: apt.client_email,
         clientName: apt.client_name,
