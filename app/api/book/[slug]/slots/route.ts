@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { isBookingEligible } from '@/lib/booking-eligibility';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { computeSlots, timeToMinutes, laterTime, earlierTime } from '@/lib/slots';
 
 const limiter = rateLimit({ prefix: 'book-slots', limit: 60, windowMs: 60_000 });
 
@@ -142,9 +143,6 @@ export async function GET(
   // Use the earlier of business closing / staff end
   const closeTime = earlierTime(settings.closing_time, staffSchedule.end_time);
 
-  const openMinutes = timeToMinutes(openTime);
-  const closeMinutes = timeToMinutes(closeTime);
-
   // Current time check (don't show past slots for today)
   const now = new Date();
   const isToday =
@@ -173,48 +171,19 @@ export async function GET(
     return undefined;
   };
 
-  const slots: { time: string; available: boolean; multiplier?: number }[] = [];
-
-  for (let m = openMinutes; m + slotDuration <= closeMinutes; m += settings.slot_duration_minutes) {
-    // Skip past slots
-    if (m < nowMinutes) continue;
-
-    const slotStartMin = m;
-    const slotEndMin = m + slotDuration;
-
-    // Check conflicts with existing appointments (including buffer)
-    const hasConflict = existingAppts.some((appt) => {
-      const apptStart = timeToMinutes(appt.start_time);
-      const apptEnd = timeToMinutes(appt.end_time) + bufferMinutes;
-      return slotStartMin < apptEnd && slotEndMin > apptStart;
-    });
-
-    const mult = multiplierFor(slotStartMin);
-    slots.push({
-      time: minutesToTime(m),
-      available: !hasConflict,
-      ...(mult ? { multiplier: mult } : {}),
-    });
-  }
+  // Calcul des créneaux (logique pure partagée) + annotation multiplicateur.
+  const slots = computeSlots({
+    serviceDuration: slotDuration,
+    slotStep: settings.slot_duration_minutes,
+    bufferMinutes,
+    openTime,
+    closeTime,
+    existing: existingAppts,
+    nowMinutes,
+  }).map((s) => {
+    const mult = multiplierFor(timeToMinutes(s.time));
+    return mult ? { ...s, multiplier: mult } : s;
+  });
 
   return NextResponse.json({ slots });
-}
-
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(':').map(Number);
-  return h * 60 + m;
-}
-
-function minutesToTime(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-function laterTime(a: string, b: string): string {
-  return timeToMinutes(a) >= timeToMinutes(b) ? a : b;
-}
-
-function earlierTime(a: string, b: string): string {
-  return timeToMinutes(a) <= timeToMinutes(b) ? a : b;
 }
