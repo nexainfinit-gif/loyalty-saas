@@ -294,6 +294,17 @@ export default function AdminPage() {
   const churnHighCount = restaurants.filter((r) => r.churn_risk_score >= 60).length;
   const freeCount = restaurants.filter((r) => r.plan === 'starter').length;
 
+  // Anti-flash : ne rien montrer du panel tant que la 1re réponse API n'a pas
+  // confirmé la session (401/403 → redirection). Même sans données, un shell
+  // admin qui clignote avant le login est trompeur.
+  if (loading && restaurants.length === 0 && !error) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-gray-900 animate-ds-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-surface">
       {/* ══ HEADER — compact, dark ═══════════════════════════════ */}
