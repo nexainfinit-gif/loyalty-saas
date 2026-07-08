@@ -191,10 +191,8 @@ export default function PlanSelection({ restaurantId, accessToken, onComplete }:
                           <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-ds-spin" />
                           Sélection...
                         </span>
-                      ) : isPro ? (
-                        'Commencer avec Pro'
                       ) : (
-                        'Commencer gratuitement'
+                        `Commencer avec ${plan.name}`
                       )}
                     </button>
                   </div>
