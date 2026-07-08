@@ -438,25 +438,19 @@ async function generateProgressStrip(opts: {
   const ratio = threshold > 0 ? Math.min(1, points / threshold) : 0;
   const full  = rewardPending || ratio >= 1;
 
+  // Barre fine et discrète en bas du strip — AUCUN texte : Vercel n'a pas de
+  // polices système (le SVG rendait des carrés), et les chiffres sont déjà
+  // affichés par Apple (POINTS / SEUIL / RESTANTS). Le graphique parle seul.
   const barX = width * 0.06;
   const barW = width * 0.88;
-  const barH = Math.round(height * 0.115);
-  const barY = Math.round(height * 0.74);
+  const barH = Math.max(6, Math.round(height * 0.07));
+  const barY = Math.round(height * 0.84);
   const r    = barH / 2;
   const fillW = Math.max(full ? barW : barH, barW * ratio); // au moins la pastille
-  const fontSize = Math.round(height * 0.11);
-  const label = full
-    ? 'Récompense disponible !'
-    : `${Math.max(0, threshold - points)} pts avant la récompense`;
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-  <text x="${barX}" y="${barY - fontSize * 0.6}" font-family="Helvetica, Arial, sans-serif"
-        font-size="${fontSize}" font-weight="600" fill="${fgColor}" opacity="0.9">${label}</text>
-  <text x="${barX + barW}" y="${barY - fontSize * 0.6}" text-anchor="end"
-        font-family="Helvetica, Arial, sans-serif" font-size="${fontSize}"
-        font-weight="700" fill="${fgColor}">${Math.min(points, threshold)} / ${threshold}</text>
-  <rect x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="${r}" fill="${fgColor}" opacity="0.25"/>
-  <rect x="${barX}" y="${barY}" width="${fillW}" height="${barH}" rx="${r}" fill="${fgColor}"/>
+  <rect x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="${r}" fill="${fgColor}" opacity="0.22"/>
+  <rect x="${barX}" y="${barY}" width="${fillW}" height="${barH}" rx="${r}" fill="${fgColor}" opacity="0.95"/>
 </svg>`;
 
   return sharp(Buffer.from(svg)).png().toBuffer();
