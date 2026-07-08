@@ -85,7 +85,7 @@
     "toastCampaignError": "Error: {error}",
     "toastNetworkError": "Error de red",
     "manualAddLabel": "Añadido manual desde el panel",
-    "switchRestaurant": "Cambiar de restaurante"
+    "switchRestaurant": "Cambiar de establecimiento"
   },
   "clients": {
     "title": "Clientes",
