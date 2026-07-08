@@ -416,6 +416,52 @@ function defaultRewardSvg(size: number, r: number, g: number, b: number): Buffer
   return Buffer.from(svg);
 }
 
+/* ── Points progress bar strip ──────────────────────────────────────────────── */
+
+/**
+ * Barre de progression graphique pour le mode points (strip Apple Wallet).
+ * Le champ primaire « POINTS » est rendu par Apple PAR-DESSUS le strip (en
+ * haut à gauche) → la barre occupe le bas de la zone, avec un libellé
+ * « X pts avant la récompense » (ou « Récompense disponible ! ») au-dessus.
+ * Transparente, aux couleurs du template. Se met à jour à chaque
+ * re-téléchargement du pass (donc après chaque push de solde).
+ */
+async function generateProgressStrip(opts: {
+  points:    number;
+  threshold: number;
+  width:     number;
+  height:    number;
+  fgColor:   string;
+  rewardPending: boolean;
+}): Promise<Buffer> {
+  const { points, threshold, width, height, fgColor, rewardPending } = opts;
+  const ratio = threshold > 0 ? Math.min(1, points / threshold) : 0;
+  const full  = rewardPending || ratio >= 1;
+
+  const barX = width * 0.06;
+  const barW = width * 0.88;
+  const barH = Math.round(height * 0.115);
+  const barY = Math.round(height * 0.74);
+  const r    = barH / 2;
+  const fillW = Math.max(full ? barW : barH, barW * ratio); // au moins la pastille
+  const fontSize = Math.round(height * 0.11);
+  const label = full
+    ? 'Récompense disponible !'
+    : `${Math.max(0, threshold - points)} pts avant la récompense`;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  <text x="${barX}" y="${barY - fontSize * 0.6}" font-family="Helvetica, Arial, sans-serif"
+        font-size="${fontSize}" font-weight="600" fill="${fgColor}" opacity="0.9">${label}</text>
+  <text x="${barX + barW}" y="${barY - fontSize * 0.6}" text-anchor="end"
+        font-family="Helvetica, Arial, sans-serif" font-size="${fontSize}"
+        font-weight="700" fill="${fgColor}">${Math.min(points, threshold)} / ${threshold}</text>
+  <rect x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="${r}" fill="${fgColor}" opacity="0.25"/>
+  <rect x="${barX}" y="${barY}" width="${fillW}" height="${barH}" rx="${r}" fill="${fgColor}"/>
+</svg>`;
+
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
 /* ── Image helpers ──────────────────────────────────────────────────────────── */
 
 async function solidSquare(
@@ -611,6 +657,8 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
 
   // Auto-generate stamp grid strip for stamps mode (unless custom strip is set)
   const autoStampStrip = input.passKind === 'stamps' && !stripImageUrl;
+  // Barre de progression auto en mode points (sauf strip custom)
+  const autoProgressStrip = input.passKind === 'points' && !stripImageUrl;
   const autoRewardStrip = input.passKind === 'stamps' && !stripImageUrl && input.rewardPending;
   const stampsTotal = Number(cfg.stamps_total ?? 10);
   const stampFilledUrl = (cfg.stampFilledUrl as string) || undefined;
@@ -648,6 +696,17 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     imagePromises.push(
       generateStampStrip({ ...stampOpts, width: 375, height: 123 }),  // strip.png
       generateStampStrip({ ...stampOpts, width: 750, height: 246 }),  // strip@2x.png
+    );
+  } else if (autoProgressStrip) {
+    const progressOpts = {
+      points: input.totalPoints,
+      threshold: Number(cfg.reward_threshold ?? 100),
+      fgColor: fgHex,
+      rewardPending: input.rewardPending ?? false,
+    };
+    imagePromises.push(
+      generateProgressStrip({ ...progressOpts, width: 375, height: 123 }),
+      generateProgressStrip({ ...progressOpts, width: 750, height: 246 }),
     );
   }
 
