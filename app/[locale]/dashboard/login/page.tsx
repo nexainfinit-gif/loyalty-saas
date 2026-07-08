@@ -77,6 +77,13 @@ function LoginForm() {
     // Email connu (possède déjà un restaurant réel) → dashboard.
     // Email inconnu / sans restaurant → onboarding.
     const userId = data.session?.user?.id ?? data.user?.id ?? null;
+    // Lien d'invitation équipe : ?redirect=<url accept> — on y retourne après login.
+    const redirectParam = new URLSearchParams(window.location.search).get('redirect');
+    if (redirectParam && redirectParam.startsWith(window.location.origin)) {
+      window.location.href = redirectParam;
+      return;
+    }
+
     let hasRestaurant = false;
     if (userId) {
       const { data: restos } = await supabase
@@ -86,6 +93,19 @@ function LoginForm() {
         .eq('is_demo', false)
         .limit(1);
       hasRestaurant = !!restos && restos.length > 0;
+      // Membre d'équipe sans restaurant possédé → son agenda (option B).
+      if (!hasRestaurant) {
+        const { data: tm } = await supabase
+          .from('team_members')
+          .select('restaurant_id')
+          .eq('user_id', userId)
+          .limit(1);
+        if (tm && tm.length > 0) {
+          document.cookie = `selected_restaurant=${tm[0].restaurant_id}; path=/; max-age=31536000; samesite=lax`;
+          window.location.href = `/${locale}/dashboard/appointments`;
+          return;
+        }
+      }
     }
     window.location.href = `/${locale}/${hasRestaurant ? 'dashboard' : 'onboarding'}`;
   }

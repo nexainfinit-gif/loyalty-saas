@@ -55,6 +55,14 @@ export default function SettingsPage() {
   const [offerPrice, setOfferPrice] = useState('')
   const [pkgCode, setPkgCode] = useState('')
   const [pkgResult, setPkgResult] = useState<string | null>(null)
+  // Accès équipe (comptes staff/gérant — option B)
+  type TeamMember = { id: string; email: string | null; role: string }
+  type TeamInvite = { id: string; email: string; role: string; status: string }
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [teamInvites, setTeamInvites] = useState<TeamInvite[]>([])
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'staff' | 'restaurant_admin'>('staff')
+  const [inviting, setInviting] = useState(false)
 
   useEffect(() => {
     // URL d'avis Google (stockée en KV restaurant_settings)
@@ -142,6 +150,41 @@ export default function SettingsPage() {
       setPkgResult('✅ ' + t('appointmentSettings.pkgRedeemed', { remaining: j.remaining }))
       setPkgCode('')
     }
+  }
+
+  useEffect(() => {
+    // Membres + invitations en attente
+    fetch('/api/team')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (j?.members) setTeamMembers(j.members)
+        if (j?.invites) setTeamInvites(j.invites.filter((i: TeamInvite) => i.status === 'pending'))
+      })
+      .catch(() => {})
+  }, [])
+
+  async function sendInvite() {
+    const email = inviteEmail.trim().toLowerCase()
+    if (!email) return
+    setInviting(true)
+    try {
+      const res = await fetch('/api/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, role: inviteRole }),
+      })
+      const j = await res.json()
+      if (res.ok && j.invite) {
+        setTeamInvites(v => [{ id: j.invite.id, email: j.invite.email, role: j.invite.role, status: 'pending' }, ...v])
+        setInviteEmail('')
+      } else { toast.error(j.error || 'Erreur') }
+    } finally { setInviting(false) }
+  }
+
+  async function removeTeamEntry(id: string, kind: 'member' | 'invite') {
+    if (kind === 'member') setTeamMembers(v => v.filter(m => m.id !== id))
+    else setTeamInvites(v => v.filter(i => i.id !== id))
+    await fetch(`/api/team/${id}?type=${kind}`, { method: 'DELETE' }).catch(() => {})
   }
 
   async function buyReminderPack(pack: string) {
@@ -819,6 +862,53 @@ export default function SettingsPage() {
               </div>
             </>
           )}
+        </section>
+
+        {/* ── Accès équipe (comptes) ──────────────────────── */}
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Shield size={16} className="text-gray-400" />
+            <h3 className="text-sm font-semibold text-gray-900">{t('appointmentSettings.teamTitle')}</h3>
+          </div>
+          <p className="text-xs text-gray-400">{t('appointmentSettings.teamDesc')}</p>
+
+          {(teamMembers.length > 0 || teamInvites.length > 0) && (
+            <div className="space-y-1.5">
+              {teamMembers.map(m => (
+                <div key={m.id} className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                  <span className="text-sm text-gray-700 truncate">{m.email ?? '—'}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-medium text-gray-500 uppercase">{m.role === 'restaurant_admin' ? t('appointmentSettings.teamRoleAdmin') : t('appointmentSettings.teamRoleStaff')}</span>
+                    <button type="button" onClick={() => removeTeamEntry(m.id, 'member')} className="text-gray-300 hover:text-red-500 transition-colors text-xs">✕</button>
+                  </div>
+                </div>
+              ))}
+              {teamInvites.map(i => (
+                <div key={i.id} className="flex items-center justify-between rounded-lg bg-amber-50/60 border border-amber-100 px-3 py-2">
+                  <span className="text-sm text-gray-600 truncate">{i.email}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-amber-600">{t('appointmentSettings.teamPending')}</span>
+                    <button type="button" onClick={() => removeTeamEntry(i.id, 'invite')} className="text-gray-300 hover:text-red-500 transition-colors text-xs">✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
+            <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} type="email"
+              placeholder={t('appointmentSettings.teamEmailPlaceholder')} className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors" />
+            <select value={inviteRole} onChange={e => setInviteRole(e.target.value as 'staff' | 'restaurant_admin')}
+              className="px-2 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors">
+              <option value="staff">{t('appointmentSettings.teamRoleStaff')}</option>
+              <option value="restaurant_admin">{t('appointmentSettings.teamRoleAdmin')}</option>
+            </select>
+            <button type="button" onClick={sendInvite} disabled={inviting}
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 transition-colors">
+              {inviting ? '…' : t('appointmentSettings.teamInviteBtn')}
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-400">{t('appointmentSettings.teamStaffHint')}</p>
         </section>
 
         {/* ── Rappels WhatsApp (quota + crédits) ──────────────── */}

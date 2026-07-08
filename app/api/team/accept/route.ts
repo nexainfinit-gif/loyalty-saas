@@ -74,7 +74,7 @@ export async function GET(request: Request) {
 
   if (!userId || !userEmail) {
     // Redirect to login with return URL
-    const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/login?redirect=${encodeURIComponent(request.url)}`;
+    const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/fr/dashboard/login?redirect=${encodeURIComponent(request.url)}`;
     return NextResponse.redirect(loginUrl);
   }
 
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
       .eq('id', invite.id);
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?team_joined=already`,
+      `${process.env.NEXT_PUBLIC_APP_URL}/fr/dashboard/appointments?team_joined=already`,
     );
   }
 
@@ -132,6 +132,6 @@ export async function GET(request: Request) {
 
   // Redirect to dashboard with success indicator
   return NextResponse.redirect(
-    `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?team_joined=success`,
+    `${process.env.NEXT_PUBLIC_APP_URL}/fr/dashboard/appointments?team_joined=success`,
   );
 }

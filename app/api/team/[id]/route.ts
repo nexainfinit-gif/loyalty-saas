@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireOwner } from '@/lib/server-auth';
+import { requireAuth } from '@/lib/server-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const runtime = 'nodejs';
@@ -16,7 +16,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const guard = await requireOwner(request);
+  const guard = await requireAuth(request);
   if (guard instanceof NextResponse) return guard;
   if (!guard.restaurantId) {
     return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });

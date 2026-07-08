@@ -953,7 +953,15 @@
     "pkgSessions": "Sedute",
     "pkgRedeemLabel": "Usa una seduta (codice cliente)",
     "pkgUse": "Usa",
-    "pkgRedeemed": "Seduta usata — {remaining} rimaste"
+    "pkgRedeemed": "Seduta usata — {remaining} rimaste",
+    "teamTitle": "Accesso team",
+    "teamDesc": "Invita i tuoi dipendenti: \"Parrucchiere\" vede e gestisce solo l'agenda; \"Manager\" ha accesso completo.",
+    "teamRoleStaff": "Parrucchiere",
+    "teamRoleAdmin": "Manager",
+    "teamPending": "In attesa",
+    "teamEmailPlaceholder": "email@esempio.com",
+    "teamInviteBtn": "Invita",
+    "teamStaffHint": "L'invitato riceve un link via email, crea un account (o accede) e arriva direttamente all'agenda."
   },
   "appointmentStaff": {
     "title": "Personale",

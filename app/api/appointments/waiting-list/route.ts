@@ -8,7 +8,7 @@ import { requireAuth } from '@/lib/server-auth';
  * Returns waiting list entries for the restaurant (dashboard view).
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireAuth(request, { allowStaff: true }); // lecture agenda: staff OK
   if (auth instanceof NextResponse) return auth;
   if (!auth.restaurantId) {
     return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });

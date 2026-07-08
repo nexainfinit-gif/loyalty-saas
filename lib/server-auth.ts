@@ -26,6 +26,13 @@ export interface AuthContext {
   walletEnabled: boolean;
   /** true when platform owner is impersonating another restaurant via demo mode */
   impersonating?: boolean;
+  /**
+   * Rôle de l'utilisateur SUR CE restaurant (distinct de platformRole) :
+   * 'owner' = propriétaire du restaurant ; 'restaurant_admin' | 'staff' =
+   * membre d'équipe (table team_members). Les guards refusent 'staff' par
+   * défaut — les routes agenda l'acceptent via requireAuth(req, { allowStaff }).
+   */
+  memberRole: 'owner' | 'restaurant_admin' | 'staff';
 }
 
 /* ── Internal: resolve user ID from Bearer header or cookie session ────────── */
@@ -56,7 +63,7 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
   const userId = await resolveUserId(request);
   if (!userId) return null;
 
-  const [{ data: restaurants }, { data: profile }] = await Promise.all([
+  const [{ data: restaurants }, { data: profile }, { data: memberships }] = await Promise.all([
     supabaseAdmin
       .from('restaurants')
       .select('id, plan, plan_id, wallet_studio_enabled')
@@ -69,28 +76,57 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
       .select('platform_role')
       .eq('id', userId)
       .maybeSingle(),
+    // Comptes équipe (option B) : rattachements team_members de l'utilisateur.
+    supabaseAdmin
+      .from('team_members')
+      .select('restaurant_id, role')
+      .eq('user_id', userId),
   ]);
 
   let restaurant = restaurants?.[0] ?? null;
   const role = (profile?.platform_role ?? 'restaurant_admin') as PlatformRole;
+  const teamRoleFor = (rid: string): 'restaurant_admin' | 'staff' | null => {
+    const m = (memberships ?? []).find((x) => x.restaurant_id === rid);
+    return m ? ((m.role === 'restaurant_admin' ? 'restaurant_admin' : 'staff')) : null;
+  };
+  // Rôle sur le restaurant actif ; recalculé si la sélection change.
+  let memberRole: AuthContext['memberRole'] = 'owner';
 
   const cookieHeader = request.headers.get('cookie') ?? '';
 
-  // ── Restaurant switch: an owner with several restaurants can pick which one
-  //    to manage via the `selected_restaurant` cookie. Only honoured if the
-  //    caller actually OWNS that restaurant (security) — this is distinct from
-  //    impersonation (platform-owner cross-tenant, below). ──
+  // ── Restaurant switch: le cookie `selected_restaurant` est honoré si le
+  //    caller POSSÈDE le restaurant, ou s'il en est MEMBRE d'équipe (option B).
+  //    Distinct de l'impersonation (platform-owner cross-tenant, ci-dessous). ──
   const selectedMatch = cookieHeader.match(/(?:^|;\s*)selected_restaurant=([^;]+)/);
   const selectedId = selectedMatch?.[1]?.trim() || null;
   if (selectedId && selectedId !== restaurant?.id) {
     const { data: sel } = await supabaseAdmin
       .from('restaurants')
-      .select('id, plan, plan_id, wallet_studio_enabled')
+      .select('id, plan, plan_id, wallet_studio_enabled, owner_id')
       .eq('id', selectedId)
-      .eq('owner_id', userId)
       .neq('is_demo', true)
       .maybeSingle();
-    if (sel) restaurant = sel;
+    if (sel && sel.owner_id === userId) {
+      restaurant = sel;
+    } else if (sel) {
+      const tr = teamRoleFor(sel.id);
+      if (tr) { restaurant = sel; memberRole = tr; }
+    }
+  }
+
+  // ── Fallback membre d'équipe : aucun restaurant possédé → premier
+  //    rattachement team_members (un coiffeur invité atterrit sur son salon). ──
+  if (!restaurant && (memberships?.length ?? 0) > 0) {
+    const first = memberships![0];
+    const { data: teamResto } = await supabaseAdmin
+      .from('restaurants')
+      .select('id, plan, plan_id, wallet_studio_enabled')
+      .eq('id', first.restaurant_id)
+      .maybeSingle();
+    if (teamResto) {
+      restaurant = teamResto;
+      memberRole = first.role === 'restaurant_admin' ? 'restaurant_admin' : 'staff';
+    }
   }
 
   // ── Impersonation: platform owner can override restaurant context via cookie ──
@@ -109,6 +145,7 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
     if (impersonated) {
       targetRestaurant = impersonated;
       impersonating = true;
+      memberRole = 'owner'; // le platform owner impersonifie avec les pleins droits
     }
   }
 
@@ -140,18 +177,32 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
     features,
     walletEnabled,
     impersonating,
+    memberRole,
   };
 }
 
 /* ── Guards ───────────────────────────────────────────────────────────────── */
 
-/** Any authenticated user. */
+/**
+ * Any authenticated user with dashboard rights.
+ * SÉCURITÉ (option B) : les membres d'équipe au rôle 'staff' sont refusés par
+ * défaut sur TOUTES les routes — seules les routes agenda opt-in via
+ * `requireAuth(req, { allowStaff: true })`. 'restaurant_admin' (gérant invité)
+ * a les mêmes droits que le propriétaire du restaurant.
+ */
 export async function requireAuth(
   request: Request,
+  opts?: { allowStaff?: boolean },
 ): Promise<AuthContext | NextResponse> {
   const ctx = await getAuthContext(request);
   if (!ctx) {
     return NextResponse.json({ error: 'Non authentifié.' }, { status: 401 });
+  }
+  if (ctx.memberRole === 'staff' && !opts?.allowStaff) {
+    return NextResponse.json(
+      { error: 'Accès réservé au gérant de l\'établissement.' },
+      { status: 403 },
+    );
   }
   return ctx;
 }

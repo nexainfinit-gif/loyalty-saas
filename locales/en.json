@@ -970,7 +970,15 @@
     "pkgSessions": "Sessions",
     "pkgRedeemLabel": "Use a session (client code)",
     "pkgUse": "Use",
-    "pkgRedeemed": "Session used — {remaining} left"
+    "pkgRedeemed": "Session used — {remaining} left",
+    "teamTitle": "Team access",
+    "teamDesc": "Invite your employees: \"Stylist\" sees and manages the calendar only; \"Manager\" has full dashboard access.",
+    "teamRoleStaff": "Stylist",
+    "teamRoleAdmin": "Manager",
+    "teamPending": "Pending",
+    "teamEmailPlaceholder": "email@example.com",
+    "teamInviteBtn": "Invite",
+    "teamStaffHint": "The invitee gets an email link. They create an account (or sign in) and land directly on the calendar."
   },
   "appointmentStaff": {
     "title": "Staff",

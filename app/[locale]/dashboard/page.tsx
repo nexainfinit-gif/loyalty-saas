@@ -377,7 +377,22 @@ export default function DashboardPage() {
         const selectedId = document.cookie.match(/(?:^|;\s*)selected_restaurant=([^;]+)/)?.[1];
         resto = (selectedId && list.find((r: { id: string }) => r.id === selectedId)) || list[0] || null;
       }
-      if (!resto) { router.replace('/onboarding'); return; }
+      if (!resto) {
+        // Membre d'équipe (option B) : pas de restaurant possédé mais un
+        // rattachement team_members → on l'envoie sur l'agenda de son salon.
+        const { data: tm } = await supabase
+          .from('team_members')
+          .select('restaurant_id')
+          .eq('user_id', session.user.id)
+          .limit(1);
+        if (tm && tm.length > 0) {
+          document.cookie = `selected_restaurant=${tm[0].restaurant_id}; path=/; max-age=31536000; samesite=lax`;
+          router.replace('/dashboard/appointments');
+          return;
+        }
+        router.replace('/onboarding');
+        return;
+      }
 
       // Gate: require active subscription (skip for impersonated demo restaurants)
       const isBillingReturn = new URLSearchParams(window.location.search).has('billing');

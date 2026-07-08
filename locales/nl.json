@@ -953,7 +953,15 @@
     "pkgSessions": "Sessies",
     "pkgRedeemLabel": "Een sessie gebruiken (klantcode)",
     "pkgUse": "Gebruiken",
-    "pkgRedeemed": "Sessie gebruikt — {remaining} over"
+    "pkgRedeemed": "Sessie gebruikt — {remaining} over",
+    "teamTitle": "Teamtoegang",
+    "teamDesc": "Nodig uw medewerkers uit: \"Kapper\" ziet en beheert alleen de agenda; \"Manager\" heeft volledige toegang.",
+    "teamRoleStaff": "Kapper",
+    "teamRoleAdmin": "Manager",
+    "teamPending": "In afwachting",
+    "teamEmailPlaceholder": "email@voorbeeld.com",
+    "teamInviteBtn": "Uitnodigen",
+    "teamStaffHint": "De genodigde ontvangt een e-maillink, maakt een account aan (of logt in) en komt direct in de agenda."
   },
   "appointmentStaff": {
     "title": "Personeel",

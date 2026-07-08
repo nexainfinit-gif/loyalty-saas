@@ -950,7 +950,15 @@
     "pkgSessions": "Sesiones",
     "pkgRedeemLabel": "Usar una sesión (código cliente)",
     "pkgUse": "Usar",
-    "pkgRedeemed": "Sesión usada — {remaining} restante(s)"
+    "pkgRedeemed": "Sesión usada — {remaining} restante(s)",
+    "teamTitle": "Acceso del equipo",
+    "teamDesc": "Invita a tus empleados: \"Peluquero\" solo ve y gestiona la agenda; \"Gerente\" tiene acceso completo.",
+    "teamRoleStaff": "Peluquero",
+    "teamRoleAdmin": "Gerente",
+    "teamPending": "Pendiente",
+    "teamEmailPlaceholder": "email@ejemplo.com",
+    "teamInviteBtn": "Invitar",
+    "teamStaffHint": "El invitado recibe un enlace por email, crea una cuenta (o inicia sesión) y llega directamente a la agenda."
   },
   "appointmentStaff": {
     "title": "Personal",
