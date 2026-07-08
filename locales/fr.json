@@ -1040,7 +1040,7 @@
     "price": "Prix",
     "modifyCancel": "Besoin de modifier ou annuler ?",
     "contactBusiness": "Contactez directement {business} par téléphone ou en répondant à l'email de confirmation.",
-    "addToCalendar": "Ajouter à Google Calendar",
+    "addToCalendar": "Ajouter au calendrier",
     "verifyingPayment": "Vérification de votre paiement…",
     "paymentIssueTitle": "Paiement non confirmé",
     "paymentIssueDesc": "Votre paiement n’a pas pu être vérifié. Si vous avez été débité, contactez l’établissement — sinon, réessayez de réserver."

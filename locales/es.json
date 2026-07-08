@@ -1019,7 +1019,7 @@
     "price": "Precio",
     "modifyCancel": "¿Necesitas modificar o cancelar?",
     "contactBusiness": "Contacta directamente con {business} por teléfono o respondiendo al email de confirmación.",
-    "addToCalendar": "Añadir a Google Calendar",
+    "addToCalendar": "Añadir al calendario",
     "verifyingPayment": "Verificando tu pago…",
     "paymentIssueTitle": "Pago no confirmado",
     "paymentIssueDesc": "No se pudo verificar tu pago. Si se te cobró, contacta con el negocio — si no, intenta reservar de nuevo."

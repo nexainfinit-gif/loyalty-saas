@@ -285,6 +285,13 @@ export async function sendBookingConfirmationEmail({
     + `&details=${encodeURIComponent(`Service : ${serviceName}\nAvec : ${staffName}\nDurée : ${durationMinutes} min\nPrix : ${price}€`)}`
     + `&location=${encodeURIComponent(businessName)}`;
 
+  // Lien .ics — sur iPhone (Mail), le lien Google ouvre l'éditeur desktop
+  // illisible ; le .ics ouvre la feuille native « Ajouter à Calendrier ».
+  const icsUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/book/ics?` + new URLSearchParams({
+    service: serviceName, business: businessName, staff: staffName,
+    date, start: startTime, end: endTime, duration: String(durationMinutes),
+  }).toString();
+
   const bookingPageUrl = `${process.env.NEXT_PUBLIC_APP_URL}/book/${businessSlug}`;
 
   await resend.emails.send({
@@ -342,6 +349,9 @@ export async function sendBookingConfirmationEmail({
           <a href="${gcalUrl}" target="_blank" style="display: inline-block; background: ${safeColor}; color: white; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
             Ajouter à Google Calendar
           </a>
+          <p style="margin: 0.6rem 0 0; font-size: 0.78rem;">
+            <a href="${icsUrl}" style="color: #6b7280; text-decoration: underline;">Sur iPhone ? Ajouter via Calendrier Apple (.ics)</a>
+          </p>
         </div>
 
         <div style="background: #f9fafb; border-radius: 12px; padding: 1rem; margin: 1.5rem 0;">
@@ -550,6 +560,11 @@ export async function sendReminderEmail({
     + `&details=${encodeURIComponent(`Service : ${serviceName}\nAvec : ${staffName}\nDurée : ${durationMinutes} min`)}`
     + `&location=${encodeURIComponent(businessName)}`;
 
+  const icsUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/book/ics?` + new URLSearchParams({
+    service: serviceName, business: businessName, staff: staffName,
+    date, start: startTime, end: endTime, duration: String(durationMinutes),
+  }).toString();
+
   await resend.emails.send({
     from: `${businessName} <noreply@rebites.be>`,
     to,
@@ -595,6 +610,9 @@ export async function sendReminderEmail({
           <a href="${gcalUrl}" target="_blank" style="display: inline-block; background: ${safeColor}; color: white; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
             Voir dans Google Calendar
           </a>
+          <p style="margin: 0.6rem 0 0; font-size: 0.78rem;">
+            <a href="${icsUrl}" style="color: #6b7280; text-decoration: underline;">Sur iPhone ? Ajouter via Calendrier Apple (.ics)</a>
+          </p>
         </div>
 
         <div style="background: #fffbeb; border-radius: 12px; padding: 1rem; margin: 1.5rem 0;">

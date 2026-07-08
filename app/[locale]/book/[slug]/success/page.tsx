@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState, useSyncExternalStore } from 'react'
 import { useSearchParams, useParams } from 'next/navigation'
 import { Check, Calendar, Clock, Euro, User, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
@@ -53,9 +53,26 @@ function SuccessContent() {
     return `${dayNames[dateObj.getDay()]} ${d} ${monthNames[m - 1]} ${y}`
   })()
 
-  // Google Calendar link
-  const gcalUrl = (() => {
+  // « Ajouter au calendrier » — adaptatif : sur iOS, le lien Google Calendar
+  // ouvre l'éditeur DESKTOP (illisible sur iPhone) → on sert un .ics qui
+  // déclenche la feuille native « Ajouter à Calendrier ». Ailleurs : Google.
+  // useSyncExternalStore : rendu serveur = false, client = détection UA,
+  // sans setState-dans-effet (hydration-safe).
+  const isIOS = useSyncExternalStore(
+    () => () => {},
+    () => /iPad|iPhone|iPod/.test(navigator.userAgent),
+    () => false,
+  )
+
+  const calendarUrl = (() => {
     if (!date || !startTime || !endTime) return null
+    if (isIOS) {
+      const q = new URLSearchParams({
+        service: serviceName, business: businessName, staff: staffName,
+        date, start: startTime, end: endTime, duration, price,
+      })
+      return `/api/book/ics?${q.toString()}`
+    }
     const gcalStart = `${date.replace(/-/g, '')}T${startTime.replace(':', '')}00`
     const gcalEnd = `${date.replace(/-/g, '')}T${endTime.replace(':', '')}00`
     return `https://calendar.google.com/calendar/render?action=TEMPLATE`
@@ -204,12 +221,11 @@ function SuccessContent() {
           </div>
         )}
 
-        {/* Google Calendar button */}
-        {gcalUrl && (
+        {/* Bouton « Ajouter au calendrier » (iOS : .ics natif ; sinon Google) */}
+        {calendarUrl && (
           <a
-            href={gcalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={calendarUrl}
+            {...(isIOS ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
             className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors mb-3"
           >
             <Calendar size={16} />
