@@ -1806,5 +1806,12 @@
     "paymentIssue": "Pagamento non confermato",
     "paymentIssueDesc": "Se ti è stato addebitato, contatta l'attività.",
     "unavailable": "I pacchetti non sono disponibili per questa attività."
+  },
+  "install": {
+    "title": "Aggiungi Rebites alla schermata Home",
+    "iosHint": "Tocca",
+    "iosHint2": "poi \"Aggiungi a Home\"",
+    "androidBtn": "Installa l'app",
+    "dismiss": "Chiudi"
   }
 }

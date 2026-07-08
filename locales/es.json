@@ -1802,5 +1802,12 @@
     "paymentIssue": "Pago no confirmado",
     "paymentIssueDesc": "Si se te cobró, contacta con el negocio.",
     "unavailable": "Los bonos no están disponibles para este negocio."
+  },
+  "install": {
+    "title": "Añade Rebites a tu pantalla de inicio",
+    "iosHint": "Toca",
+    "iosHint2": "y luego \"Añadir a pantalla de inicio\"",
+    "androidBtn": "Instalar la aplicación",
+    "dismiss": "Cerrar"
   }
 }

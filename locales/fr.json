@@ -1824,5 +1824,12 @@
     "paymentIssue": "Paiement non confirmé",
     "paymentIssueDesc": "Si vous avez été débité, contactez l'établissement.",
     "unavailable": "Les forfaits ne sont pas disponibles pour cet établissement."
+  },
+  "install": {
+    "title": "Installez Rebites sur votre écran d'accueil",
+    "iosHint": "Touchez",
+    "iosHint2": "puis « Sur l'écran d'accueil »",
+    "androidBtn": "Installer l'application",
+    "dismiss": "Fermer"
   }
 }

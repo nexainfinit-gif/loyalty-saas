@@ -1824,5 +1824,12 @@
     "paymentIssue": "Payment not confirmed",
     "paymentIssueDesc": "If you were charged, contact the business.",
     "unavailable": "Packages are not available for this business."
+  },
+  "install": {
+    "title": "Add Rebites to your home screen",
+    "iosHint": "Tap",
+    "iosHint2": "then \"Add to Home Screen\"",
+    "androidBtn": "Install the app",
+    "dismiss": "Close"
   }
 }

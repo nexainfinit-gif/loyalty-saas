@@ -1806,5 +1806,12 @@
     "paymentIssue": "Betaling niet bevestigd",
     "paymentIssueDesc": "Als u bent gedebiteerd, neem contact op met de zaak.",
     "unavailable": "Pakketten zijn niet beschikbaar voor deze zaak."
+  },
+  "install": {
+    "title": "Zet Rebites op uw beginscherm",
+    "iosHint": "Tik op",
+    "iosHint2": "en dan \"Zet op beginscherm\"",
+    "androidBtn": "App installeren",
+    "dismiss": "Sluiten"
   }
 }
