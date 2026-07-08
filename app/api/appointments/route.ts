@@ -278,6 +278,20 @@ export async function PUT(request: NextRequest) {
   if (error) return NextResponse.json({ error: 'Erreur lors de la mise à jour.' }, { status: 500 });
 
   // Google Calendar sync (fire-and-forget)
+  // Heure réelle de fin (bêta « temps réel ») — best-effort : colonne de la
+  // migration 044, l'échec pré-migration n'affecte pas le changement de statut.
+  if (newStatus === 'completed' && oldStatus !== 'completed') {
+    await supabaseAdmin.from('appointments')
+      .update({ completed_at: new Date().toISOString() })
+      .eq('id', parsed.data.id).eq('restaurant_id', auth.restaurantId)
+      .then(() => {}, () => {});
+  } else if (oldStatus === 'completed' && newStatus !== 'completed') {
+    await supabaseAdmin.from('appointments')
+      .update({ completed_at: null })
+      .eq('id', parsed.data.id).eq('restaurant_id', auth.restaurantId)
+      .then(() => {}, () => {});
+  }
+
   updateCalendarEvent(parsed.data.id, auth.restaurantId, newStatus).catch(() => {});
 
   // Track no-show stats (increment or decrement based on status transition)
