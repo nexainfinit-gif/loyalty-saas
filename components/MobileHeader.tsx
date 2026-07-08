@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import LocaleLink from '@/components/LocaleLink';
 import { BOOKING_ELIGIBLE_TYPES } from '@/lib/booking-eligibility';
@@ -20,6 +20,10 @@ interface Props {
   enabledKpiKeys?: string[];
   showUpgrade?: boolean;
   onUpgrade?: () => void;
+  /** Multi-établissements : liste + bascule (affiché seulement si > 1). */
+  restaurants?: { id: string; name: string }[];
+  currentRestaurantId?: string;
+  onSwitchRestaurant?: (id: string) => void;
 }
 
 const BUSINESS_TYPE_EMOJI: Record<string, string> = {
@@ -32,8 +36,11 @@ export default function MobileHeader({
   activeTab, onTabChange, onSignOut,
   drawerOpen, onDrawerToggle,
   enabledKpiKeys = [], showUpgrade, onUpgrade,
+  restaurants = [], currentRestaurantId, onSwitchRestaurant,
 }: Props) {
   const { t } = useTranslation();
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const canSwitch = restaurants.length > 1 && !!onSwitchRestaurant;
 
   const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
     { id: 'overview',   label: t('nav.overview'),   icon: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z' },
@@ -145,7 +152,22 @@ export default function MobileHeader({
               : (BUSINESS_TYPE_EMOJI[businessType ?? ''] ?? '🏪')}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-gray-900 truncate">{restaurantName}</p>
+            {canSwitch ? (
+              <button
+                onClick={() => setSwitcherOpen(o => !o)}
+                className="flex items-center gap-1 max-w-full text-left"
+              >
+                <span className="text-sm font-semibold text-gray-900 truncate">{restaurantName}</span>
+                <svg
+                  className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${switcherOpen ? 'rotate-180' : ''}`}
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            ) : (
+              <p className="text-sm font-semibold text-gray-900 truncate">{restaurantName}</p>
+            )}
             <span className={[
               'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md inline-block mt-0.5',
               planName === 'pro'     ? 'bg-purple-100 text-purple-700' :
@@ -166,6 +188,28 @@ export default function MobileHeader({
             </svg>
           </button>
         </div>
+
+        {/* Bascule d'établissement (accordéon sous le header) */}
+        {canSwitch && switcherOpen && (
+          <div className="border-b border-gray-100 px-3 py-2 bg-gray-50/60">
+            <p className="px-1 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('dashboard.switchRestaurant')}</p>
+            {restaurants.map(r => (
+              <button
+                key={r.id}
+                onClick={() => {
+                  setSwitcherOpen(false);
+                  if (r.id !== currentRestaurantId) onSwitchRestaurant!(r.id);
+                }}
+                className={`w-full text-left px-2 py-2.5 rounded-lg text-sm flex items-center gap-2 hover:bg-white active:bg-white transition-colors ${r.id === currentRestaurantId ? 'text-primary-600 font-semibold' : 'text-gray-700'}`}
+              >
+                <span className="truncate flex-1">{r.name}</span>
+                {r.id === currentRestaurantId && (
+                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 p-3 pb-20 flex flex-col gap-0.5 overflow-y-auto">

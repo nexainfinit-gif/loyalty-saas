@@ -1214,6 +1214,9 @@ export default function DashboardPage() {
           enabledKpiKeys={enabledKpiKeys}
           showUpgrade={(restaurant?.plans?.key ?? restaurant?.plan) === 'starter'}
           onUpgrade={() => setShowPlanSelection(true)}
+          restaurants={myRestaurants}
+          currentRestaurantId={restaurant?.id}
+          onSwitchRestaurant={switchRestaurant}
         />
 
         {/* Top nav bar (desktop only) */}
