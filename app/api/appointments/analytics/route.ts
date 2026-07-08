@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAuth } from '@/lib/server-auth';
+import { availableMinutes, occupancyRate, type Availability } from '@/lib/staff-stats';
 
 /**
  * GET /api/appointments/analytics?period=30d
@@ -52,6 +53,37 @@ export async function GET(request: NextRequest) {
   const staffMap = new Map(
     (staffRes.data ?? []).map((s) => [s.id, s])
   );
+  const staffIds = (staffRes.data ?? []).map((s) => s.id);
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Disponibilités + congés → minutes travaillables par employé (occupation).
+  const [availRes, timeOffRes] = staffIds.length
+    ? await Promise.all([
+        supabaseAdmin
+          .from('staff_availability')
+          .select('staff_id, day_of_week, start_time, end_time, is_working')
+          .in('staff_id', staffIds),
+        supabaseAdmin
+          .from('staff_time_off')
+          .select('staff_id, date')
+          .in('staff_id', staffIds)
+          .gte('date', since)
+          .lte('date', today),
+      ])
+    : [{ data: [] }, { data: [] }];
+
+  const availByStaff = new Map<string, Availability[]>();
+  for (const a of (availRes.data ?? []) as (Availability & { staff_id: string })[]) {
+    const arr = availByStaff.get(a.staff_id) ?? [];
+    arr.push(a);
+    availByStaff.set(a.staff_id, arr);
+  }
+  const timeOffByStaff = new Map<string, Set<string>>();
+  for (const t of (timeOffRes.data ?? []) as { staff_id: string; date: string }[]) {
+    const set = timeOffByStaff.get(t.staff_id) ?? new Set<string>();
+    set.add(t.date);
+    timeOffByStaff.set(t.staff_id, set);
+  }
 
   // ── KPIs ──────────────────────────────────────────────────
   const total = all.length;
@@ -84,30 +116,46 @@ export async function GET(request: NextRequest) {
   ].filter((s) => s.count > 0);
 
   // ── Staff performance ─────────────────────────────────────
-  const staffStats = new Map<string, { total: number; completed: number; noShow: number; revenue: number }>();
+  const staffStats = new Map<string, { total: number; completed: number; noShow: number; revenue: number; bookedMinutes: number }>();
   for (const a of all) {
     if (!a.staff_id) continue;
-    const s = staffStats.get(a.staff_id) ?? { total: 0, completed: 0, noShow: 0, revenue: 0 };
+    const s = staffStats.get(a.staff_id) ?? { total: 0, completed: 0, noShow: 0, revenue: 0, bookedMinutes: 0 };
     s.total++;
     if (a.status === 'completed') {
       s.completed++;
       s.revenue += servicesMap.get(a.service_id)?.price ?? 0;
     }
     if (a.status === 'no_show') s.noShow++;
+    // Temps réservé (occupation) : RDV passés/en cours non annulés.
+    if (a.date <= today && (a.status === 'confirmed' || a.status === 'completed')) {
+      s.bookedMinutes += servicesMap.get(a.service_id)?.duration_minutes ?? 0;
+    }
     staffStats.set(a.staff_id, s);
   }
 
   const byStaff = Array.from(staffStats.entries())
-    .map(([id, stats]) => ({
-      id,
-      name: staffMap.get(id)?.name ?? 'Inconnu',
-      total: stats.total,
-      completed: stats.completed,
-      noShow: stats.noShow,
-      completionRate: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0,
-      noShowRate: stats.total > 0 ? Math.round((stats.noShow / stats.total) * 100) : 0,
-      revenue: stats.revenue,
-    }))
+    .map(([id, stats]) => {
+      const availMin = availableMinutes(
+        availByStaff.get(id) ?? [],
+        timeOffByStaff.get(id) ?? new Set<string>(),
+        since,
+        today,
+      );
+      return {
+        id,
+        name: staffMap.get(id)?.name ?? 'Inconnu',
+        total: stats.total,
+        completed: stats.completed,
+        noShow: stats.noShow,
+        completionRate: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0,
+        noShowRate: stats.total > 0 ? Math.round((stats.noShow / stats.total) * 100) : 0,
+        revenue: stats.revenue,
+        // Panier moyen sur les RDV terminés.
+        avgTicket: stats.completed > 0 ? Math.round(stats.revenue / stats.completed) : 0,
+        // Taux d'occupation : minutes réservées / minutes travaillables.
+        occupancyRate: occupancyRate(stats.bookedMinutes, availMin),
+      };
+    })
     .sort((a, b) => b.total - a.total);
 
   // ── Service popularity ────────────────────────────────────

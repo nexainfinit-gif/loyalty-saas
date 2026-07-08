@@ -36,6 +36,7 @@ interface KPIs {
 interface StaffRow {
   id: string; name: string; total: number; completed: number
   noShow: number; completionRate: number; noShowRate: number; revenue: number
+  avgTicket: number; occupancyRate: number
 }
 
 interface ServiceRow {
@@ -264,19 +265,25 @@ export default function AppointmentAnalyticsPage() {
                       <span className="text-xs text-gray-500">{s.total} RDV</span>
                     </div>
                     <div className="flex gap-3 text-xs text-gray-500">
-                      <span className="text-emerald-600">{s.completionRate}% terminé</span>
-                      {s.noShowRate > 0 && <span className="text-red-500">{s.noShowRate}% no-show</span>}
+                      <span className="text-primary-600">{s.occupancyRate}% {t('appointmentAnalytics.occupancy') || 'occupation'}</span>
+                      {s.avgTicket > 0 && (
+                        <span className="text-gray-400">{t('appointmentAnalytics.avgTicket') || 'panier'} {s.avgTicket}€</span>
+                      )}
                       <span className="ml-auto font-medium text-gray-700">{s.revenue.toLocaleString('fr-FR')}€</span>
                     </div>
-                    {/* Progress bar */}
+                    {/* Barre d'occupation (minutes réservées / disponibles) */}
                     <div className="mt-1.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all"
                         style={{
-                          width: `${s.completionRate}%`,
+                          width: `${s.occupancyRate}%`,
                           backgroundColor: BAR_COLORS[i % BAR_COLORS.length],
                         }}
                       />
+                    </div>
+                    <div className="flex gap-3 text-[11px] text-gray-400 mt-1">
+                      <span className="text-emerald-600">{s.completionRate}% {t('appointmentAnalytics.done') || 'terminé'}</span>
+                      {s.noShowRate > 0 && <span className="text-red-400">{s.noShowRate}% no-show</span>}
                     </div>
                   </div>
                 </div>

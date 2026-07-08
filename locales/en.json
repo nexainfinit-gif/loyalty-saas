@@ -1689,6 +1689,9 @@
     "statusBreakdown": "Status breakdown",
     "dailyTrend": "Daily trend",
     "staffPerformance": "Staff performance",
+    "occupancy": "occupancy",
+    "avgTicket": "avg",
+    "done": "done",
     "servicePopularity": "Service popularity",
     "busiestDays": "Busiest days",
     "peakHours": "Peak hours"

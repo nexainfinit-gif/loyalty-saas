@@ -1671,6 +1671,9 @@
     "statusBreakdown": "Statusverdeling",
     "dailyTrend": "Dagelijkse trend",
     "staffPerformance": "Teamprestaties",
+    "occupancy": "bezetting",
+    "avgTicket": "gem.",
+    "done": "voltooid",
     "servicePopularity": "Populariteit van diensten",
     "busiestDays": "Drukste dagen",
     "peakHours": "Piekuren"

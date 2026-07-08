@@ -1667,6 +1667,9 @@
     "statusBreakdown": "Desglose por estado",
     "dailyTrend": "Tendencia diaria",
     "staffPerformance": "Rendimiento del equipo",
+    "occupancy": "ocupación",
+    "avgTicket": "ticket",
+    "done": "completado",
     "servicePopularity": "Popularidad de servicios",
     "busiestDays": "Días más ocupados",
     "peakHours": "Horas punta"
