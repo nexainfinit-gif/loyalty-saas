@@ -733,7 +733,10 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     );
   } else if (autoRewardStrip) {
     // Reward pending: large filled stamp centered as "coupon" visual
-    const rewardOpts = { fgColor: fgHex, stampFilledUrl, stampRound };
+    // Visuel du bon configurable (cfg.rewardImageUrl), repli tampon rempli,
+    // puis cercle par défaut.
+    const rewardImageUrl = (cfg.rewardImageUrl as string | undefined) || stampFilledUrl;
+    const rewardOpts = { fgColor: fgHex, stampFilledUrl: rewardImageUrl, stampRound };
     imagePromises.push(
       generateRewardStrip({ ...rewardOpts, width: 375, height: 123 }),
       generateRewardStrip({ ...rewardOpts, width: 750, height: 246 }),

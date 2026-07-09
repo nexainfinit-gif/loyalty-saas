@@ -56,6 +56,8 @@ interface Controls {
   iconBgColor:    string;
   /** Image de l'icône de notification ('' = suit le logo) */
   iconImageUrl:   string;
+  /** Visuel du bon « récompense » ('' = cercle par défaut / tampon rempli) */
+  rewardImageUrl: string;
   // Fields
   stampsTotal:    number;
   currentStamps:  number;
@@ -174,6 +176,7 @@ function metaToControls(meta: PassMeta): Controls {
     labelColor:      '#c8d7ff',
     iconBgColor:     '',
     iconImageUrl:    '',
+    rewardImageUrl:  '',
     stampsTotal:     meta.stampsTotal,
     currentStamps:   meta.exampleStamps,
     currentPoints:   meta.examplePoints,
@@ -216,6 +219,7 @@ function configJsonToControls(base: Controls, cfg: Record<string, unknown>): Con
     labelColor:      (cfg.labelColor as string) ?? base.labelColor,
     iconBgColor:     (cfg.iconBgColor as string) ?? '',
     iconImageUrl:    (cfg.iconImageUrl as string) ?? '',
+    rewardImageUrl:  (cfg.rewardImageUrl as string) ?? '',
     rewardText:      (cfg.rewardText as string) ?? base.rewardText,
     headerFields:    Array.isArray(cfg.headerFields) ? cfg.headerFields as PassField[] : base.headerFields,
     secondaryFields: Array.isArray(cfg.secondaryFields) ? cfg.secondaryFields as PassField[] : base.secondaryFields,
@@ -1056,6 +1060,7 @@ function controlsToConfigJson(c: Controls): Record<string, unknown> {
     labelColor:      c.labelColor,
     ...(c.iconBgColor ? { iconBgColor: c.iconBgColor } : {}),
     ...(c.iconImageUrl ? { iconImageUrl: c.iconImageUrl } : {}),
+    ...(c.rewardImageUrl ? { rewardImageUrl: c.rewardImageUrl } : {}),
     stampsTotal:     c.stampsTotal,
     currentPoints:   c.currentPoints,
     rewardThreshold: c.rewardThreshold,
@@ -1828,6 +1833,25 @@ function WalletPreviewInner() {
                   <button type="button" onClick={() => handleChange('iconImageUrl', '')} className="text-[11px] text-gray-400 underline">{t('walletPreview.iconImageReset')}</button>
                 ) : (
                   <p className="text-[11px] text-gray-400">{t('walletPreview.iconImageFollows')}</p>
+                )}
+                {/* Visuel du bon « récompense » (cercle blanc par défaut) */}
+                <ImageUpload
+                  label={t('walletPreview.fieldRewardImage')}
+                  hint={t('walletPreview.rewardImageHint')}
+                  currentUrl={controls.rewardImageUrl}
+                  onUpload={url => handleChange('rewardImageUrl', url)}
+                  accessToken={accessToken}
+                  restaurantId={rid}
+                  templateId={activeTemplateId ?? undefined}
+                  uploadType="reward"
+                  cropAspect={1}
+                  cropWidth={200}
+                  cropHeight={200}
+                />
+                {controls.rewardImageUrl ? (
+                  <button type="button" onClick={() => handleChange('rewardImageUrl', '')} className="text-[11px] text-gray-400 underline">{t('walletPreview.rewardImageReset')}</button>
+                ) : (
+                  <p className="text-[11px] text-gray-400">{t('walletPreview.rewardImageFollows')}</p>
                 )}
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
