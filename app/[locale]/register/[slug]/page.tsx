@@ -147,6 +147,21 @@ export default function RegisterPage() {
 
   const color = restaurant?.primary_color ?? '#FF6B35';
 
+  // Branding NFC : teinte l'interface Safari (barre d'adresse iOS) à la
+  // couleur de l'établissement dès que la page s'ouvre depuis la puce.
+  useEffect(() => {
+    if (!restaurant?.primary_color) return;
+    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      document.head.appendChild(meta);
+    }
+    const prev = meta.content;
+    meta.content = restaurant.primary_color;
+    return () => { if (meta) meta.content = prev; };
+  }, [restaurant?.primary_color]);
+
   if (loadingResto) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FA' }}>
       <p style={{ color: '#9CA3AF', fontFamily: 'DM Sans, sans-serif' }}>{t('registerSlug.loading')}</p>
@@ -228,34 +243,38 @@ export default function RegisterPage() {
 
           {restaurant?.logo_url ? (
             <img src={restaurant.logo_url} alt={restaurant.name} style={{
-              width: '64px', height: '64px', objectFit: 'contain',
-              borderRadius: '16px', background: 'white', padding: '8px',
+              width: '84px', height: '84px', objectFit: 'contain',
+              borderRadius: '20px', background: 'white', padding: '10px',
               margin: '0 auto 1rem', display: 'block',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              border: '3px solid rgba(255,255,255,0.35)',
+              boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
             }} />
           ) : (
             <div style={{
-              width: '64px', height: '64px', borderRadius: '16px',
-              background: 'rgba(255,255,255,0.2)',
+              width: '84px', height: '84px', borderRadius: '20px',
+              background: 'rgba(255,255,255,0.22)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 1rem', fontSize: '2rem',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-            }}>🍽️</div>
+              margin: '0 auto 1rem',
+              fontFamily: "'Playfair Display', serif",
+              fontSize: '2.4rem', fontWeight: 700, color: 'white',
+              border: '3px solid rgba(255,255,255,0.35)',
+              boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+            }}>{(restaurant?.name ?? '★').charAt(0).toUpperCase()}</div>
           )}
 
           <h1 style={{
             fontFamily: "'Playfair Display', serif",
-            color: 'white', fontSize: '1.4rem', fontWeight: 700,
+            color: 'white', fontSize: '1.65rem', fontWeight: 700,
             margin: '0 0 0.4rem', position: 'relative',
           }}>
             {step === 'form'
-              ? t('registerSlug.programTitle')
+              ? restaurant?.name
               : t('registerSlug.welcomeName', { name: customerName })
             }
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: 0, position: 'relative' }}>
+          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: 0, position: 'relative', letterSpacing: '0.04em' }}>
             {step === 'form'
-              ? restaurant?.name
+              ? `${t('registerSlug.programTitle')}${restaurant?.city ? ` · ${restaurant.city}` : ''}`
               : t('registerSlug.confirmed')
             }
           </p>
