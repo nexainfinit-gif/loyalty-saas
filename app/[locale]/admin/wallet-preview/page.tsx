@@ -54,6 +54,8 @@ interface Controls {
   labelColor:     string;
   /** Fond de l'icône de notification ('' = suit bgColor) */
   iconBgColor:    string;
+  /** Image de l'icône de notification ('' = suit le logo) */
+  iconImageUrl:   string;
   // Fields
   stampsTotal:    number;
   currentStamps:  number;
@@ -171,6 +173,7 @@ function metaToControls(meta: PassMeta): Controls {
     foregroundColor: '#ffffff',
     labelColor:      '#c8d7ff',
     iconBgColor:     '',
+    iconImageUrl:    '',
     stampsTotal:     meta.stampsTotal,
     currentStamps:   meta.exampleStamps,
     currentPoints:   meta.examplePoints,
@@ -212,6 +215,7 @@ function configJsonToControls(base: Controls, cfg: Record<string, unknown>): Con
     foregroundColor: (cfg.foregroundColor as string) ?? base.foregroundColor,
     labelColor:      (cfg.labelColor as string) ?? base.labelColor,
     iconBgColor:     (cfg.iconBgColor as string) ?? '',
+    iconImageUrl:    (cfg.iconImageUrl as string) ?? '',
     rewardText:      (cfg.rewardText as string) ?? base.rewardText,
     headerFields:    Array.isArray(cfg.headerFields) ? cfg.headerFields as PassField[] : base.headerFields,
     secondaryFields: Array.isArray(cfg.secondaryFields) ? cfg.secondaryFields as PassField[] : base.secondaryFields,
@@ -1051,6 +1055,7 @@ function controlsToConfigJson(c: Controls): Record<string, unknown> {
     foregroundColor: c.foregroundColor,
     labelColor:      c.labelColor,
     ...(c.iconBgColor ? { iconBgColor: c.iconBgColor } : {}),
+    ...(c.iconImageUrl ? { iconImageUrl: c.iconImageUrl } : {}),
     stampsTotal:     c.stampsTotal,
     currentPoints:   c.currentPoints,
     rewardThreshold: c.rewardThreshold,
@@ -1805,6 +1810,25 @@ function WalletPreviewInner() {
                   <span className="text-gray-400 text-xs mt-px flex-shrink-0">i</span>
                   <p className="text-[11px] text-gray-500 leading-relaxed">{t('walletPreview.logoSizeNote')}</p>
                 </div>
+                {/* Icône de notification dédiée (repli : logo ci-dessus) */}
+                <ImageUpload
+                  label={t('walletPreview.fieldIconImage')}
+                  hint={t('walletPreview.iconImageHint')}
+                  currentUrl={controls.iconImageUrl}
+                  onUpload={url => handleChange('iconImageUrl', url)}
+                  accessToken={accessToken}
+                  restaurantId={rid}
+                  templateId={activeTemplateId ?? undefined}
+                  uploadType="logo"
+                  cropAspect={1}
+                  cropWidth={200}
+                  cropHeight={200}
+                />
+                {controls.iconImageUrl ? (
+                  <button type="button" onClick={() => handleChange('iconImageUrl', '')} className="text-[11px] text-gray-400 underline">{t('walletPreview.iconImageReset')}</button>
+                ) : (
+                  <p className="text-[11px] text-gray-400">{t('walletPreview.iconImageFollows')}</p>
+                )}
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-700">{t('walletPreview.showLogoTextLabel')}</p>
