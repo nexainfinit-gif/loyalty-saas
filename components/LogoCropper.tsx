@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 
 /**
@@ -22,18 +22,17 @@ export default function LogoCropper({
   const [zoom, setZoom] = useState(1);          // 1 = l'image entière tient (contain)
   const [off, setOff] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
-  const [srcUrl, setSrcUrl] = useState('');
+  // URL objet dérivée du fichier (pas de setState dans l'effet — règle lint)
+  const srcUrl = useMemo(() => URL.createObjectURL(file), [file]);
 
   useEffect(() => {
-    const u = URL.createObjectURL(file);
-    setSrcUrl(u);
     const i = new Image();
-    i.onload = () => setImg(i);
-    i.src = u;
-    return () => URL.revokeObjectURL(u);
-  }, [file]);
+    i.onload = () => setImg(i); // callback async : autorisé
+    i.src = srcUrl;
+    return () => URL.revokeObjectURL(srcUrl);
+  }, [srcUrl]);
 
-  if (!img || !srcUrl) return null;
+  if (!img) return null;
 
   // Échelle « contain » de base : l'image entière visible à zoom 1 (fonds
   // transparents fréquents sur les logos → pas de recadrage destructif par défaut).
