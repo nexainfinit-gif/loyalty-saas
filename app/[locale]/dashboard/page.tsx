@@ -6,7 +6,8 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 // Recharts imported by sub-components (OverviewTab, AnalyticsTab)
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/Badge'
+import TeamAccessSection from '@/components/TeamAccessSection';
 import DashboardTutorial from '@/components/DashboardTutorial';
 import LoyaltySetupModal from '@/components/LoyaltySetupModal';
 import { BOOKING_ELIGIBLE_TYPES } from '@/lib/booking-eligibility';
@@ -2064,6 +2065,9 @@ export default function DashboardPage() {
               </div>
 
               <div className="max-w-[560px] space-y-5">
+                {/* Accès équipe — tous les établissements (cafés compris) */}
+                <TeamAccessSection />
+
                 {/* Restaurant info */}
                 <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                   <h3 className="text-sm font-semibold text-gray-900 mb-5">{t('settings.infoTitle')}</h3>
