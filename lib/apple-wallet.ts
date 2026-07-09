@@ -189,6 +189,20 @@ function buildPassJson(
     const threshold = Number(cfg.reward_threshold ?? 100);
     const remaining = Math.max(0, threshold - input.totalPoints);
     const rewardMsg = String(cfg.reward_message ?? 'Récompense offerte');
+
+    if (input.rewardPending) {
+      // ── Bon à récolter : la carte se transforme (comme les tampons) ────
+      // primaryFields vide — Apple rend ce champ PAR-DESSUS le strip festif.
+      base.storeCard = {
+        headerFields:    [{ key: 'status', label: 'STATUT', value: '🎉 Récompense !' }],
+        primaryFields:   [],
+        secondaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgSecondaryFields],
+        auxiliaryFields: [{ key: 'action', label: 'ACTION', value: 'Présentez au comptoir' }, { key: 'points', label: 'POINTS', value: String(input.totalPoints), changeMessage: 'Votre solde est maintenant de %@ points' }, ...cfgAuxiliaryFields],
+        backFields:      [...defaultBackFields, ...cfgBackFields],
+      };
+      return Buffer.from(JSON.stringify(base, null, 2), 'utf8');
+    }
+
     const storeCard: Record<string, unknown> = {
       headerFields:    autoHeaderFields,
       primaryFields:   [{ key: 'points',  label: 'POINTS',            value: String(input.totalPoints), changeMessage: 'Votre solde est maintenant de %@ points' }],
@@ -693,7 +707,7 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
   const autoStampStrip = input.passKind === 'stamps' && !stripImageUrl;
   // Barre de progression auto en mode points (sauf strip custom)
   const autoProgressStrip = input.passKind === 'points' && !stripImageUrl;
-  const autoRewardStrip = input.passKind === 'stamps' && !stripImageUrl && input.rewardPending;
+  const autoRewardStrip = (input.passKind === 'stamps' || input.passKind === 'points') && !stripImageUrl && input.rewardPending;
   const stampsTotal = Number(cfg.stamps_total ?? 10);
   const stampFilledUrl = (cfg.stampFilledUrl as string) || undefined;
   const stampEmptyUrl  = (cfg.stampEmptyUrl  as string) || undefined;
