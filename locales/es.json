@@ -971,7 +971,7 @@
     "pkgUse": "Usar",
     "pkgRedeemed": "Sesión usada — {remaining} restante(s)",
     "teamTitle": "Acceso del equipo",
-    "teamDesc": "Invita a tus empleados: \"Peluquero\" solo ve y gestiona la agenda; \"Gerente\" tiene acceso completo.",
+    "teamDesc": "Invita a tus empleados: \"Staff\" solo accede al escáner y la agenda; \"Gerente\" tiene acceso completo.",
     "teamRoleStaff": "Staff",
     "teamRoleAdmin": "Gerente",
     "teamPending": "Pendiente",

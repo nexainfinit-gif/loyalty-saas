@@ -991,7 +991,7 @@
     "pkgUse": "Use",
     "pkgRedeemed": "Session used — {remaining} left",
     "teamTitle": "Team access",
-    "teamDesc": "Invite your employees: \"Stylist\" sees and manages the calendar only; \"Manager\" has full dashboard access.",
+    "teamDesc": "Invite your employees: \"Staff\" gets the scanner and calendar only; \"Manager\" has full dashboard access.",
     "teamRoleStaff": "Staff",
     "teamRoleAdmin": "Manager",
     "teamPending": "Pending",

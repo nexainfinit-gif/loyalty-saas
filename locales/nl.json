@@ -974,7 +974,7 @@
     "pkgUse": "Gebruiken",
     "pkgRedeemed": "Sessie gebruikt — {remaining} over",
     "teamTitle": "Teamtoegang",
-    "teamDesc": "Nodig uw medewerkers uit: \"Kapper\" ziet en beheert alleen de agenda; \"Manager\" heeft volledige toegang.",
+    "teamDesc": "Nodig uw medewerkers uit: \"Staff\" krijgt alleen de scanner en agenda; \"Manager\" heeft volledige toegang.",
     "teamRoleStaff": "Staff",
     "teamRoleAdmin": "Manager",
     "teamPending": "In afwachting",
