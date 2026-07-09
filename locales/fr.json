@@ -991,13 +991,13 @@
     "pkgUse": "Utiliser",
     "pkgRedeemed": "Séance utilisée — {remaining} restante(s)",
     "teamTitle": "Accès équipe",
-    "teamDesc": "Invitez vos employés : « Coiffeur » voit et gère l'agenda uniquement ; « Gérant » a accès à tout le tableau de bord.",
-    "teamRoleStaff": "Coiffeur",
+    "teamDesc": "Invitez vos employés : « Staff » accède au scanner et à l'agenda uniquement ; « Gérant » a accès à tout le tableau de bord.",
+    "teamRoleStaff": "Staff",
     "teamRoleAdmin": "Gérant",
     "teamPending": "En attente",
     "teamEmailPlaceholder": "email@exemple.com",
     "teamInviteBtn": "Inviter",
-    "teamStaffHint": "L'invité reçoit un email avec un lien. Il crée son compte (ou se connecte) puis accède directement à l'agenda."
+    "teamStaffHint": "L'invité reçoit un email avec un lien. Il crée son compte (ou se connecte) avec un code reçu par email, puis accède à ses outils (scanner, agenda)."
   },
   "appointmentStaff": {
     "title": "Équipe",

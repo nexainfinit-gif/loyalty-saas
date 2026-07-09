@@ -975,7 +975,7 @@
     "pkgRedeemed": "Seduta usata — {remaining} rimaste",
     "teamTitle": "Accesso team",
     "teamDesc": "Invita i tuoi dipendenti: \"Parrucchiere\" vede e gestisce solo l'agenda; \"Manager\" ha accesso completo.",
-    "teamRoleStaff": "Parrucchiere",
+    "teamRoleStaff": "Staff",
     "teamRoleAdmin": "Manager",
     "teamPending": "In attesa",
     "teamEmailPlaceholder": "email@esempio.com",

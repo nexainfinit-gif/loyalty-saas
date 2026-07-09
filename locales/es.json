@@ -972,7 +972,7 @@
     "pkgRedeemed": "Sesión usada — {remaining} restante(s)",
     "teamTitle": "Acceso del equipo",
     "teamDesc": "Invita a tus empleados: \"Peluquero\" solo ve y gestiona la agenda; \"Gerente\" tiene acceso completo.",
-    "teamRoleStaff": "Peluquero",
+    "teamRoleStaff": "Staff",
     "teamRoleAdmin": "Gerente",
     "teamPending": "Pendiente",
     "teamEmailPlaceholder": "email@ejemplo.com",

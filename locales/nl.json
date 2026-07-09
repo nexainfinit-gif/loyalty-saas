@@ -975,7 +975,7 @@
     "pkgRedeemed": "Sessie gebruikt — {remaining} over",
     "teamTitle": "Teamtoegang",
     "teamDesc": "Nodig uw medewerkers uit: \"Kapper\" ziet en beheert alleen de agenda; \"Manager\" heeft volledige toegang.",
-    "teamRoleStaff": "Kapper",
+    "teamRoleStaff": "Staff",
     "teamRoleAdmin": "Manager",
     "teamPending": "In afwachting",
     "teamEmailPlaceholder": "email@voorbeeld.com",
