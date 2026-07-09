@@ -33,8 +33,8 @@ export async function POST(request: Request) {
   const templateId   = (form.get('templateId')   as string | null) ?? '';
   const file         = form.get('file') as File | null;
 
-  if (!['empty', 'filled', 'strip', 'logo'].includes(type)) {
-    return NextResponse.json({ error: 'type doit être "empty", "filled", "strip" ou "logo".' }, { status: 400 });
+  if (!['empty', 'filled', 'strip', 'logo', 'icon'].includes(type)) {
+    return NextResponse.json({ error: 'type doit être "empty", "filled", "strip", "logo" ou "icon".' }, { status: 400 });
   }
   if (!restaurantId) {
     return NextResponse.json({ error: 'restaurantId manquant.' }, { status: 400 });

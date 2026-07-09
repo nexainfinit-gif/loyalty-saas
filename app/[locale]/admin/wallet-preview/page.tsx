@@ -1819,7 +1819,7 @@ function WalletPreviewInner() {
                   accessToken={accessToken}
                   restaurantId={rid}
                   templateId={activeTemplateId ?? undefined}
-                  uploadType="logo"
+                  uploadType="icon"
                   cropAspect={1}
                   cropWidth={200}
                   cropHeight={200}
