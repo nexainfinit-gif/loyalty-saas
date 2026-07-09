@@ -539,21 +539,6 @@ export default function ScannerPage() {
         </div>
       )}
 
-      {/* Cashier scanner link */}
-      {scannerUrl && !['success', 'identified', 'identifying'].includes(status) && (
-        <div style={{ background: '#EFF6FF', borderRadius: '16px', padding: '1rem 1.25rem', marginBottom: '1.25rem', border: '1.5px solid #BFDBFE' }}>
-          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', fontWeight: 600, color: '#1D4ED8' }}>{t('scanner.cashierLinkTitle')}</p>
-          <p style={{ margin: '0 0 0.625rem', fontSize: '0.75rem', color: '#3B82F6' }}>{t('scanner.cashierLinkDesc')}</p>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <input readOnly value={scannerUrl} style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #BFDBFE', fontSize: '0.75rem', fontFamily: 'monospace', background: 'white', color: '#1E40AF', outline: 'none' }} />
-            <button
-              onClick={() => { navigator.clipboard.writeText(scannerUrl); setUrlCopied(true); setTimeout(() => setUrlCopied(false), 2000); }}
-              style={{ padding: '0.5rem 0.875rem', borderRadius: '8px', border: 'none', background: urlCopied ? '#059669' : '#2563EB', color: 'white', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.2s' }}
-            >{urlCopied ? t('common.copied') : t('common.copy')}</button>
-          </div>
-        </div>
-      )}
-
       {/* Camera + manual input */}
       {!['success', 'identified', 'identifying', 'loading'].includes(status) && (
         <>

@@ -10,7 +10,7 @@ const MAX_ACTIONS = 10;
 /* ── GET — list scan actions for the restaurant ──────────────────────────── */
 
 export async function GET(req: Request) {
-  const guard = await requireAuth(req);
+  const guard = await requireAuth(req, { allowStaff: true });
   if (guard instanceof NextResponse) return guard;
   if (!guard.restaurantId) {
     return Response.json({ error: 'Restaurant not found' }, { status: 404 });

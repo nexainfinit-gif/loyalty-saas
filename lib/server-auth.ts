@@ -247,18 +247,10 @@ export async function requireOwner(
 export async function requireScannerAuth(
   request: Request,
 ): Promise<{ restaurantId: string; userId: string | null } | NextResponse> {
-  // Path 1: public cashier scanner — X-Scanner-Token header
-  const scannerToken = request.headers.get('X-Scanner-Token');
-  if (scannerToken) {
-    const { data: restaurant } = await supabaseAdmin
-      .from('restaurants')
-      .select('id')
-      .eq('scanner_token', scannerToken)
-      .maybeSingle();
-
-    if (restaurant) return { restaurantId: restaurant.id, userId: null };
-    return NextResponse.json({ error: 'Token scanner invalide.' }, { status: 401 });
-  }
+  // SÉCURITÉ (2026-07-09) : l'accès par X-Scanner-Token (lien caisse partageable
+  // à l'infini) est SUPPRIMÉ à la demande du propriétaire. Le staff se connecte
+  // désormais avec son compte équipe (email + code OTP Supabase) — voir
+  // team_members / option B. Seule la session reste acceptée ci-dessous.
 
   // Path 2: owner Supabase session (existing dashboard scanner flow)
   const ctx = await getAuthContext(request);
