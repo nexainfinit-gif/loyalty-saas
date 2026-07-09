@@ -379,21 +379,83 @@ async function generateRewardStrip(opts: {
   fgColor: string;
   stampFilledUrl?: string;
   stampRound?: boolean;
-  /** Texte en grand gras au centre du bon (remplace le visuel). */
+  /** Texte en grand gras sur le bon (combiné au visuel custom s'il existe). */
   rewardText?: string;
 }): Promise<Buffer> {
   const { width, height, fgColor, stampFilledUrl, stampRound = true, rewardText } = opts;
 
   if (rewardText && rewardText.trim()) {
-    // Texte gras centré, taille auto selon la longueur (1 ligne).
+    // Texte gras + visuel COMBINÉS : image custom à gauche (si fournie), texte
+    // centré dans la zone restante, retour à la ligne auto (max 2 lignes) et
+    // taille bornée pour ne jamais déborder du strip.
     const text = rewardText.trim();
-    const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const fs = Math.round(Math.min(height * 0.34, (width * 0.92) / (0.62 * Math.max(text.length, 1))));
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-  <text x="${width / 2}" y="${height / 2}" text-anchor="middle" dominant-baseline="central"
-        font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${fgColor}">${esc}</text>
-</svg>`;
-    return sharp(Buffer.from(svg)).png().toBuffer();
+    const escSvg = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Visuel à gauche uniquement si une image custom existe (sinon texte seul).
+    let visualBuf: Buffer | null = null;
+    const visualSize = Math.floor(height * 0.66);
+    if (stampFilledUrl) {
+      try {
+        const res = await fetchWithAutoResign(stampFilledUrl);
+        const raw = Buffer.from(await res.arrayBuffer());
+        const resized = await sharp(raw)
+          .resize(visualSize, visualSize, { fit: 'cover', position: 'centre' })
+          .png()
+          .toBuffer();
+        if (stampRound) {
+          const mask = Buffer.from(
+            `<svg width="${visualSize}" height="${visualSize}">` +
+            `<circle cx="${visualSize / 2}" cy="${visualSize / 2}" r="${visualSize / 2}" fill="white"/></svg>`,
+          );
+          visualBuf = await sharp(resized).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
+        } else {
+          visualBuf = resized;
+        }
+      } catch { /* image indisponible → texte seul */ }
+    }
+
+    // Zone de texte : après le visuel (marge 5 %) ou pleine largeur.
+    const margin = Math.round(width * 0.05);
+    const zoneX = visualBuf ? margin * 2 + visualSize : margin;
+    const zoneW = width - zoneX - margin;
+
+    // Découpe en 2 lignes équilibrées si le texte est long.
+    const words = text.split(/\s+/);
+    let lines: string[] = [text];
+    if (text.length > 14 && words.length > 1) {
+      let best = 1, bestDiff = Infinity;
+      for (let i = 1; i < words.length; i++) {
+        const a = words.slice(0, i).join(' ').length;
+        const b2 = words.slice(i).join(' ').length;
+        const d = Math.abs(a - b2);
+        if (d < bestDiff) { bestDiff = d; best = i; }
+      }
+      lines = [words.slice(0, best).join(' '), words.slice(best).join(' ')];
+    }
+
+    // Taille : largeur DejaVu Bold ≈ 0.68 em/caractère, bornes par nb de lignes.
+    const maxLen = Math.max(...lines.map((l) => l.length), 1);
+    const fs = Math.max(10, Math.floor(Math.min(
+      height * (lines.length === 1 ? 0.26 : 0.20),
+      zoneW / (0.68 * maxLen),
+    )));
+    const centerX = zoneX + zoneW / 2;
+    const centerY = height / 2;
+    const textEls = lines.length === 1
+      ? `<text x="${centerX}" y="${centerY}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${fgColor}">${escSvg(lines[0])}</text>`
+      : `<text x="${centerX}" y="${centerY - fs * 0.65}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${fgColor}">${escSvg(lines[0])}</text>` +
+        `<text x="${centerX}" y="${centerY + fs * 0.65}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${fgColor}">${escSvg(lines[1])}</text>`;
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${textEls}</svg>`;
+    const textPng = await sharp(Buffer.from(svg)).png().toBuffer();
+
+    const layers: { input: Buffer; left?: number; top?: number }[] = [{ input: textPng, left: 0, top: 0 }];
+    if (visualBuf) {
+      layers.unshift({ input: visualBuf, left: margin, top: Math.floor((height - visualSize) / 2) });
+    }
+    return sharp({
+      create: { width, height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+    }).composite(layers).png().toBuffer();
   }
 
   const fg = fgColor.replace('#', '').padEnd(6, 'f');
