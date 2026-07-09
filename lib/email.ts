@@ -37,10 +37,18 @@ function esc(s: string): string {
  * au-dessus du titre, sur fond couleur du template. Utilisé par tous les
  * emails clients « carte de fidélité ».
  */
+/** Tuile logo compatible clients mail (Gmail supprime object-fit) :
+ *  cellule de tableau centrée + max-width/height — centrage fiable partout. */
+function logoTile(url: string, tile: number, radius: number): string {
+  const inner = Math.round(tile * 0.8);
+  return `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 1rem;"><tr>
+    <td width="${tile}" height="${tile}" align="center" valign="middle" style="width:${tile}px;height:${tile}px;background:rgba(255,255,255,0.25);border:2px solid rgba(255,255,255,0.4);border-radius:${radius}px;">
+      <img src="${url}" alt="" style="max-width:${inner}px;max-height:${inner}px;display:block;margin:0 auto;" />
+    </td></tr></table>`;
+}
+
 function emailHeader(opts: { color: string; title: string; subtitle?: string; logoUrl?: string | null }): string {
-  const logo = opts.logoUrl
-    ? `<img src="${opts.logoUrl}" alt="" width="72" height="72" style="width:72px;height:72px;object-fit:contain;background:rgba(255,255,255,0.25);border:2px solid rgba(255,255,255,0.4);border-radius:16px;padding:8px;display:block;margin:0 auto 1rem;" />`
-    : '';
+  const logo = opts.logoUrl ? logoTile(opts.logoUrl, 84, 16) : '';
   return `
         <div style="background: ${opts.color}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
           ${logo}
@@ -1018,7 +1026,7 @@ export async function sendGiftVoucherEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
         <div style="background: ${color}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
-          ${giftLogo ? `<img src="${giftLogo}" alt="" width="64" height="64" style="width:64px;height:64px;object-fit:contain;background:rgba(255,255,255,0.25);border:2px solid rgba(255,255,255,0.4);border-radius:14px;padding:7px;display:block;margin:0 auto 0.9rem;" />` : ''}
+          ${giftLogo ? logoTile(giftLogo, 72, 14) : ''}
           <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase;">Bon cadeau</p>
           <p style="color: white; margin: 0.4rem 0 0; font-size: 2.2rem; font-weight: 800;">${amount} €</p>
           <p style="color: rgba(255,255,255,0.9); margin: 0.4rem 0 0;">${safeBiz}</p>
@@ -1066,7 +1074,7 @@ export async function sendPackageEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
         <div style="background: ${color}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
-          ${pkgLogo ? `<img src="${pkgLogo}" alt="" width="64" height="64" style="width:64px;height:64px;object-fit:contain;background:rgba(255,255,255,0.25);border:2px solid rgba(255,255,255,0.4);border-radius:14px;padding:7px;display:block;margin:0 auto 0.9rem;" />` : ''}
+          ${pkgLogo ? logoTile(pkgLogo, 72, 14) : ''}
           <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase;">Forfait</p>
           <p style="color: white; margin: 0.4rem 0 0; font-size: 1.6rem; font-weight: 800;">${safeName}</p>
           <p style="color: rgba(255,255,255,0.9); margin: 0.4rem 0 0;">${sessions} séance${sessions > 1 ? 's' : ''} — ${safeBiz}</p>
