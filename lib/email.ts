@@ -1,6 +1,26 @@
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+import { supabaseAdmin } from '@/lib/supabase-admin';
+
+/**
+ * Logo de l'établissement pour l'en-tête d'email — résolu par slug quand la
+ * fonction l'a, sinon par nom (unique en pratique sur la plateforme).
+ * Best-effort : null en cas d'échec, l'email part sans logo.
+ */
+async function logoFor(opts: { slug?: string | null; name?: string | null }): Promise<string | null> {
+  try {
+    if (opts.slug) {
+      const { data } = await supabaseAdmin.from('restaurants').select('logo_url').eq('slug', opts.slug).maybeSingle();
+      if (data) return data.logo_url ?? null;
+    }
+    if (opts.name) {
+      const { data } = await supabaseAdmin.from('restaurants').select('logo_url').eq('name', opts.name).limit(1).maybeSingle();
+      return data?.logo_url ?? null;
+    }
+  } catch { /* best-effort */ }
+  return null;
+}
 
 /** Escape HTML special characters to prevent injection in email templates. */
 function esc(s: string): string {
@@ -79,11 +99,11 @@ export async function sendWelcomeEmail({
   await resend.emails.send({
     from: `${restaurantName} <noreply@rebites.be>`,
     to,
-    subject: `Bienvenue chez ${restaurantName} ! 🎉`,
+    subject: `Bienvenue chez ${restaurantName}`,
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
 
-${emailHeader({ color: safeColor, title: '🎉 Bienvenue !', subtitle: safeName, logoUrl: restaurantLogoUrl })}
+${emailHeader({ color: safeColor, title: 'Bienvenue !', subtitle: safeName, logoUrl: restaurantLogoUrl })}
 
         <p style="color: #374151; font-size: 1rem;">
           Bonjour <strong>${safeFname}</strong> !
@@ -104,7 +124,7 @@ ${emailHeader({ color: safeColor, title: '🎉 Bienvenue !', subtitle: safeName,
 
         <div style="background: #f9fafb; border-radius: 12px; padding: 1rem; margin-bottom: 2rem;">
           <p style="margin: 0; color: #6b7280; font-size: 0.85rem; text-align: center;">
-            💡 Conseil : faites une capture d'écran de ce QR code pour l'avoir toujours avec vous !
+            Conseil : faites une capture d'écran de ce QR code pour l'avoir toujours avec vous !
           </p>
         </div>
 
@@ -200,10 +220,7 @@ export async function sendReferralSuccessEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
 
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <h1 style="color: white; margin: 0; font-size: 1.5rem;">Parrainage réussi !</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeName}</p>
-        </div>
+        ${emailHeader({ color: safeColor, title: `Parrainage réussi !`, subtitle: `${safeName}`, logoUrl: await logoFor({ name: restaurantName }) })}
 
         <p style="color: #374151; font-size: 1rem;">
           Bonjour <strong>${safeReferrer}</strong>,
@@ -318,10 +335,7 @@ export async function sendBookingConfirmationEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
 
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <h1 style="color: white; margin: 0; font-size: 1.5rem;">Rendez-vous confirmé</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeBizName}</p>
-        </div>
+        ${emailHeader({ color: safeColor, title: `Rendez-vous confirmé`, subtitle: `${safeBizName}`, logoUrl: await logoFor({ slug: businessSlug }) })}
 
         <p style="color: #374151; font-size: 1rem;">
           Bonjour <strong>${safeClient}</strong>,
@@ -486,10 +500,7 @@ export async function sendBirthdayEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem;">
 
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <h1 style="color: white; margin: 0; font-size: 2rem;">🎂</h1>
-          <h2 style="color: white; margin: 0.5rem 0 0 0;">Joyeux anniversaire !</h2>
-        </div>
+        ${emailHeader({ color: safeColor, title: 'Joyeux anniversaire !', logoUrl: await logoFor({ name: restaurantName }) })}
 
         <p style="color: #374151;">
           Bonjour <strong>${safeFname}</strong> !
@@ -590,10 +601,7 @@ export async function sendReminderEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
 
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <h1 style="color: white; margin: 0; font-size: 1.5rem;">Rappel</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">Votre rendez-vous est ${timeLabel}</p>
-        </div>
+        ${emailHeader({ color: safeColor, title: `Rappel`, subtitle: `Votre rendez-vous est ${timeLabel}`, logoUrl: await logoFor({ slug: businessSlug }) })}
 
         <p style="color: #374151; font-size: 1rem;">
           Bonjour <strong>${safeClient}</strong>,
@@ -715,10 +723,7 @@ export async function sendStaffNotificationEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
 
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <h1 style="color: white; margin: 0; font-size: 1.5rem;">${title}</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeBizName}</p>
-        </div>
+        ${emailHeader({ color: safeColor, title: `${title}`, subtitle: `${safeBizName}`, logoUrl: await logoFor({ name: businessName }) })}
 
         <p style="color: #374151; font-size: 1rem;">
           Bonjour <strong>${safeStaff}</strong>,
@@ -815,10 +820,7 @@ export async function sendWaitlistNotifyEmail({
     subject: `Un créneau s'est libéré — ${businessName}`,
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <h1 style="color: white; margin: 0; font-size: 1.5rem;">Bonne nouvelle !</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeBizName}</p>
-        </div>
+        ${emailHeader({ color: safeColor, title: `Bonne nouvelle !`, subtitle: `${safeBizName}`, logoUrl: await logoFor({ slug: businessSlug }) })}
         <p style="color: #374151; font-size: 1rem;">Bonjour <strong>${safeClient}</strong>,</p>
         <p style="color: #374151;">
           Un créneau vient de se libérer pour le service <strong>${safeService}</strong>
@@ -881,10 +883,7 @@ export async function sendFollowUpEmail({
     subject: `Merci pour votre visite — ${businessName}`,
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <h1 style="color: white; margin: 0; font-size: 1.5rem;">Merci !</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeBizName}</p>
-        </div>
+        ${emailHeader({ color: safeColor, title: `Merci !`, subtitle: `${safeBizName}`, logoUrl: await logoFor({ slug: businessSlug }) })}
         <p style="color: #374151; font-size: 1rem;">Bonjour <strong>${safeClient}</strong>,</p>
         <p style="color: #374151;">
           Merci d'être venu(e) pour votre rendez-vous
@@ -902,9 +901,9 @@ export async function sendFollowUpEmail({
         </div>
         ${reviewUrl && /^https:\/\//.test(reviewUrl) ? `
         <div style="text-align: center; margin: 0 0 2rem;">
-          <p style="color: #374151; font-size: 0.9rem; margin-bottom: 0.75rem;">Votre avis compte énormément pour nous 🙏</p>
+          <p style="color: #374151; font-size: 0.9rem; margin-bottom: 0.75rem;">Votre avis compte énormément pour nous.</p>
           <a href="${reviewUrl}" target="_blank" style="display: inline-block; border: 1px solid #e5e7eb; color: #374151; text-decoration: none; padding: 0.75rem 1.75rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
-            ⭐ Laisser un avis Google
+            Laisser un avis Google
           </a>
         </div>` : ''}
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
@@ -930,10 +929,7 @@ export async function sendRewardReachedEmail({
     subject: `🏆 Félicitations ${esc(firstName)} — votre récompense est prête !`,
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <div style="font-size: 3rem; margin-bottom: 0.5rem;">🏆</div>
-          <h1 style="color: white; font-size: 1.25rem; margin: 0;">Récompense débloquée !</h1>
-        </div>
+        ${emailHeader({ color: safeColor, title: 'Récompense débloquée !', logoUrl: await logoFor({ name: restaurantName }) })}
         <p style="color: #374151; font-size: 0.95rem; line-height: 1.6;">
           Bonjour <strong>${esc(firstName)}</strong>,<br/><br/>
           Votre fidélité chez <strong>${esc(restaurantName)}</strong> a payé ! Vous avez atteint le seuil de récompense.
@@ -970,10 +966,7 @@ export async function sendNearRewardEmail({
     subject: `🔔 ${esc(firstName)}, plus que ${remaining} ${unit} !`,
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <div style="font-size: 3rem; margin-bottom: 0.5rem;">🔔</div>
-          <h1 style="color: white; font-size: 1.25rem; margin: 0;">Vous y êtes presque !</h1>
-        </div>
+        ${emailHeader({ color: safeColor, title: 'Vous y êtes presque !', logoUrl: await logoFor({ name: restaurantName }) })}
         <p style="color: #374151; font-size: 0.95rem; line-height: 1.6;">
           Bonjour <strong>${esc(firstName)}</strong>,<br/><br/>
           Plus que <strong>${remaining} ${unit}</strong> pour votre récompense chez <strong>${esc(restaurantName)}</strong> !
@@ -1017,6 +1010,7 @@ export async function sendGiftVoucherEmail({
   const safeMsg = personalMessage ? esc(personalMessage) : null;
   const expiry = expiresAt ? new Date(expiresAt).toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
 
+  const giftLogo = await logoFor({ name: businessName });
   await resend.emails.send({
     from: `${businessName} <noreply@rebites.be>`,
     to,
@@ -1024,6 +1018,7 @@ export async function sendGiftVoucherEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
         <div style="background: ${color}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
+          ${giftLogo ? `<img src="${giftLogo}" alt="" width="64" height="64" style="width:64px;height:64px;object-fit:contain;background:#ffffff;border-radius:14px;padding:7px;display:block;margin:0 auto 0.9rem;" />` : ''}
           <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase;">Bon cadeau</p>
           <p style="color: white; margin: 0.4rem 0 0; font-size: 2.2rem; font-weight: 800;">${amount} €</p>
           <p style="color: rgba(255,255,255,0.9); margin: 0.4rem 0 0;">${safeBiz}</p>
@@ -1063,6 +1058,7 @@ export async function sendPackageEmail({
   const safeName = esc(packageName);
   const expiry = expiresAt ? new Date(expiresAt).toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
 
+  const pkgLogo = await logoFor({ name: businessName });
   await resend.emails.send({
     from: `${businessName} <noreply@rebites.be>`,
     to,
@@ -1070,6 +1066,7 @@ export async function sendPackageEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
         <div style="background: ${color}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
+          ${pkgLogo ? `<img src="${pkgLogo}" alt="" width="64" height="64" style="width:64px;height:64px;object-fit:contain;background:#ffffff;border-radius:14px;padding:7px;display:block;margin:0 auto 0.9rem;" />` : ''}
           <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase;">Forfait</p>
           <p style="color: white; margin: 0.4rem 0 0; font-size: 1.6rem; font-weight: 800;">${safeName}</p>
           <p style="color: rgba(255,255,255,0.9); margin: 0.4rem 0 0;">${sessions} séance${sessions > 1 ? 's' : ''} — ${safeBiz}</p>
