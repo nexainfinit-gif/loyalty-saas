@@ -236,6 +236,8 @@
     "logoFileHint": "PNG, JPEG of WebP · max 2 MB",
     "logoWalletRequired": "⚠ Vereist voor Google Wallet",
     "logoChooseFile": "Bestand kiezen…",
+    "logoCropTitle": "Logo bijsnijden",
+    "logoCropConfirm": "Bijsnijden bevestigen",
     "logoUploading": "Uploaden…",
     "logoUploadError": "Fout bij het uploaden.",
     "logoSaved": "✓ Logo opgeslagen",

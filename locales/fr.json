@@ -253,6 +253,8 @@
     "logoFileHint": "PNG, JPEG ou WebP · max 2 Mo",
     "logoWalletRequired": "⚠ Requis pour Google Wallet",
     "logoChooseFile": "Choisir un fichier…",
+    "logoCropTitle": "Recadrer le logo",
+    "logoCropConfirm": "Valider le cadrage",
     "logoUploading": "Envoi…",
     "logoUploadError": "Erreur lors de l'envoi.",
     "logoSaved": "✓ Logo enregistré",

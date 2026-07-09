@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 // Recharts imported by sub-components (OverviewTab, AnalyticsTab)
 import { Badge } from '@/components/ui/Badge'
-import TeamAccessSection from '@/components/TeamAccessSection';
+import TeamAccessSection from '@/components/TeamAccessSection'
+import LogoCropper from '@/components/LogoCropper';
 import DashboardTutorial from '@/components/DashboardTutorial';
 import LoyaltySetupModal from '@/components/LoyaltySetupModal';
 import { BOOKING_ELIGIBLE_TYPES } from '@/lib/booking-eligibility';
@@ -231,6 +232,7 @@ export default function DashboardPage() {
   });
   const [savingSettings, setSavingSettings]   = useState(false);
   const [logoFile,       setLogoFile]         = useState<File | null>(null);
+  const [logoToCrop,     setLogoToCrop]        = useState<File | null>(null); // fichier brut → recadreur
   const [logoPreview,    setLogoPreview]       = useState<string | null>(null);
   const [logoUploading,  setLogoUploading]     = useState(false);
   const [logoError,      setLogoError]         = useState('');
@@ -2163,8 +2165,7 @@ export default function DashboardPage() {
                           setLogoError('');
                           setLogoSaved(false);
                           const file = e.target.files?.[0] ?? null;
-                          setLogoFile(file);
-                          setLogoPreview(file ? URL.createObjectURL(file) : null);
+                          setLogoToCrop(file); // → recadrage avant validation
                           // Reset input so the same file can be re-selected
                           e.target.value = '';
                         }}
@@ -2173,6 +2174,18 @@ export default function DashboardPage() {
                         {logoFile ? logoFile.name : t('settings.logoChooseFile')}
                       </span>
                     </label>
+                    {logoToCrop && (
+                      <LogoCropper
+                        file={logoToCrop}
+                        onCancel={() => setLogoToCrop(null)}
+                        onCropped={(blob) => {
+                          const cropped = new File([blob], 'logo.png', { type: 'image/png' });
+                          setLogoFile(cropped);
+                          setLogoPreview(URL.createObjectURL(cropped));
+                          setLogoToCrop(null);
+                        }}
+                      />
+                    )}
                     <button
                       onClick={uploadLogo}
                       disabled={!logoFile || logoUploading}
