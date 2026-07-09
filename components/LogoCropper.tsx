@@ -68,7 +68,26 @@ export default function LogoCropper({
       (VIEW / 2 + off.y - h / 2) * k,
       w * k, h * k,
     );
-    canvas.toBlob(b => { if (b) onCropped(b); }, 'image/png');
+    // Rognage auto des marges transparentes : le fichier livré est serré sur
+    // le visuel (sinon les logos « flottent » petits dans emails et pass).
+    const data = ctx.getImageData(0, 0, OUT, OUT).data;
+    let minX = OUT, minY = OUT, maxX = -1, maxY = -1;
+    for (let y = 0; y < OUT; y++) {
+      for (let x = 0; x < OUT; x++) {
+        if (data[(y * OUT + x) * 4 + 3] > 8) {
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) { canvas.toBlob(b => { if (b) onCropped(b); }, 'image/png'); return; }
+    const pad = Math.round(OUT * 0.02);
+    const bx = Math.max(0, minX - pad), by = Math.max(0, minY - pad);
+    const bw = Math.min(OUT, maxX + pad + 1) - bx, bh = Math.min(OUT, maxY + pad + 1) - by;
+    const out = document.createElement('canvas');
+    out.width = bw; out.height = bh;
+    out.getContext('2d')!.drawImage(canvas, bx, by, bw, bh, 0, 0, bw, bh);
+    out.toBlob(b => { if (b) onCropped(b); }, 'image/png');
   }
 
   return (

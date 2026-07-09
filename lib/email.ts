@@ -39,9 +39,10 @@ function esc(s: string): string {
  */
 /** Tuile logo compatible clients mail (Gmail supprime object-fit) :
  *  cellule de tableau centrée + max-width/height — centrage fiable partout. */
-function logoTile(url: string, tile: number, _radius: number): string {
-  // Sans cadre (choix design) : logo nu, centré, grande taille.
-  return `<img src="${url}" alt="" style="max-width:${tile}px;max-height:${tile}px;display:block;margin:0 auto 1rem;" />`;
+function logoTile(url: string, maxH: number, _radius: number): string {
+  // Sans cadre : logo nu centré. Contrainte orientée LARGEUR (220px) pour que
+  // les logos-texte (wordmarks) s'affichent grands ; hauteur plafonnée.
+  return `<img src="${url}" alt="" style="max-width:220px;max-height:${maxH}px;display:block;margin:0 auto 1rem;" />`;
 }
 
 function emailHeader(opts: { color: string; title: string; subtitle?: string; logoUrl?: string | null }): string {
