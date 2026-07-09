@@ -58,6 +58,8 @@ interface Controls {
   iconImageUrl:   string;
   /** Visuel du bon « récompense » ('' = cercle par défaut / tampon rempli) */
   rewardImageUrl: string;
+  /** Texte en grand gras sur le bon (remplace le visuel si rempli) */
+  rewardStripText: string;
   // Fields
   stampsTotal:    number;
   currentStamps:  number;
@@ -177,6 +179,7 @@ function metaToControls(meta: PassMeta): Controls {
     iconBgColor:     '',
     iconImageUrl:    '',
     rewardImageUrl:  '',
+    rewardStripText: '',
     stampsTotal:     meta.stampsTotal,
     currentStamps:   meta.exampleStamps,
     currentPoints:   meta.examplePoints,
@@ -220,6 +223,7 @@ function configJsonToControls(base: Controls, cfg: Record<string, unknown>): Con
     iconBgColor:     (cfg.iconBgColor as string) ?? '',
     iconImageUrl:    (cfg.iconImageUrl as string) ?? '',
     rewardImageUrl:  (cfg.rewardImageUrl as string) ?? '',
+    rewardStripText: (cfg.rewardStripText as string) ?? '',
     rewardText:      (cfg.rewardText as string) ?? base.rewardText,
     headerFields:    Array.isArray(cfg.headerFields) ? cfg.headerFields as PassField[] : base.headerFields,
     secondaryFields: Array.isArray(cfg.secondaryFields) ? cfg.secondaryFields as PassField[] : base.secondaryFields,
@@ -1061,6 +1065,7 @@ function controlsToConfigJson(c: Controls): Record<string, unknown> {
     ...(c.iconBgColor ? { iconBgColor: c.iconBgColor } : {}),
     ...(c.iconImageUrl ? { iconImageUrl: c.iconImageUrl } : {}),
     ...(c.rewardImageUrl ? { rewardImageUrl: c.rewardImageUrl } : {}),
+    ...(c.rewardStripText ? { rewardStripText: c.rewardStripText } : {}),
     stampsTotal:     c.stampsTotal,
     currentPoints:   c.currentPoints,
     rewardThreshold: c.rewardThreshold,
@@ -1853,6 +1858,18 @@ function WalletPreviewInner() {
                 ) : (
                   <p className="text-[11px] text-gray-400">{t('walletPreview.rewardImageFollows')}</p>
                 )}
+                {/* Texte en grand gras sur le bon (prioritaire sur le visuel) */}
+                <Field label={t('walletPreview.fieldRewardText')}>
+                  <input
+                    type="text"
+                    value={controls.rewardStripText}
+                    onChange={e => handleChange('rewardStripText', e.target.value)}
+                    maxLength={32}
+                    placeholder={t('walletPreview.rewardTextPlaceholder')}
+                    className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl placeholder:text-gray-400 transition-colors"
+                  />
+                </Field>
+                <p className="text-[11px] text-gray-400">{t('walletPreview.rewardTextHint')}</p>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-700">{t('walletPreview.showLogoTextLabel')}</p>

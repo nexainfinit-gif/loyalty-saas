@@ -3,6 +3,13 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Vercel : les lambdas n'ont AUCUNE police système — on embarque DejaVu
+  // (texte des strips Wallet). Sans cette inclusion, le tracing exclurait
+  // les .ttf et le texte SVG rendrait des carrés (tofu).
+  outputFileTracingIncludes: {
+    '/api/wallet/**': ['./assets/fonts/**'],
+    '/api/scan/**':   ['./assets/fonts/**'],
+  },
   async headers() {
     return [
       {

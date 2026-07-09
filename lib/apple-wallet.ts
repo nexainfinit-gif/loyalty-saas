@@ -5,6 +5,14 @@ import JSZip from 'jszip';
 import sharp from 'sharp';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import path from 'path';
+
+// Vercel n'a aucune police système : pointe fontconfig vers la DejaVu embarquée
+// (assets/fonts, incluse dans la lambda via outputFileTracingIncludes) pour que
+// le texte SVG des strips se rende au lieu d'afficher des carrés.
+if (!process.env.FONTCONFIG_PATH) {
+  process.env.FONTCONFIG_PATH = path.join(process.cwd(), 'assets', 'fonts');
+}
 
 /* ── App URL (runtime-safe, avoids Next.js build-time inlining) ─────────────── */
 
@@ -371,8 +379,23 @@ async function generateRewardStrip(opts: {
   fgColor: string;
   stampFilledUrl?: string;
   stampRound?: boolean;
+  /** Texte en grand gras au centre du bon (remplace le visuel). */
+  rewardText?: string;
 }): Promise<Buffer> {
-  const { width, height, fgColor, stampFilledUrl, stampRound = true } = opts;
+  const { width, height, fgColor, stampFilledUrl, stampRound = true, rewardText } = opts;
+
+  if (rewardText && rewardText.trim()) {
+    // Texte gras centré, taille auto selon la longueur (1 ligne).
+    const text = rewardText.trim();
+    const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const fs = Math.round(Math.min(height * 0.34, (width * 0.92) / (0.62 * Math.max(text.length, 1))));
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  <text x="${width / 2}" y="${height / 2}" text-anchor="middle" dominant-baseline="central"
+        font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${fgColor}">${esc}</text>
+</svg>`;
+    return sharp(Buffer.from(svg)).png().toBuffer();
+  }
+
   const fg = fgColor.replace('#', '').padEnd(6, 'f');
   const r = parseInt(fg.slice(0, 2), 16);
   const g = parseInt(fg.slice(2, 4), 16);
@@ -736,7 +759,10 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     // Visuel du bon configurable (cfg.rewardImageUrl), repli tampon rempli,
     // puis cercle par défaut.
     const rewardImageUrl = (cfg.rewardImageUrl as string | undefined) || stampFilledUrl;
-    const rewardOpts = { fgColor: fgHex, stampFilledUrl: rewardImageUrl, stampRound };
+    const rewardOpts = {
+      fgColor: fgHex, stampFilledUrl: rewardImageUrl, stampRound,
+      rewardText: (cfg.rewardStripText as string | undefined) || undefined,
+    };
     imagePromises.push(
       generateRewardStrip({ ...rewardOpts, width: 375, height: 123 }),
       generateRewardStrip({ ...rewardOpts, width: 750, height: 246 }),
