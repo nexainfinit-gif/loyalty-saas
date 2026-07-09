@@ -179,7 +179,7 @@ function buildPassJson(
         headerFields:    [{ key: 'status', label: 'STATUT', value: '🎉 Complète !' }],
         primaryFields:   [],
         secondaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgSecondaryFields],
-        auxiliaryFields: [{ key: 'action', label: 'ACTION', value: 'Présentez au comptoir' }, ...cfgAuxiliaryFields],
+        auxiliaryFields: [{ key: 'remaining', label: 'STATUT', value: 'Récompense disponible 🎉', changeMessage: '%@' }, { key: 'action', label: 'ACTION', value: 'Présentez au comptoir' }, ...cfgAuxiliaryFields],
         backFields:      [...defaultBackFields, ...cfgBackFields],
       };
     } else {
@@ -188,7 +188,7 @@ function buildPassJson(
         headerFields:    autoHeaderFields,
         primaryFields:   [],
         secondaryFields: [holderField, { key: 'reward', label: 'RÉCOMPENSE', value: rewardMsg }, ...cfgSecondaryFields],
-        auxiliaryFields: [{ key: 'remaining', label: 'RESTANTS', value: `${remaining} tampons` }, ...cfgAuxiliaryFields],
+        auxiliaryFields: [{ key: 'remaining', label: 'RESTANTS', value: `${remaining} tampons`, changeMessage: 'Plus que %@ avant votre récompense !' }, ...cfgAuxiliaryFields],
         backFields:      [...defaultBackFields, ...cfgBackFields],
       };
     }
