@@ -926,7 +926,7 @@ export async function sendRewardReachedEmail({
   await resend.emails.send({
     from: `${restaurantName} <noreply@rebites.be>`,
     to,
-    subject: `🏆 Félicitations ${esc(firstName)} — votre récompense est prête !`,
+    subject: `Félicitations ${esc(firstName)} — votre récompense est prête !`,
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
         ${emailHeader({ color: safeColor, title: 'Récompense débloquée !', logoUrl: await logoFor({ name: restaurantName }) })}
@@ -963,7 +963,7 @@ export async function sendNearRewardEmail({
   await resend.emails.send({
     from: `${restaurantName} <noreply@rebites.be>`,
     to,
-    subject: `🔔 ${esc(firstName)}, plus que ${remaining} ${unit} !`,
+    subject: `${esc(firstName)}, plus que ${remaining} ${unit} !`,
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
         ${emailHeader({ color: safeColor, title: 'Vous y êtes presque !', logoUrl: await logoFor({ name: restaurantName }) })}
