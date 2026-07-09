@@ -33,7 +33,7 @@ export async function POST(
 
   const { data: restaurant, error: rErr } = await supabase
     .from('restaurants')
-    .select('id, name, primary_color, plan')
+    .select('id, name, primary_color, plan, logo_url')
     .eq('slug', slug)
     .single()
 
@@ -157,6 +157,7 @@ export async function POST(
         firstName: first_name,
         restaurantName: restaurant.name,
         restaurantColor: restaurant.primary_color ?? '#FF6B35',
+        restaurantLogoUrl: restaurant.logo_url ?? null,
         verificationToken: emailVerificationToken,
       })
     } catch (emailErr) {

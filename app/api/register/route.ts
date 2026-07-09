@@ -205,6 +205,7 @@ export async function POST(req: NextRequest) {
 
   try {
     await sendWelcomeEmail({
+      restaurantLogoUrl: (restaurant as { logo_url?: string | null })?.logo_url ?? null,
       to: email,
       firstName,
       restaurantName: restaurant.name,

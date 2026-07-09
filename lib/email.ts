@@ -12,6 +12,23 @@ function esc(s: string): string {
     .replace(/'/g, '&#x27;');
 }
 
+/**
+ * En-tête d'email brandé établissement : logo sur tuile blanche (si fourni)
+ * au-dessus du titre, sur fond couleur du template. Utilisé par tous les
+ * emails clients « carte de fidélité ».
+ */
+function emailHeader(opts: { color: string; title: string; subtitle?: string; logoUrl?: string | null }): string {
+  const logo = opts.logoUrl
+    ? `<img src="${opts.logoUrl}" alt="" width="72" height="72" style="width:72px;height:72px;object-fit:contain;background:#ffffff;border-radius:16px;padding:8px;display:block;margin:0 auto 1rem;" />`
+    : '';
+  return `
+        <div style="background: ${opts.color}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
+          ${logo}
+          <h1 style="color: white; margin: 0; font-size: 1.5rem;">${opts.title}</h1>
+          ${opts.subtitle ? `<p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${opts.subtitle}</p>` : ''}
+        </div>`;
+}
+
 /** Validate a CSS hex color; fall back to brand default if malformed. */
 function safeCssColor(color: string): string {
   return /^#[0-9A-Fa-f]{3,6}$/.test(color) ? color : '#FF6B35';
@@ -32,6 +49,8 @@ interface WelcomeEmailProps {
   referralRewardAmount?: number | null;
   /** Program type for referral reward labeling. */
   programType?: 'points' | 'stamps';
+  /** Logo de l'établissement (affiché en tête d'email). */
+  restaurantLogoUrl?: string | null;
 }
 
 export async function sendWelcomeEmail({
@@ -45,6 +64,7 @@ export async function sendWelcomeEmail({
   referralCode,
   referralRewardAmount,
   programType,
+  restaurantLogoUrl,
 }: WelcomeEmailProps) {
   const scanUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/scan/${qrToken}`;
   const qrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(scanUrl)}&size=250`;
@@ -63,10 +83,7 @@ export async function sendWelcomeEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
 
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <h1 style="color: white; margin: 0; font-size: 1.5rem;">🎉 Bienvenue !</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeName}</p>
-        </div>
+${emailHeader({ color: safeColor, title: '🎉 Bienvenue !', subtitle: safeName, logoUrl: restaurantLogoUrl })}
 
         <p style="color: #374151; font-size: 1rem;">
           Bonjour <strong>${safeFname}</strong> !
@@ -383,6 +400,7 @@ interface VerificationEmailProps {
   restaurantName: string;
   restaurantColor: string;
   verificationToken: string;
+  restaurantLogoUrl?: string | null;
 }
 
 export async function sendVerificationEmail({
@@ -391,6 +409,7 @@ export async function sendVerificationEmail({
   restaurantName,
   restaurantColor,
   verificationToken,
+  restaurantLogoUrl,
 }: VerificationEmailProps) {
   const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/verify-email?token=${encodeURIComponent(verificationToken)}`;
   const safeColor = safeCssColor(restaurantColor);
@@ -404,10 +423,7 @@ export async function sendVerificationEmail({
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
 
-        <div style="background: ${safeColor}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
-          <h1 style="color: white; margin: 0; font-size: 1.5rem;">Confirmez votre email</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0;">${safeName}</p>
-        </div>
+${emailHeader({ color: safeColor, title: 'Confirmez votre email', subtitle: `${safeName}`, logoUrl: restaurantLogoUrl })}
 
         <p style="color: #374151; font-size: 1rem;">
           Bonjour <strong>${safeFname}</strong>,
