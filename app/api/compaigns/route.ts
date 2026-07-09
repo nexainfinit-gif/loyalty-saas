@@ -126,7 +126,7 @@ export async function POST(req: Request) {
       segment,
       segment_type: segment,
       status: scheduled_at ? 'scheduled' : 'sending',
-      scheduled_at: scheduled_at ?? null,
+      scheduled_at: scheduled_at || null, // '' du formulaire = non planifiée ('??' laissait passer la chaîne vide → timestamp invalide)
       recipients_count: recipients.length,
     }).select().single()
 
