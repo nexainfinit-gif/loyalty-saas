@@ -125,6 +125,26 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
     return () => window.removeEventListener('resize', positionTooltip);
   }, [positionTooltip]);
 
+  // Étape interactive : le voile est transparent pour laisser configurer,
+  // mais on bloque toute ÉCHAPPATOIRE — seuls le contenu principal (<main>)
+  // et la carte du tutoriel restent cliquables (sidebar, Scanner QR, Studio
+  // Wallet, nav mobile, déconnexion : verrouillés).
+  useEffect(() => {
+    if (!step.interactive) return;
+    const block = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.closest('main') || target.closest('[data-tutorial-card]'))) return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    document.addEventListener('pointerdown', block, true);
+    document.addEventListener('click', block, true);
+    return () => {
+      document.removeEventListener('pointerdown', block, true);
+      document.removeEventListener('click', block, true);
+    };
+  }, [step.interactive]);
+
   const handleNext = useCallback(() => {
     if (gated) return;
     if (isLast) {
@@ -170,6 +190,7 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
       {(tooltipPos || step.interactive) && (
         <div
           ref={tooltipRef}
+          data-tutorial-card
           className={[
             'fixed z-[100] w-[calc(100vw-24px)] sm:w-80 max-w-80 animate-fade-up',
             step.interactive ? 'bottom-4 right-3 sm:right-4' : '',
