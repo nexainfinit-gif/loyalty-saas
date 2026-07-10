@@ -1089,3 +1089,60 @@ export async function sendPackageEmail({
     `,
   });
 }
+
+interface EventTicketsEmailProps {
+  to: string;
+  buyerName: string;
+  businessName: string;
+  businessColor: string;
+  eventTitle: string;
+  eventStartsAt: string;         // ISO
+  eventLocation?: string | null;
+  tickets: { code: string; url: string }[];
+}
+
+/** Billets d'événement — un bloc code + bouton « Afficher le billet » (QR)
+ *  par billet acheté. Envoyé après paiement vérifié (ou immédiatement si
+ *  l'événement est gratuit). */
+export async function sendEventTicketsEmail({
+  to, buyerName, businessName, businessColor, eventTitle, eventStartsAt, eventLocation, tickets,
+}: EventTicketsEmailProps) {
+  const color = safeCssColor(businessColor);
+  const safeBiz = esc(businessName);
+  const safeBuyer = esc(buyerName);
+  const safeTitle = esc(eventTitle);
+  const safeLoc = eventLocation ? esc(eventLocation) : null;
+  const when = new Date(eventStartsAt).toLocaleString('fr-BE', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  const ticketBlocks = tickets.map((tk, i) => `
+        <div style="background:#f9fafb; border: 2px dashed #d1d5db; border-radius: 12px; padding: 1.25rem; text-align: center; margin: 1rem 0;">
+          <p style="color:#6b7280; font-size: 0.75rem; margin: 0 0 0.4rem; text-transform: uppercase; letter-spacing: 0.08em;">Billet ${tickets.length > 1 ? `${i + 1} / ${tickets.length}` : ''}</p>
+          <p style="font-family: monospace; font-size: 1.35rem; font-weight: 700; letter-spacing: 0.12em; color: #111827; margin: 0 0 0.9rem;">${esc(tk.code)}</p>
+          <a href="${tk.url}" style="display: inline-block; background: ${color}; color: white; text-decoration: none; padding: 0.65rem 1.4rem; border-radius: 10px; font-weight: 600; font-size: 0.9rem;">Afficher le billet (QR)</a>
+        </div>`).join('');
+
+  const eventLogo = await logoFor({ name: businessName });
+  await resend.emails.send({
+    from: `${businessName} <noreply@rebites.be>`,
+    to,
+    subject: `${tickets.length > 1 ? `Vos ${tickets.length} billets` : 'Votre billet'} — ${eventTitle}`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+        <div style="background: ${color}; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
+          ${eventLogo ? logoTile(eventLogo, 80, 14) : ''}
+          <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase;">Billet${tickets.length > 1 ? 's' : ''} d'événement</p>
+          <p style="color: white; margin: 0.4rem 0 0; font-size: 1.5rem; font-weight: 800;">${safeTitle}</p>
+          <p style="color: rgba(255,255,255,0.9); margin: 0.4rem 0 0; font-size: 0.9rem;">${when}${safeLoc ? ` · ${safeLoc}` : ''}</p>
+        </div>
+        <p style="color:#374151;">Merci <strong>${safeBuyer}</strong> ! ${tickets.length > 1 ? 'Vos billets sont' : 'Votre billet est'} ci-dessous — présentez le QR à l'entrée.</p>
+        ${ticketBlocks}
+        <p style="color:#6b7280; font-size: 0.85rem;">Conservez cet email : chaque billet est nominatif pour l'achat et ne peut être utilisé qu'une fois.</p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">${safeBiz} — Billetterie par <a href="https://rebites.be" style="color: #9ca3af;">Rebites</a></p>
+      </div>
+    `,
+  });
+}

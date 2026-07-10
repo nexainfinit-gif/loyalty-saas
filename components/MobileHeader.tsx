@@ -25,6 +25,8 @@ interface Props {
   currentRestaurantId?: string;
   onSwitchRestaurant?: (id: string) => void;
   onAddRestaurant?: () => void;
+  /** Produit fidélité actif (T0) : sans lui, clients + fidélité sont masqués. */
+  hasLoyalty?: boolean;
 }
 
 const BUSINESS_TYPE_EMOJI: Record<string, string> = {
@@ -38,6 +40,7 @@ export default function MobileHeader({
   drawerOpen, onDrawerToggle,
   enabledKpiKeys = [], showUpgrade, onUpgrade,
   restaurants = [], currentRestaurantId, onSwitchRestaurant, onAddRestaurant,
+  hasLoyalty = true,
 }: Props) {
   const { t } = useTranslation();
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -47,8 +50,10 @@ export default function MobileHeader({
 
   const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
     { id: 'overview',   label: t('nav.overview'),   icon: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z' },
-    { id: 'clients',    label: t('nav.clients'),    icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 7a4 4 0 100-8 4 4 0 000 8z M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75' },
-    { id: 'loyalty',    label: t('nav.loyalty'),    icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' },
+    ...(hasLoyalty ? [
+      { id: 'clients' as Tab, label: t('nav.clients'), icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 7a4 4 0 100-8 4 4 0 000 8z M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75' },
+      { id: 'loyalty' as Tab, label: t('nav.loyalty'), icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' },
+    ] : []),
     { id: 'campaigns',  label: t('nav.campaigns'),  icon: 'M3 11l19-9-9 19-2-8-8-2z' },
     { id: 'analytics',  label: t('nav.analytics'),  icon: 'M12 20V10m6 10V4M6 20v-4' },
     { id: 'settings',   label: t('nav.settings'),   icon: 'M12 15a3 3 0 100-6 3 3 0 000 6z' },

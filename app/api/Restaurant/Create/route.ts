@@ -14,7 +14,19 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { name, slug, email, city, phone, business_type, primary_color, logo_url, additional } = await req.json()
+  const { name, slug, email, city, phone, business_type, primary_color, logo_url, additional, products } = await req.json()
+
+  // Profil produit (T0) : liste blanche, fidélité par défaut (compat).
+  const VALID_PRODUCTS = ['loyalty', 'booking', 'ticketing']
+  const productList: string[] = Array.isArray(products)
+    ? products.filter((p: unknown): p is string => typeof p === 'string' && VALID_PRODUCTS.includes(p))
+    : ['loyalty', 'booking']
+  if (productList.length === 0) {
+    return Response.json({ error: 'Choisissez au moins un service.' }, { status: 400 })
+  }
+  // Billetterie seule = plan gratuit (monétisé à la commission par billet) :
+  // pas d'abonnement Stripe → accès dashboard direct.
+  const ticketingOnly = !productList.includes('loyalty') && !productList.includes('booking')
 
   // Vérifie les restaurants (non-démo) existants pour cet owner.
   // NB: .single() échouait silencieusement dès que l'owner avait plusieurs
@@ -65,6 +77,8 @@ export async function POST(req: Request) {
       plan_id: freePlan?.id ?? null,
       primary_color: primary_color ?? '#e85d04',
       logo_url: logo_url ?? null,
+      products: productList,
+      ...(ticketingOnly ? { subscription_status: 'active' } : {}),
     })
     .select()
     .single()

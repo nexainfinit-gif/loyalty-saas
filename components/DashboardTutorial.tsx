@@ -29,9 +29,12 @@ interface Props {
   onStartBooking?: () => void;
   /** Identité configurée (logo uploadé) — déverrouille l'étape 1. */
   identityDone?: boolean;
+  /** Produit fidélité actif (T0) : sans lui, les étapes fidélité/clients
+   *  sont retirées du parcours (organisateur d'événements pur). */
+  loyaltyEnabled?: boolean;
 }
 
-export default function DashboardTutorial({ onComplete, onTabChange, bookingEligible, onStartBooking, identityDone }: Props) {
+export default function DashboardTutorial({ onComplete, onTabChange, bookingEligible, onStartBooking, identityDone, loyaltyEnabled = true }: Props) {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
@@ -45,9 +48,13 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
   const steps = useMemo<TutorialStep[]>(() => {
     const s: TutorialStep[] = [
       { tab: 'settings',   titleKey: 'tutorial.identityTitle',   descKey: 'tutorial.identityDesc', interactive: true, gate: 'identity' },
-      { tab: 'loyalty',    titleKey: 'tutorial.loyaltyTitle',    descKey: 'tutorial.loyaltyDesc',  interactive: true },
+      ...(loyaltyEnabled ? [
+        { tab: 'loyalty' as Tab, titleKey: 'tutorial.loyaltyTitle', descKey: 'tutorial.loyaltyDesc', interactive: true },
+      ] : []),
       { tab: 'overview',   titleKey: 'tutorial.overviewTitle',   descKey: 'tutorial.overviewDesc' },
-      { tab: 'clients',    titleKey: 'tutorial.clientsTitle',    descKey: 'tutorial.clientsDesc' },
+      ...(loyaltyEnabled ? [
+        { tab: 'clients' as Tab, titleKey: 'tutorial.clientsTitle', descKey: 'tutorial.clientsDesc' },
+      ] : []),
       { tab: 'campaigns',  titleKey: 'tutorial.campaignsTitle',  descKey: 'tutorial.campaignsDesc' },
       { tab: 'analytics',  titleKey: 'tutorial.analyticsTitle',  descKey: 'tutorial.analyticsDesc' },
     ];
@@ -55,7 +62,7 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
       s.push({ tab: 'analytics', titleKey: 'tutorial.bookingTitle', descKey: 'tutorial.bookingDesc', booking: true });
     }
     return s;
-  }, [bookingEligible]);
+  }, [bookingEligible, loyaltyEnabled]);
 
   const step = steps[currentStep];
   const isLast = currentStep === steps.length - 1;

@@ -20,6 +20,8 @@ export default function OnboardingPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [businessType, setBusinessType] = useState('restaurant');
   const [customType, setCustomType] = useState('');
+  // Profil produit (T0) : services choisis — fidélité proposée par défaut.
+  const [products, setProducts] = useState<string[]>(['loyalty']);
   const [authEmail, setAuthEmail] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // ?new=1 : création d'un établissement SUPPLÉMENTAIRE depuis le sélecteur
@@ -86,6 +88,7 @@ export default function OnboardingPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (products.length === 0) return;
     setStatus('loading');
     setErrorMsg('');
 
@@ -119,6 +122,7 @@ export default function OnboardingPage() {
           phone: phone || null,
           business_type: final_business_type,
           primary_color,
+          products,
           additional: isAdditional,
         }),
       });
@@ -137,11 +141,12 @@ export default function OnboardingPage() {
 
       if (isAdditional && data.restaurant?.id) {
         // Bascule sur le nouvel établissement (même cookie que le sélecteur).
-        // Direction choose-plan : chaque établissement a son propre
-        // abonnement — le dashboard y renverrait de toute façon.
         document.cookie = `selected_restaurant=${data.restaurant.id}; path=/; max-age=31536000; samesite=lax`;
       }
-      window.location.href = `/${locale}/choose-plan`;
+      // Billetterie seule = plan gratuit (commission par billet) : accès
+      // direct au dashboard, pas de choix de plan payant.
+      const ticketingOnly = !products.includes('loyalty') && !products.includes('booking');
+      window.location.href = `/${locale}/${ticketingOnly ? 'dashboard' : 'choose-plan'}`;
     } catch (err) {
       console.error('Create error:', err);
       setErrorMsg(t('onboarding.networkError'));
@@ -252,6 +257,39 @@ export default function OnboardingPage() {
                   <option key={bt.value} value={bt.value}>{bt.label}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Services (T0) : profil produit de l'établissement */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                {t('onboarding.productsLabel')}
+              </label>
+              <div className="space-y-2">
+                {([
+                  { key: 'loyalty',   title: t('onboarding.productLoyalty'),   desc: t('onboarding.productLoyaltyDesc') },
+                  { key: 'booking',   title: t('onboarding.productBooking'),   desc: t('onboarding.productBookingDesc') },
+                  { key: 'ticketing', title: t('onboarding.productTicketing'), desc: t('onboarding.productTicketingDesc') },
+                ] as const).map(p => (
+                  <label
+                    key={p.key}
+                    className={`flex items-start gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${products.includes(p.key) ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50/50'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={products.includes(p.key)}
+                      onChange={e => setProducts(prev => e.target.checked ? [...prev, p.key] : prev.filter(x => x !== p.key))}
+                      className="mt-0.5 accent-gray-900"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-gray-900">{p.title}</span>
+                      <span className="block text-xs text-gray-500">{p.desc}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {products.length === 0 && (
+                <p className="text-xs text-red-500 mt-1.5">{t('onboarding.productsRequired')}</p>
+              )}
             </div>
 
             {/* Champ custom si "autre" */}

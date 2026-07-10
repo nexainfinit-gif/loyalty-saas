@@ -7,6 +7,8 @@ interface Props {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
   scannerHref: string;
+  /** Produit fidélité actif (T0) : sans lui, clients + scanner sont masqués. */
+  hasLoyalty?: boolean;
 }
 
 /* ─── Inline SVG icons (18x18, matching sidebar) ─── */
@@ -18,13 +20,15 @@ const icons: Record<string, string> = {
   settings: 'M12 15a3 3 0 100-6 3 3 0 000 6z',
 };
 
-export default function MobileBottomNav({ activeTab, onTabChange, scannerHref }: Props) {
+export default function MobileBottomNav({ activeTab, onTabChange, scannerHref, hasLoyalty = true }: Props) {
   const { t } = useTranslation();
 
   const tabs: { id: Tab | 'scanner'; label: string; icon: string }[] = [
     { id: 'overview',  label: t('mobile.home'),      icon: icons.overview },
-    { id: 'clients',   label: t('nav.clients'),      icon: icons.clients },
-    { id: 'scanner',   label: t('mobile.scanner'),   icon: icons.scanner },
+    ...(hasLoyalty ? [
+      { id: 'clients' as Tab, label: t('nav.clients'),  icon: icons.clients },
+      { id: 'scanner' as const, label: t('mobile.scanner'), icon: icons.scanner },
+    ] : []),
     { id: 'campaigns', label: t('nav.campaigns'),    icon: icons.campaigns },
     { id: 'settings',  label: t('mobile.more'),      icon: icons.settings },
   ];

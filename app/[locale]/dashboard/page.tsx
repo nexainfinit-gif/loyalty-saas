@@ -65,6 +65,8 @@ interface Restaurant {
   current_period_end: string | null;
   stripe_customer_id: string | null;
   tutorial_completed_at: string | null;
+  /** Services choisis à l'onboarding : loyalty | booking | ticketing (045). */
+  products: string[] | null;
 }
 
 interface Transaction {
@@ -372,7 +374,7 @@ export default function DashboardPage() {
       let resto: any = null;
       {
         const { data: restos } = await supabase
-          .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, plans(name, key)')
+          .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, products, plans(name, key)')
           .eq('owner_id', session.user.id).eq('is_demo', false).order('created_at', { ascending: true });
         const list = restos ?? [];
         setMyRestaurants(list.map((r: { id: string; name: string | null; slug: string }) => ({ id: r.id, name: r.name ?? r.slug, slug: r.slug })));
@@ -458,8 +460,11 @@ export default function DashboardPage() {
       }
       // Aucun programme configuré (pas de ligne loyalty_settings) → pop-up
       // de configuration OBLIGATOIRE (bloque le dashboard, non-fermable).
+      // Seulement si l'établissement a choisi le produit fidélité (T0) —
+      // un organisateur d'événements pur n'a pas de programme à configurer.
       const hasProgram = !lsError && !!ls;
-      setNeedsLoyaltySetup(!hasProgram);
+      const restoHasLoyalty = (resto.products ?? ['loyalty']).includes('loyalty');
+      setNeedsLoyaltySetup(!hasProgram && restoHasLoyalty);
 
       const { data: camps } = await supabase
         .from('campaigns').select('*')
@@ -489,7 +494,8 @@ export default function DashboardPage() {
 
       // Auto-launch tutorial if never completed — MAIS seulement si le
       // programme est déjà configuré (sinon la pop-up obligatoire passe avant).
-      if (!resto.tutorial_completed_at && !lsError && !!ls) {
+      // Sans produit fidélité, pas de pop-up : le tutoriel démarre direct.
+      if (!resto.tutorial_completed_at && (restoHasLoyalty ? (!lsError && !!ls) : true)) {
         // Clean billing param from URL if present
         const params = new URLSearchParams(window.location.search);
         if (params.has('billing')) {
@@ -863,10 +869,17 @@ export default function DashboardPage() {
   /* ─── Feature gate helper (must be before any early return) ── */
   const pf = (key: string) => planFeatures[key] ?? false;
 
+  // Profil produit (T0) : sans le produit fidélité (organisateur d'événements
+  // pur), les sections clients/fidélité/scanner/wallet sont masquées.
+  const hasLoyalty = (restaurant?.products ?? ['loyalty']).includes('loyalty');
+  const hasTicketing = (restaurant?.products ?? []).includes('ticketing');
+
   const navItems: { id: Tab; icon: React.ReactNode; label: string; locked?: boolean }[] = [
     { id: 'overview',  icon: <IGrid />,     label: t('nav.overview') },
-    { id: 'clients',   icon: <IUsers />,    label: t('nav.clients') },
-    { id: 'loyalty',   icon: <IGift />,     label: t('nav.loyalty') },
+    ...(hasLoyalty ? [
+      { id: 'clients' as Tab, icon: <IUsers />, label: t('nav.clients') },
+      { id: 'loyalty' as Tab, icon: <IGift />,  label: t('nav.loyalty') },
+    ] : []),
     { id: 'campaigns', icon: <IMail />,     label: t('nav.campaigns'), locked: !pf('campaigns_email') },
     { id: 'analytics', icon: <IChart />,    label: t('nav.analytics'), locked: !pf('analytics') },
     { id: 'settings',  icon: <ISettings />, label: t('nav.settings') },
@@ -1008,6 +1021,7 @@ export default function DashboardPage() {
           }}
           onTabChange={(tab: Tab) => setActiveTab(tab)}
           identityDone={!!restaurant?.logo_url}
+          loyaltyEnabled={hasLoyalty}
           bookingEligible={pf('booking') && BOOKING_ELIGIBLE_TYPES.has(restaurant?.business_type ?? '')}
           onStartBooking={async () => {
             setShowTutorial(false);
@@ -1147,7 +1161,8 @@ export default function DashboardPage() {
             );
           })}
 
-          {/* Scanner */}
+          {/* Scanner — produit fidélité uniquement */}
+          {hasLoyalty && (
           <Link prefetch={false}
             href={`/${locale}/dashboard/scanner`}
             aria-label={t('nav.scannerQr')}
@@ -1156,9 +1171,10 @@ export default function DashboardPage() {
             <span className="flex-shrink-0"><ICamera /></span>
             {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.scannerQr')}</span>}
           </Link>
+          )}
 
-          {/* Wallet Studio */}
-          {pf('wallet_studio') && (
+          {/* Wallet Studio — produit fidélité uniquement */}
+          {hasLoyalty && pf('wallet_studio') && (
             <button
               onClick={() => setActiveTab('wallet' as Tab)}
               aria-label={t('nav.walletStudio')}
@@ -1191,6 +1207,20 @@ export default function DashboardPage() {
             >
               <span className="flex-shrink-0"><ICalendar /></span>
               {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.booking')}</span>}
+            </Link>
+          )}
+
+          {/* Billetterie — produit ticketing */}
+          {hasTicketing && (
+            <Link prefetch={false}
+              href={`/${locale}/dashboard/events`}
+              aria-label={t('nav.events')}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all${!sidebarOpen ? ' justify-center px-0' : ''}`}
+            >
+              <span className="flex-shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/></svg>
+              </span>
+              {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.events')}</span>}
             </Link>
           )}
 
@@ -1262,6 +1292,7 @@ export default function DashboardPage() {
           currentRestaurantId={restaurant?.id}
           onSwitchRestaurant={switchRestaurant}
           onAddRestaurant={() => router.push('/onboarding?new=1')}
+          hasLoyalty={hasLoyalty}
         />
 
         {/* Top nav bar (desktop only) */}
@@ -2434,6 +2465,7 @@ export default function DashboardPage() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         scannerHref={`/${locale}/dashboard/scanner`}
+        hasLoyalty={hasLoyalty}
       />
     </div>
   );
