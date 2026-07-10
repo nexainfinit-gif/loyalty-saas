@@ -226,6 +226,7 @@ function buildPassJson(
     const eventTime     = String(cfg.event_time ?? '');
     const eventLocation = String(cfg.event_location ?? '');
     const ticketCode    = String(cfg.ticket_code ?? '');
+    const tierLabel     = String(cfg.tier_label ?? '');
     const holderName    = `${input.firstName} ${input.lastName}`.trim();
 
     base.description = `Billet – ${eventName}`;
@@ -239,7 +240,10 @@ function buildPassJson(
         ...(eventDate ? [{ key: 'date', label: 'DATE', value: eventDate }] : []),
         ...(eventLocation ? [{ key: 'location', label: 'LIEU', value: eventLocation }] : []),
       ],
-      auxiliaryFields: holderName ? [{ key: 'holder', label: 'TITULAIRE', value: holderName }] : [],
+      auxiliaryFields: [
+        ...(tierLabel ? [{ key: 'tier', label: 'CATÉGORIE', value: tierLabel }] : []),
+        ...(holderName ? [{ key: 'holder', label: 'TITULAIRE', value: holderName }] : []),
+      ],
       backFields: [
         ...(ticketCode ? [{ key: 'code', label: 'Code du billet', value: ticketCode }] : []),
         { key: 'org',   label: 'Organisateur', value: input.restaurantName },

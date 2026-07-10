@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   // Isolation multi-tenant : le billet doit appartenir à CET établissement.
   const { data: ticket } = await supabaseAdmin
     .from('event_tickets')
-    .select('id, code, buyer_name, status, checked_in_at, event_id')
+    .select('id, code, buyer_name, status, checked_in_at, event_id, tier_name, seats')
     .eq('code', code)
     .eq('restaurant_id', guard.restaurantId)
     .maybeSingle();
@@ -137,6 +137,8 @@ export async function POST(request: Request) {
     result: 'ok',
     buyerName: ticket.buyer_name,
     eventTitle: event?.title ?? '',
+    tierName: ticket.tier_name ?? null,
+    seats: ticket.seats ?? 1,
     ...(await counts()),
   });
 }

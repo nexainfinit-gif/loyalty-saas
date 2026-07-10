@@ -37,7 +37,7 @@ export async function GET(
 
   const { data: ticket } = await supabaseAdmin
     .from('event_tickets')
-    .select('id, code, buyer_name, status, event_id, restaurant_id')
+    .select('id, code, buyer_name, status, event_id, restaurant_id, tier_name, seats')
     .eq('code', code)
     .maybeSingle();
   if (!ticket || (ticket.status !== 'valid' && ticket.status !== 'checked_in')) {
@@ -70,6 +70,9 @@ export async function GET(
       event_time:      eventTime,
       event_location:  event.location ?? '',
       ticket_code:     ticket.code,
+      tier_label:      ticket.tier_name
+        ? ((ticket.seats ?? 1) > 1 ? `${ticket.tier_name} · ${ticket.seats} places` : ticket.tier_name)
+        : '',
       relevant_date:   d.toISOString(),
       // Couleurs du thème (fond = en-tête du billet web, encre = headerInk)
       foregroundColor: T.headerInk ?? '#FFFFFF',

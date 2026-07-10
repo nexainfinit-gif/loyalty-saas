@@ -37,10 +37,24 @@ interface Ticket {
   created_at: string
 }
 
+interface Tier {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  capacity: number | null
+  kind: 'standard' | 'vip_table'
+  seats_per_unit: number
+  is_active: boolean
+  sold: number
+}
+
 const EMPTY_FORM = {
   title: '', description: '', location: '', starts_at: '', capacity: '', price: '0', offer_loyalty: false,
   theme: 'nuit' as EventThemeKey,
 }
+
+const EMPTY_TIER = { name: '', price: '0', capacity: '', vip: false, seats: '4' }
 
 export default function EventsPage() {
   const { t, locale } = useTranslation()
@@ -60,6 +74,58 @@ export default function EventsPage() {
   const [openTickets, setOpenTickets] = useState<string | null>(null)
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [copied, setCopied] = useState(false)
+
+  // Tarifs (catégories de billets) dépliés
+  const [openTiers, setOpenTiers] = useState<string | null>(null)
+  const [tiers, setTiers] = useState<Tier[]>([])
+  const [tierForm, setTierForm] = useState({ ...EMPTY_TIER })
+  const [tierSaving, setTierSaving] = useState(false)
+
+  async function loadTiers(eventId: string) {
+    const res = await api<{ tiers: Tier[] }>(`/api/events/${eventId}/tiers`)
+    setTiers(res.data?.tiers ?? [])
+  }
+
+  async function toggleTiers(ev: Ev) {
+    if (openTiers === ev.id) { setOpenTiers(null); return }
+    setTierForm({ ...EMPTY_TIER })
+    await loadTiers(ev.id)
+    setOpenTiers(ev.id)
+    setOpenTickets(null)
+  }
+
+  async function addTier(e: React.FormEvent, eventId: string) {
+    e.preventDefault()
+    setTierSaving(true)
+    const res = await api(`/api/events/${eventId}/tiers`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: tierForm.name.trim(),
+        price: Number(tierForm.price) || 0,
+        capacity: tierForm.capacity ? Number(tierForm.capacity) : null,
+        kind: tierForm.vip ? 'vip_table' : 'standard',
+        seats_per_unit: tierForm.vip ? (Number(tierForm.seats) || 4) : 1,
+      }),
+    })
+    setTierSaving(false)
+    if (res.error) { setError(res.error); return }
+    setTierForm({ ...EMPTY_TIER })
+    loadTiers(eventId)
+  }
+
+  async function toggleTierActive(eventId: string, tier: Tier) {
+    await api(`/api/events/${eventId}/tiers`, {
+      method: 'PATCH',
+      body: JSON.stringify({ tierId: tier.id, is_active: !tier.is_active }),
+    })
+    loadTiers(eventId)
+  }
+
+  async function removeTier(eventId: string, tier: Tier) {
+    const res = await api(`/api/events/${eventId}/tiers?tierId=${tier.id}`, { method: 'DELETE' })
+    if (res.error) setError(res.error)
+    loadTiers(eventId)
+  }
 
   // Stripe Connect : requis pour vendre des billets PAYANTS (les événements
   // payants sont masqués de la page publique tant que l'encaissement ne
@@ -179,6 +245,7 @@ export default function EventsPage() {
     const res = await api<{ tickets: Ticket[] }>(`/api/events/${ev.id}/tickets`)
     setTickets(res.data?.tickets ?? [])
     setOpenTickets(ev.id)
+    setOpenTiers(null)
   }
 
   const publicUrl = businessSlug ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/event/${businessSlug}` : null
@@ -311,6 +378,10 @@ export default function EventsPage() {
                   className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 rounded-xl border border-gray-200 transition-colors">
                   {t('common.edit')}
                 </button>
+                <button onClick={() => toggleTiers(ev)}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 rounded-xl border border-gray-200 transition-colors">
+                  {t('events.tiers')}
+                </button>
                 <button onClick={() => toggleTickets(ev)}
                   className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 rounded-xl border border-gray-200 transition-colors">
                   {t('events.participants')} ({ev.tickets_valid})
@@ -323,6 +394,81 @@ export default function EventsPage() {
                 )}
               </div>
             </div>
+
+            {/* Tarifs (catégories de billets + tables VIP) */}
+            {openTiers === ev.id && (
+              <div className="mt-4 border-t border-gray-100 pt-3 space-y-2">
+                {tiers.length === 0 && (
+                  <p className="text-xs text-gray-400">{t('events.noTiers')}</p>
+                )}
+                {tiers.map(tier => (
+                  <div key={tier.id} className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${tier.is_active ? 'border-gray-100' : 'border-gray-100 opacity-50'}`}>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                        {tier.name}
+                        {tier.kind === 'vip_table' && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-vip-100 text-vip-700">
+                            {t('events.vipTable', { seats: tier.seats_per_unit })}
+                          </span>
+                        )}
+                        {!tier.is_active && <span className="text-[10px] text-gray-400">({t('events.tierInactive')})</span>}
+                      </p>
+                      <p className="text-[11px] text-gray-400">
+                        {tier.price > 0 ? `${tier.price} €` : t('event.free')}
+                        {' · '}{t('events.sold', { count: tier.sold })}{tier.capacity != null ? ` / ${tier.capacity}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button onClick={() => toggleTierActive(ev.id, tier)}
+                        className="px-2.5 py-1 text-[11px] font-medium text-gray-500 hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors">
+                        {tier.is_active ? t('events.deactivate') : t('events.activate')}
+                      </button>
+                      {tier.sold === 0 && (
+                        <button onClick={() => removeTier(ev.id, tier)}
+                          className="px-2 py-1 text-[11px] text-gray-400 hover:text-red-600 rounded-lg transition-colors">
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Ajout d'une catégorie */}
+                <form onSubmit={e => addTier(e, ev.id)} className="rounded-xl bg-gray-50 p-3 space-y-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <input required value={tierForm.name} maxLength={60}
+                      onChange={e => setTierForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder={t('events.tierNamePh')}
+                      className="col-span-2 sm:col-span-1 px-2.5 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none" />
+                    <input type="number" min={0} max={500} step="0.01" value={tierForm.price}
+                      onChange={e => setTierForm(f => ({ ...f, price: e.target.value }))}
+                      placeholder="€"
+                      className="px-2.5 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none" />
+                    <input type="number" min={1} value={tierForm.capacity}
+                      onChange={e => setTierForm(f => ({ ...f, capacity: e.target.value }))}
+                      placeholder={t('events.tierCapPh')}
+                      className="px-2.5 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none" />
+                    <button type="submit" disabled={tierSaving}
+                      className="px-3 py-2 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors">
+                      + {t('events.addTier')}
+                    </button>
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] text-gray-500">
+                    <input type="checkbox" checked={tierForm.vip}
+                      onChange={e => setTierForm(f => ({ ...f, vip: e.target.checked }))} />
+                    {t('events.tierVipToggle')}
+                    {tierForm.vip && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <input type="number" min={1} max={20} value={tierForm.seats}
+                          onChange={e => setTierForm(f => ({ ...f, seats: e.target.value }))}
+                          className="w-14 px-2 py-1 rounded-lg border border-gray-200 text-xs focus:outline-none" />
+                        {t('event.seats')}
+                      </span>
+                    )}
+                  </label>
+                </form>
+              </div>
+            )}
 
             {/* Participants */}
             {openTickets === ev.id && (

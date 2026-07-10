@@ -16,6 +16,8 @@ interface Ticket {
   buyerName: string
   status: 'valid' | 'checked_in'
   theme?: string
+  tierName?: string | null
+  seats?: number
   event: { title: string; location: string | null; startsAt: string }
   business: { name: string; primaryColor: string | null; logoUrl: string | null }
 }
@@ -140,6 +142,12 @@ export default function TicketPage() {
             <p className="tk-mono text-[11px] uppercase tracking-[0.15em] mt-1" style={{ color: accent }}>
               {ticket.business.name}
             </p>
+            {ticket.tierName && (
+              <p className="tk-mono inline-block mt-3 text-[11px] font-bold uppercase tracking-[0.2em] px-2.5 py-1"
+                style={{ color: headerInk, border: `1.5px solid ${T.headerInk ? 'rgba(28,25,23,0.35)' : 'rgba(255,255,255,0.4)'}`, borderRadius: T.radius }}>
+                {ticket.tierName}{(ticket.seats ?? 1) > 1 ? ` · ${ticket.seats} ${t('event.seats')}` : ''}
+              </p>
+            )}
           </div>
 
           {/* Perforation + encoches */}

@@ -1950,7 +1950,17 @@
     "theme_museeDesc": "Tentoonstellingen, culturele workshops — strakke galerij",
     "theme_minimal": "Strak",
     "theme_minimalDesc": "Productlanceringen, meetups — clean en premium",
-    "checkinBtn": "Tickets scannen"
+    "checkinBtn": "Tickets scannen",
+    "tiers": "Tarieven",
+    "noTiers": "Eén prijs (evenementprijs). Voeg categorieën toe voor meerdere tarieven.",
+    "vipTable": "VIP-tafel · {seats} pl.",
+    "tierInactive": "inactief",
+    "deactivate": "Deactiveren",
+    "activate": "Activeren",
+    "tierNamePh": "Bv. Early bird, VIP…",
+    "tierCapPh": "Quota",
+    "addTier": "Toevoegen",
+    "tierVipToggle": "VIP-tafel (één ticket voor de hele groep)"
   },
   "event": {
     "verifying": "Betaling controleren…",
@@ -1979,7 +1989,10 @@
     "ticketNotFound": "Ticket niet gevonden.",
     "alreadyCheckedIn": "Ticket al gebruikt",
     "showAtEntrance": "Toon deze QR aan de ingang",
-    "addToWallet": "Toevoegen aan Apple Wallet"
+    "addToWallet": "Toevoegen aan Apple Wallet",
+    "fromPrice": "vanaf € {price}",
+    "tableOf": "Tafel · {seats} pers.",
+    "seats": "plaatsen"
   },
   "checkin": {
     "title": "Check-in",
@@ -1994,6 +2007,7 @@
     "check": "Valideren",
     "wrongEvent": "Ticket voor een ander evenement",
     "cancelledEvent": "Evenement geannuleerd",
-    "allEvents": "Alle evenementen"
+    "allEvents": "Alle evenementen",
+    "seats": "plaatsen"
   }
 }

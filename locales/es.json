@@ -1946,7 +1946,17 @@
     "theme_museeDesc": "Exposiciones, talleres culturales — galería depurada",
     "theme_minimal": "Sobrio",
     "theme_minimalDesc": "Lanzamientos de producto, meetups — limpio y premium",
-    "checkinBtn": "Escanear entradas"
+    "checkinBtn": "Escanear entradas",
+    "tiers": "Tarifas",
+    "noTiers": "Precio único (precio del evento). Añade categorías para ofrecer varias tarifas.",
+    "vipTable": "Mesa VIP · {seats} pl.",
+    "tierInactive": "desactivada",
+    "deactivate": "Desactivar",
+    "activate": "Activar",
+    "tierNamePh": "Ej. Early bird, VIP…",
+    "tierCapPh": "Cupo",
+    "addTier": "Añadir",
+    "tierVipToggle": "Mesa VIP (una sola entrada para todo el grupo)"
   },
   "event": {
     "verifying": "Verificando el pago…",
@@ -1975,7 +1985,10 @@
     "ticketNotFound": "Entrada no encontrada.",
     "alreadyCheckedIn": "Entrada ya utilizada",
     "showAtEntrance": "Muestra este QR en la entrada",
-    "addToWallet": "Añadir a Apple Wallet"
+    "addToWallet": "Añadir a Apple Wallet",
+    "fromPrice": "desde {price} €",
+    "tableOf": "Mesa · {seats} pers.",
+    "seats": "plazas"
   },
   "checkin": {
     "title": "Check-in",
@@ -1990,6 +2003,7 @@
     "check": "Validar",
     "wrongEvent": "Entrada de otro evento",
     "cancelledEvent": "Evento cancelado",
-    "allEvents": "Todos los eventos"
+    "allEvents": "Todos los eventos",
+    "seats": "plazas"
   }
 }

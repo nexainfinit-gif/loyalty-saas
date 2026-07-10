@@ -16,6 +16,8 @@ const limiter = rateLimit({ prefix: 'event-buy', limit: 5, windowMs: 60_000 });
 
 const schema = z.object({
   eventId:     z.string().uuid(),
+  /** Catégorie de billet (obligatoire si l'événement en propose). */
+  tierId:      z.string().uuid().optional(),
   quantity:    z.number(),
   buyerName:   z.string().trim().min(1).max(100),
   buyerEmail:  z.string().trim().email().max(255),
@@ -44,7 +46,7 @@ export async function POST(
   catch { return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 }); }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Champs invalides.' }, { status: 400 });
-  const { eventId, buyerName, buyerEmail, joinLoyalty } = parsed.data;
+  const { eventId, tierId, buyerName, buyerEmail, joinLoyalty } = parsed.data;
 
   const quantity = validateQuantity(parsed.data.quantity);
   if (quantity === null) {
@@ -73,7 +75,24 @@ export async function POST(
     return NextResponse.json({ error: 'Cet événement est terminé.' }, { status: 400 });
   }
 
-  const priceCents = Math.round(Number(event.price) * 100);
+  // ── Catégorie de billet (049) ─────────────────────────────────────────
+  // Si l'événement propose des catégories actives, tierId est OBLIGATOIRE
+  // (le prix vient de la catégorie, pas d'events.price). Une catégorie
+  // vip_table vend des tables : 1 unité = seats_per_unit places, un seul QR.
+  const { data: activeTiers } = await supabaseAdmin
+    .from('event_ticket_tiers')
+    .select('id, name, price, capacity, kind, seats_per_unit')
+    .eq('event_id', event.id)
+    .eq('is_active', true);
+  const tiers = activeTiers ?? [];
+  let tier: (typeof tiers)[number] | null = null;
+  if (tiers.length > 0) {
+    tier = tiers.find(t => t.id === tierId) ?? null;
+    if (!tier) return NextResponse.json({ error: 'Choisissez une catégorie de billet.' }, { status: 400 });
+  }
+
+  const seatsPerUnit = tier?.kind === 'vip_table' ? (tier.seats_per_unit ?? 1) : 1;
+  const priceCents = Math.round(Number(tier ? tier.price : event.price) * 100);
   const isFree = priceCents <= 0;
   if (!isFree && (!restaurant.stripe_account_id || !restaurant.stripe_charges_enabled)) {
     return NextResponse.json({ error: 'Paiement indisponible pour cet événement.' }, { status: 503 });
@@ -87,14 +106,28 @@ export async function POST(
     .eq('status', 'pending_payment')
     .lt('created_at', new Date(Date.now() - 30 * 60_000).toISOString());
 
+  // Capacité de l'événement comptée en PLACES (une table VIP de 6 = 6).
   if (event.capacity != null) {
-    const { count } = await supabaseAdmin
+    const { data: seatRows } = await supabaseAdmin
       .from('event_tickets')
-      .select('id', { count: 'exact', head: true })
+      .select('seats')
       .eq('event_id', event.id)
       .in('status', ['valid', 'checked_in', 'pending_payment']);
-    if ((count ?? 0) + quantity > event.capacity) {
+    const seatsTaken = (seatRows ?? []).reduce((s, r) => s + (r.seats ?? 1), 0);
+    if (seatsTaken + quantity * seatsPerUnit > event.capacity) {
       return NextResponse.json({ error: 'Plus assez de places disponibles.' }, { status: 409 });
+    }
+  }
+
+  // Capacité de la catégorie (en unités : billets ou tables)
+  if (tier?.capacity != null) {
+    const { count: tierSold } = await supabaseAdmin
+      .from('event_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('tier_id', tier.id)
+      .in('status', ['valid', 'checked_in', 'pending_payment']);
+    if ((tierSold ?? 0) + quantity > tier.capacity) {
+      return NextResponse.json({ error: `Plus de disponibilité en « ${tier.name} ».` }, { status: 409 });
     }
   }
 
@@ -114,7 +147,7 @@ export async function POST(
     );
   }
 
-  // Création des billets (un code unique par billet)
+  // Création des billets (un code unique par billet / par table)
   const rows = Array.from({ length: quantity }, () => ({
     event_id: event.id,
     restaurant_id: restaurant.id,
@@ -124,6 +157,9 @@ export async function POST(
     amount: priceCents / 100,
     status: isFree ? 'valid' : 'pending_payment',
     paid_at: isFree ? new Date().toISOString() : null,
+    tier_id: tier?.id ?? null,
+    tier_name: tier?.name ?? null,
+    seats: seatsPerUnit,
   }));
   const { data: tickets, error: insertErr } = await supabaseAdmin
     .from('event_tickets')
@@ -179,6 +215,7 @@ export async function POST(
         code: t.code,
         url: `${APP}/fr/event/ticket/${t.code}`,
         walletUrl: `${APP}/api/event/ticket/${t.code}/pkpass`,
+        label: tier ? (seatsPerUnit > 1 ? `${tier.name} · ${seatsPerUnit} places` : tier.name) : undefined,
       })),
     }).catch(err => logger.error({ ctx: 'event-buy', rid: restaurant.id, msg: 'email failed', err }));
     return NextResponse.json({ success: true, free: true, codes: tickets.map(t => t.code) });
@@ -192,7 +229,7 @@ export async function POST(
         line_items: [{
           price_data: {
             currency: 'eur',
-            product_data: { name: `${event.title} — ${restaurant.name}` },
+            product_data: { name: `${event.title}${tier ? ` — ${tier.name}` : ''} — ${restaurant.name}` },
             unit_amount: priceCents,
           },
           quantity,

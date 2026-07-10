@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   // Tous les billets de la même session (achat multi-billets)
   const { data: group } = await supabaseAdmin
     .from('event_tickets')
-    .select('id, code, buyer_name, buyer_email, status')
+    .select('id, code, buyer_name, buyer_email, status, tier_name, seats')
     .eq('stripe_checkout_session_id', sessionId)
     .eq('restaurant_id', first.restaurant_id);
   const tickets = group ?? [];
@@ -115,6 +115,9 @@ export async function POST(request: Request) {
         code: t.code,
         url: `${APP}/fr/event/ticket/${t.code}`,
         walletUrl: `${APP}/api/event/ticket/${t.code}/pkpass`,
+        label: t.tier_name
+          ? ((t.seats ?? 1) > 1 ? `${t.tier_name} · ${t.seats} places` : t.tier_name)
+          : undefined,
       })),
     }).catch(err => logger.error({ ctx: 'event-confirm', rid: restaurant.id, msg: 'email failed', err }));
   }

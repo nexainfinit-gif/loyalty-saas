@@ -28,7 +28,7 @@ export async function GET(
 
   const { data: ticket } = await supabaseAdmin
     .from('event_tickets')
-    .select('code, buyer_name, status, event_id, restaurant_id')
+    .select('code, buyer_name, status, event_id, restaurant_id, tier_name, seats')
     .eq('code', code)
     .maybeSingle();
   if (!ticket || ticket.status === 'pending_payment' || ticket.status === 'cancelled') {
@@ -47,6 +47,8 @@ export async function GET(
     code: ticket.code,
     buyerName: ticket.buyer_name,
     status: ticket.status,
+    tierName: ticket.tier_name ?? null,
+    seats: ticket.seats ?? 1,
     theme: event.theme || 'nuit',
     event: { title: event.title, location: event.location, startsAt: event.starts_at },
     business: { name: restaurant.name, primaryColor: restaurant.primary_color, logoUrl: restaurant.logo_url },

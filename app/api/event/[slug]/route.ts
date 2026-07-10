@@ -41,26 +41,60 @@ export async function GET(
     .gte('starts_at', new Date(Date.now() - 6 * 3600_000).toISOString())
     .order('starts_at', { ascending: true });
 
-  // Places restantes par événement (billets valides + check-in)
+  // Places restantes par événement, comptées en SIÈGES (table VIP de 6 = 6)
   const list = events ?? [];
   const ids = list.map(e => e.id);
   const sold: Record<string, number> = {};
+  const soldByTier: Record<string, number> = {};
   if (ids.length) {
     const { data: tickets } = await supabaseAdmin
       .from('event_tickets')
-      .select('event_id')
+      .select('event_id, tier_id, seats')
       .in('event_id', ids)
       .in('status', ['valid', 'checked_in']);
-    for (const t of tickets ?? []) sold[t.event_id] = (sold[t.event_id] ?? 0) + 1;
+    for (const t of tickets ?? []) {
+      sold[t.event_id] = (sold[t.event_id] ?? 0) + (t.seats ?? 1);
+      if (t.tier_id) soldByTier[t.tier_id] = (soldByTier[t.tier_id] ?? 0) + 1;
+    }
+  }
+
+  // Catégories de billets actives (049) — prix/dispo par catégorie
+  const tiersByEvent: Record<string, {
+    id: string; name: string; description: string | null; price: number;
+    kind: string; seatsPerUnit: number; remaining: number | null;
+  }[]> = {};
+  if (ids.length) {
+    const { data: tiers } = await supabaseAdmin
+      .from('event_ticket_tiers')
+      .select('id, event_id, name, description, price, capacity, kind, seats_per_unit, sort_order')
+      .in('event_id', ids)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+    for (const t of tiers ?? []) {
+      (tiersByEvent[t.event_id] ??= []).push({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        price: Number(t.price),
+        kind: t.kind,
+        seatsPerUnit: t.seats_per_unit ?? 1,
+        remaining: t.capacity == null ? null : Math.max(0, t.capacity - (soldByTier[t.id] ?? 0)),
+      });
+    }
   }
 
   const visible = list
-    // Les événements payants ne sont proposables que si l'encaissement marche
-    .filter(e => Number(e.price) === 0 || canCharge)
+    // Payant (tarif unique OU une catégorie payante) → Stripe Connect requis
+    .filter(e => {
+      const tiers = tiersByEvent[e.id] ?? [];
+      const hasPaid = tiers.length > 0 ? tiers.some(t => t.price > 0) : Number(e.price) > 0;
+      return !hasPaid || canCharge;
+    })
     .map(e => ({
       ...e,
       price: Number(e.price),
       remaining: e.capacity == null ? null : Math.max(0, e.capacity - (sold[e.id] ?? 0)),
+      tiers: tiersByEvent[e.id] ?? [],
     }));
 
   return NextResponse.json({

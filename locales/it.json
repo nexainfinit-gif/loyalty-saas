@@ -1950,7 +1950,17 @@
     "theme_museeDesc": "Mostre, laboratori culturali — galleria essenziale",
     "theme_minimal": "Sobrio",
     "theme_minimalDesc": "Lanci di prodotto, meetup — essenziale e premium",
-    "checkinBtn": "Scansiona biglietti"
+    "checkinBtn": "Scansiona biglietti",
+    "tiers": "Tariffe",
+    "noTiers": "Prezzo unico (prezzo dell'evento). Aggiungi categorie per più tariffe.",
+    "vipTable": "Tavolo VIP · {seats} p.",
+    "tierInactive": "disattivato",
+    "deactivate": "Disattiva",
+    "activate": "Attiva",
+    "tierNamePh": "Es. Early bird, VIP…",
+    "tierCapPh": "Quota",
+    "addTier": "Aggiungi",
+    "tierVipToggle": "Tavolo VIP (un solo biglietto per tutto il gruppo)"
   },
   "event": {
     "verifying": "Verifica del pagamento…",
@@ -1979,7 +1989,10 @@
     "ticketNotFound": "Biglietto non trovato.",
     "alreadyCheckedIn": "Biglietto già utilizzato",
     "showAtEntrance": "Mostra questo QR all'ingresso",
-    "addToWallet": "Aggiungi ad Apple Wallet"
+    "addToWallet": "Aggiungi ad Apple Wallet",
+    "fromPrice": "da {price} €",
+    "tableOf": "Tavolo · {seats} posti",
+    "seats": "posti"
   },
   "checkin": {
     "title": "Check-in",
@@ -1994,6 +2007,7 @@
     "check": "Convalida",
     "wrongEvent": "Biglietto di un altro evento",
     "cancelledEvent": "Evento annullato",
-    "allEvents": "Tutti gli eventi"
+    "allEvents": "Tutti gli eventi",
+    "seats": "posti"
   }
 }

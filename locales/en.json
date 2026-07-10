@@ -1968,7 +1968,17 @@
     "theme_museeDesc": "Exhibitions, cultural workshops — clean gallery",
     "theme_minimal": "Clean",
     "theme_minimalDesc": "Product launches, meetups — sleek and premium",
-    "checkinBtn": "Scan tickets"
+    "checkinBtn": "Scan tickets",
+    "tiers": "Pricing",
+    "noTiers": "Single price (event price). Add categories to offer multiple tiers.",
+    "vipTable": "VIP table · {seats} seats",
+    "tierInactive": "inactive",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "tierNamePh": "E.g. Early bird, VIP…",
+    "tierCapPh": "Quota",
+    "addTier": "Add",
+    "tierVipToggle": "VIP table (one ticket for the whole group)"
   },
   "event": {
     "verifying": "Verifying payment…",
@@ -1997,7 +2007,10 @@
     "ticketNotFound": "Ticket not found.",
     "alreadyCheckedIn": "Ticket already used",
     "showAtEntrance": "Show this QR at the entrance",
-    "addToWallet": "Add to Apple Wallet"
+    "addToWallet": "Add to Apple Wallet",
+    "fromPrice": "from €{price}",
+    "tableOf": "Table · {seats} seats",
+    "seats": "seats"
   },
   "checkin": {
     "title": "Check-in",
@@ -2012,6 +2025,7 @@
     "check": "Check",
     "wrongEvent": "Ticket for another event",
     "cancelledEvent": "Event cancelled",
-    "allEvents": "All events"
+    "allEvents": "All events",
+    "seats": "seats"
   }
 }

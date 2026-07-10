@@ -11,6 +11,16 @@ import { resolveEventTheme, type EventTheme } from '@/lib/event-themes'
  * de page suit le prochain événement, et chaque carte porte son propre
  * habillage (tokens dans lib/event-themes.ts).
  */
+interface PubTier {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  kind: string
+  seatsPerUnit: number
+  remaining: number | null
+}
+
 interface PubEvent {
   id: string
   title: string
@@ -22,6 +32,7 @@ interface PubEvent {
   remaining: number | null
   offer_loyalty: boolean
   theme?: string
+  tiers: PubTier[]
 }
 
 /** Classes CSS d'un thème, suffixées par sa clé (plusieurs thèmes peuvent
@@ -147,6 +158,7 @@ function EventContent() {
   const [loading, setLoading] = useState(true)
 
   const [openId, setOpenId] = useState<string | null>(null)
+  const [tierId, setTierId] = useState<string | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [buyerName, setBuyerName] = useState('')
   const [buyerEmail, setBuyerEmail] = useState('')
@@ -194,7 +206,7 @@ function EventContent() {
       const res = await fetch(`/api/event/${slug}/buy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: ev.id, quantity, buyerName, buyerEmail, joinLoyalty }),
+        body: JSON.stringify({ eventId: ev.id, ...(tierId ? { tierId } : {}), quantity, buyerName, buyerEmail, joinLoyalty }),
       })
       const j = await res.json()
       if (!res.ok) { setError(j.error || t('common.error')); return }
@@ -324,6 +336,21 @@ function EventContent() {
             const accent = business.primaryColor && business.primaryColor !== '#ffffff' ? business.primaryColor : C.accent2
             const isCatalog = C.variant === 'catalog'
             const longDate = d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+            // Catégories de billets : le prix vient du tarif choisi.
+            const hasTiers = ev.tiers.length > 0
+            const selectedTier = hasTiers ? (ev.tiers.find(tr => tr.id === tierId) ?? null) : null
+            const unitPrice = selectedTier ? selectedTier.price : ev.price
+            const minPrice = hasTiers ? Math.min(...ev.tiers.map(tr => tr.price)) : ev.price
+            const anyPaid = hasTiers ? ev.tiers.some(tr => tr.price > 0) : ev.price > 0
+            const priceBadge = hasTiers
+              ? (minPrice > 0 ? t('event.fromPrice', { price: minPrice }) : t('event.free').toUpperCase())
+              : (ev.price > 0 ? `${ev.price} €` : t('event.free').toUpperCase())
+            const badgeFilled = hasTiers ? minPrice > 0 : ev.price > 0
+            // Quantité max en UNITÉS (tables VIP : places restantes / places par table)
+            const unitCap = selectedTier
+              ? (selectedTier.remaining ?? (ev.remaining != null ? Math.floor(ev.remaining / selectedTier.seatsPerUnit) : null))
+              : ev.remaining
             return (
               <article key={ev.id} className={`ev-card-${C.key} ev-up overflow-hidden`} style={{ animationDelay: `${0.08 + idx * 0.07}s` }}>
                 <div className={isCatalog ? '' : 'flex'}>
@@ -345,11 +372,11 @@ function EventContent() {
                         </span>
                         <span
                           className="ev-mono flex-shrink-0 text-xs font-bold px-2.5 py-1"
-                          style={ev.price > 0
+                          style={badgeFilled
                             ? { color: C.accentInk, background: C.accent, borderRadius: C.radius }
                             : { color: C.accent, border: `1.5px solid ${C.accent}`, borderRadius: C.radius }}
                         >
-                          {ev.price > 0 ? `${ev.price} €` : t('event.free').toUpperCase()}
+                          {priceBadge}
                         </span>
                       </div>
                     )}
@@ -364,11 +391,11 @@ function EventContent() {
                       {!isCatalog && (
                       <span
                         className="ev-mono flex-shrink-0 text-xs font-bold px-2.5 py-1"
-                        style={ev.price > 0
+                        style={badgeFilled
                           ? { color: C.accentInk, background: C.accent, borderRadius: C.radius }
                           : { color: C.accent, border: `1.5px solid ${C.accent}`, borderRadius: C.radius }}
                       >
-                        {ev.price > 0 ? `${ev.price} €` : t('event.free').toUpperCase()}
+                        {priceBadge}
                       </span>
                       )}
                     </div>
@@ -397,18 +424,73 @@ function EventContent() {
                       </p>
                     ) : !isOpen ? (
                       <button
-                        onClick={() => { setOpenId(ev.id); setError(''); setQuantity(1); setJoinLoyalty(false) }}
+                        onClick={() => {
+                          setOpenId(ev.id); setError(''); setQuantity(1); setJoinLoyalty(false)
+                          // Pré-sélectionne la première catégorie disponible
+                          const firstAvailable = ev.tiers.find(tr => tr.remaining === null || tr.remaining > 0)
+                          setTierId(firstAvailable?.id ?? null)
+                        }}
                         className={`ev-btn-${C.key} ev-mono mt-4 w-full py-3 text-sm font-bold uppercase tracking-[0.15em]`}
                       >
-                        {ev.price > 0 ? t('event.buyBtn') : t('event.reserveBtn')} →
+                        {anyPaid ? t('event.buyBtn') : t('event.reserveBtn')} →
                       </button>
                     ) : (
                       <form onSubmit={e => submit(e, ev)} className="mt-4 space-y-3">
+                        {/* Choix de la catégorie de billet */}
+                        {hasTiers && (
+                          <div className="space-y-2">
+                            {ev.tiers.map(tr => {
+                              const trSoldOut = tr.remaining !== null && tr.remaining <= 0
+                              const active = tierId === tr.id
+                              return (
+                                <button
+                                  key={tr.id} type="button" disabled={trSoldOut}
+                                  onClick={() => { setTierId(tr.id); setQuantity(1) }}
+                                  className="w-full text-left px-3 py-2.5 transition-colors disabled:opacity-40"
+                                  style={{
+                                    border: `2px solid ${active ? C.accent : C.border}`,
+                                    borderRadius: C.radius,
+                                    background: active ? `${C.accent}14` : 'transparent',
+                                  }}
+                                >
+                                  <span className="flex items-center justify-between gap-3">
+                                    <span className="min-w-0">
+                                      <span className="block text-sm font-bold" style={{ color: C.ink }}>
+                                        {tr.name}
+                                        {tr.kind === 'vip_table' && (
+                                          <span className="ev-mono text-[10px] font-bold uppercase tracking-[0.15em] ml-2 px-1.5 py-0.5"
+                                            style={{ color: C.accentInk, background: C.accent, borderRadius: C.radius }}>
+                                            {t('event.tableOf', { seats: tr.seatsPerUnit })}
+                                          </span>
+                                        )}
+                                      </span>
+                                      {tr.description && (
+                                        <span className="block text-xs mt-0.5" style={{ color: C.muted }}>{tr.description}</span>
+                                      )}
+                                      {trSoldOut ? (
+                                        <span className="ev-mono block text-[10px] uppercase tracking-[0.15em] mt-0.5 line-through" style={{ color: C.faint }}>
+                                          {t('event.soldOut')}
+                                        </span>
+                                      ) : tr.remaining !== null && tr.remaining <= 5 && (
+                                        <span className="ev-mono block text-[10px] uppercase tracking-[0.15em] mt-0.5" style={{ color: C.accent2 }}>
+                                          ⚡ {t('event.fewLeft', { count: tr.remaining })}
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="ev-mono flex-shrink-0 text-sm font-bold" style={{ color: active ? C.accent : C.ink }}>
+                                      {tr.price > 0 ? `${tr.price} €` : t('event.free').toUpperCase()}
+                                    </span>
+                                  </span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
                         <div className="flex items-center gap-3">
                           <label className="ev-mono text-[11px] uppercase tracking-[0.15em]" style={{ color: C.muted }}>{t('event.quantity')}</label>
                           <div className="flex gap-1.5">
                             {[1, 2, 3, 4, 5, 6]
-                              .filter(n => ev.remaining === null || n <= ev.remaining)
+                              .filter(n => unitCap === null || n <= unitCap)
                               .map(n => (
                                 <button
                                   key={n} type="button"
@@ -441,11 +523,11 @@ function EventContent() {
                           type="submit" disabled={submitting}
                           className={`ev-btn-${C.key} ev-mono w-full py-3.5 text-sm font-bold uppercase tracking-[0.15em] disabled:opacity-50`}
                         >
-                          {submitting ? '…' : ev.price > 0
-                            ? t('event.payBtn', { amount: (ev.price * quantity).toFixed(2).replace(/\.00$/, '') })
+                          {submitting ? '…' : unitPrice > 0
+                            ? t('event.payBtn', { amount: (unitPrice * quantity).toFixed(2).replace(/\.00$/, '') })
                             : t('event.confirmFreeBtn')}
                         </button>
-                        {ev.price > 0 && (
+                        {unitPrice > 0 && (
                           <p className="ev-mono text-[10px] uppercase tracking-[0.2em] text-center" style={{ color: C.faint }}>{t('event.securePayment')}</p>
                         )}
                       </form>

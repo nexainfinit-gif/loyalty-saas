@@ -20,6 +20,8 @@ interface CheckinResult {
   reason?: string
   buyerName?: string
   eventTitle?: string
+  tierName?: string | null
+  seats?: number
   checkedInAt?: string
   checkedIn?: number
   total?: number
@@ -224,6 +226,15 @@ export default function CheckinPage() {
             style={{ background: verdictStyle.bg }}>
             <span className="text-7xl font-black leading-none">{verdictStyle.icon}</span>
             <p className="text-2xl font-bold mt-4">{verdictStyle.title}</p>
+            {/* Table VIP / catégorie : info CRUCIALE pour le portier */}
+            {result.result === 'ok' && (result.seats ?? 1) > 1 && (
+              <p className="text-3xl font-black mt-3 bg-white/20 rounded-2xl px-5 py-2">
+                {result.tierName} — {result.seats} {t('checkin.seats')}
+              </p>
+            )}
+            {result.result === 'ok' && (result.seats ?? 1) <= 1 && result.tierName && (
+              <p className="text-lg font-bold mt-3 bg-white/20 rounded-xl px-4 py-1.5">{result.tierName}</p>
+            )}
             {result.buyerName && <p className="text-lg mt-2 font-medium">{result.buyerName}</p>}
             {result.eventTitle && <p className="text-sm mt-0.5 opacity-80">{result.eventTitle}</p>}
             {result.result === 'already' && result.checkedInAt && (

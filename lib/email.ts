@@ -1098,7 +1098,7 @@ interface EventTicketsEmailProps {
   eventTitle: string;
   eventStartsAt: string;         // ISO
   eventLocation?: string | null;
-  tickets: { code: string; url: string; walletUrl?: string }[];
+  tickets: { code: string; url: string; walletUrl?: string; label?: string }[];
 }
 
 /** Billets d'événement — un bloc code + bouton « Afficher le billet » (QR)
@@ -1119,7 +1119,7 @@ export async function sendEventTicketsEmail({
 
   const ticketBlocks = tickets.map((tk, i) => `
         <div style="background:#f9fafb; border: 2px dashed #d1d5db; border-radius: 12px; padding: 1.25rem; text-align: center; margin: 1rem 0;">
-          <p style="color:#6b7280; font-size: 0.75rem; margin: 0 0 0.4rem; text-transform: uppercase; letter-spacing: 0.08em;">Billet ${tickets.length > 1 ? `${i + 1} / ${tickets.length}` : ''}</p>
+          <p style="color:#6b7280; font-size: 0.75rem; margin: 0 0 0.4rem; text-transform: uppercase; letter-spacing: 0.08em;">Billet ${tickets.length > 1 ? `${i + 1} / ${tickets.length}` : ''}${tk.label ? ` — <strong style="color:#111827;">${esc(tk.label)}</strong>` : ''}</p>
           <p style="font-family: monospace; font-size: 1.35rem; font-weight: 700; letter-spacing: 0.12em; color: #111827; margin: 0 0 0.9rem;">${esc(tk.code)}</p>
           <a href="${tk.url}" style="display: inline-block; background: ${color}; color: white; text-decoration: none; padding: 0.65rem 1.4rem; border-radius: 10px; font-weight: 600; font-size: 0.9rem;">Afficher le billet (QR)</a>
           ${tk.walletUrl ? `<br /><a href="${tk.walletUrl}" style="display: inline-block; background: #000000; color: white; text-decoration: none; padding: 0.55rem 1.2rem; border-radius: 10px; font-weight: 600; font-size: 0.85rem; margin-top: 0.6rem;">&#63743; Ajouter à Apple Wallet</a>` : ''}
