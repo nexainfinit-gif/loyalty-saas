@@ -22,6 +22,7 @@ interface Ev {
   price: number
   status: 'draft' | 'published' | 'cancelled' | 'ended'
   offer_loyalty: boolean
+  theme: EventThemeKey
   tickets_valid: number
   tickets_checked_in: number
 }
@@ -38,6 +39,7 @@ interface Ticket {
 
 const EMPTY_FORM = {
   title: '', description: '', location: '', starts_at: '', capacity: '', price: '0', offer_loyalty: false,
+  theme: 'nuit' as EventThemeKey,
 }
 
 export default function EventsPage() {
@@ -65,36 +67,6 @@ export default function EventsPage() {
   const [connect, setConnect] = useState<{ chargesEnabled: boolean } | null>(null)
   const [connectLoading, setConnectLoading] = useState(false)
 
-  // Thème de la page publique (KV events_theme) — nuit / corporate / musée
-  const [theme, setTheme] = useState<EventThemeKey>('nuit')
-  const [themeSaving, setThemeSaving] = useState(false)
-
-  useEffect(() => {
-    let stop = false
-    fetch('/api/restaurant-settings')
-      .then(r => r.ok ? r.json() : null)
-      .then(j => {
-        const v = j?.settings?.events_theme
-        if (!stop && (v === 'nuit' || v === 'corporate' || v === 'musee')) setTheme(v)
-      })
-      .catch(() => {})
-    return () => { stop = true }
-  }, [])
-
-  async function saveTheme(next: EventThemeKey) {
-    const prev = theme
-    setTheme(next)
-    setThemeSaving(true)
-    try {
-      const res = await fetch('/api/restaurant-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ events_theme: next }),
-      })
-      if (!res.ok) setTheme(prev)
-    } catch { setTheme(prev) }
-    finally { setThemeSaving(false) }
-  }
 
   useEffect(() => {
     let stop = false
@@ -158,6 +130,7 @@ export default function EventsPage() {
       capacity: ev.capacity?.toString() ?? '',
       price: ev.price.toString(),
       offer_loyalty: ev.offer_loyalty,
+      theme: ev.theme ?? 'nuit',
     })
     setShowForm(true)
     setError('')
@@ -176,6 +149,7 @@ export default function EventsPage() {
       capacity: form.capacity ? Number(form.capacity) : null,
       price: Number(form.price) || 0,
       offer_loyalty: form.offer_loyalty,
+      theme: form.theme,
     }
     const res = await api<{ event: Ev }>('/api/events', {
       method: editingId ? 'PATCH' : 'POST',
@@ -251,34 +225,6 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* Thème de la page publique */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4 mb-5">
-        <p className="text-xs font-semibold text-gray-500 mb-3">{t('events.themeLabel')}</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {(Object.keys(EVENT_THEMES) as EventThemeKey[]).map(k => {
-            const th = EVENT_THEMES[k]
-            const active = theme === k
-            return (
-              <button
-                key={k}
-                onClick={() => saveTheme(k)}
-                disabled={themeSaving}
-                className={`text-left rounded-xl border-2 p-3 transition-colors ${active ? 'border-primary-600 bg-primary-50/40' : 'border-gray-200 hover:border-gray-300'}`}
-              >
-                {/* mini aperçu */}
-                <div className="h-10 rounded-lg overflow-hidden flex mb-2 border border-gray-100">
-                  <div className="flex-1" style={{ background: th.bg }} />
-                  <div className="w-1/4" style={{ background: th.accent }} />
-                  <div className="w-1/6" style={{ background: th.accent2 }} />
-                </div>
-                <p className="text-xs font-semibold text-gray-900">{t(`events.theme_${k}`)}</p>
-                <p className="text-[11px] text-gray-400">{t(`events.theme_${k}Desc`)}</p>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
       {/* Paiements : indispensable pour les événements payants */}
       {connect && !connect.chargesEnabled && (
         <div className="bg-white rounded-2xl border border-amber-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4 mb-5">
@@ -321,6 +267,10 @@ export default function EventsPage() {
                   <h2 className="text-sm font-bold text-gray-900">{ev.title}</h2>
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${STATUS_STYLE[ev.status]}`}>
                     {t(`events.status_${ev.status}`)}
+                  </span>
+                  <span className="text-[10px] font-medium text-gray-400 border border-gray-200 rounded-md px-1.5 py-0.5 inline-flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full inline-block" style={{ background: EVENT_THEMES[ev.theme ?? 'nuit'].accent }} />
+                    {t(`events.theme_${ev.theme ?? 'nuit'}`)}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -444,6 +394,32 @@ export default function EventsPage() {
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none" />
               </div>
             </div>
+            {/* Thème de présentation de CET événement */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t('events.themeLabel')}</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(Object.keys(EVENT_THEMES) as EventThemeKey[]).map(k => {
+                  const th = EVENT_THEMES[k]
+                  const active = form.theme === k
+                  return (
+                    <button
+                      key={k} type="button"
+                      onClick={() => setForm(f => ({ ...f, theme: k }))}
+                      className={`text-left rounded-xl border-2 p-2 transition-colors ${active ? 'border-primary-600 bg-primary-50/40' : 'border-gray-200 hover:border-gray-300'}`}
+                    >
+                      <div className="h-7 rounded-lg overflow-hidden flex mb-1.5 border border-gray-100">
+                        <div className="flex-1" style={{ background: th.bg }} />
+                        <div className="w-1/4" style={{ background: th.accent }} />
+                        <div className="w-1/6" style={{ background: th.accent2 }} />
+                      </div>
+                      <p className="text-[11px] font-semibold text-gray-900">{t(`events.theme_${k}`)}</p>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">{t(`events.theme_${form.theme}Desc`)}</p>
+            </div>
+
             {hasLoyalty && (
               <label className="flex items-start gap-2 text-xs text-gray-600">
                 <input type="checkbox" checked={form.offer_loyalty}

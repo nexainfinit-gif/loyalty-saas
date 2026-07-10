@@ -18,6 +18,7 @@ const createSchema = z.object({
   price:        z.number().min(0),
   status:       z.enum(['draft', 'published']).optional(),
   offer_loyalty: z.boolean().optional(),
+  theme:        z.enum(['nuit', 'corporate', 'musee']).optional(),
 });
 
 const updateSchema = createSchema.partial().extend({
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
 
   const { data: events, error } = await supabaseAdmin
     .from('events')
-    .select('id, title, slug, description, location, starts_at, ends_at, capacity, price, status, offer_loyalty, created_at')
+    .select('id, title, slug, description, location, starts_at, ends_at, capacity, price, status, offer_loyalty, theme, created_at')
     .eq('restaurant_id', guard.restaurantId)
     .order('starts_at', { ascending: false });
   if (error) return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
       price: d.price,
       status: d.status ?? 'draft',
       offer_loyalty: d.offer_loyalty ?? false,
+      theme: d.theme ?? 'nuit',
     })
     .select()
     .single();
