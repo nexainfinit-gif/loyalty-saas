@@ -2009,6 +2009,9 @@
     "already": "Billet déjà utilisé",
     "invalid": "Billet invalide",
     "alreadyAt": "Premier passage à {time}",
-    "check": "Valider"
+    "check": "Valider",
+    "wrongEvent": "Billet d'un autre événement",
+    "cancelledEvent": "Événement annulé",
+    "allEvents": "Tous les événements"
   }
 }

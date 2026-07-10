@@ -2,13 +2,21 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/lib/server-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Anti-fraude : borne les scans en rafale (boucle folle, device compromis)
+const limiter = rateLimit({ prefix: 'event-checkin', limit: 60, windowMs: 60_000 });
+
 const schema = z.object({
   code: z.string().trim().toUpperCase().regex(/^EV-[A-Z2-9]{4}-[A-Z2-9]{4}$/, 'Code invalide.'),
+  /** Épinglage anti-fraude : si fourni, un billet valide d'un AUTRE
+   *  événement est signalé (wrong_event) au lieu d'être admis. */
+  eventId: z.string().uuid().optional(),
 });
 
 /**
@@ -24,12 +32,16 @@ export async function POST(request: Request) {
   if (guard instanceof NextResponse) return guard;
   if (!guard.restaurantId) return NextResponse.json({ error: 'Établissement introuvable.' }, { status: 404 });
 
+  if (!limiter.check(getClientIp(request)).success) {
+    return NextResponse.json({ error: 'Trop de scans. Attendez un instant.' }, { status: 429 });
+  }
+
   let body: unknown;
   try { body = await request.json(); }
   catch { return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 }); }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ result: 'invalid' });
-  const { code } = parsed.data;
+  const { code, eventId } = parsed.data;
 
   // Isolation multi-tenant : le billet doit appartenir à CET établissement.
   const { data: ticket } = await supabaseAdmin
@@ -44,9 +56,24 @@ export async function POST(request: Request) {
 
   const { data: event } = await supabaseAdmin
     .from('events')
-    .select('id, title, starts_at, capacity')
+    .select('id, title, starts_at, capacity, status')
     .eq('id', ticket.event_id)
     .single();
+
+  // Événement annulé : ses billets ne donnent plus accès.
+  if (event?.status === 'cancelled') {
+    return NextResponse.json({ result: 'invalid', reason: 'event_cancelled', eventTitle: event.title });
+  }
+
+  // Épinglage : billet valide chez cet organisateur mais pour un AUTRE
+  // événement que celui scanné ce soir → signalé, PAS consommé.
+  if (eventId && ticket.event_id !== eventId) {
+    return NextResponse.json({
+      result: 'wrong_event',
+      buyerName: ticket.buyer_name,
+      eventTitle: event?.title ?? '',
+    });
+  }
 
   const counts = async () => {
     const { count } = await supabaseAdmin
@@ -95,6 +122,16 @@ export async function POST(request: Request) {
       ...(await counts()),
     });
   }
+
+  // Traçabilité anti-fraude : qui a validé quoi, quand (fire-and-forget).
+  auditLog({
+    restaurantId: guard.restaurantId,
+    actorId: guard.userId,
+    action: 'event_checkin',
+    targetType: 'event_ticket',
+    targetId: ticket.id,
+    metadata: { code: ticket.code, eventId: ticket.event_id, ip: getClientIp(request) },
+  });
 
   return NextResponse.json({
     result: 'ok',

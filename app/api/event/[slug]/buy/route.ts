@@ -4,7 +4,8 @@ import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { stripe } from '@/lib/stripe';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
-import { generateTicketCode, platformFeeCents, validateQuantity } from '@/lib/events';
+import { generateTicketCode, platformFeeCents, validateQuantity, TICKET_MAX_QTY } from '@/lib/events';
+import { auditLog } from '@/lib/audit';
 import { sendEventTicketsEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 
@@ -97,6 +98,22 @@ export async function POST(
     }
   }
 
+  // Anti-fraude : plafond de billets PAR EMAIL et par événement (bloque
+  // l'accaparement de billets gratuits par le même acheteur — 6 max, comme
+  // la quantité maximale d'un achat).
+  const { count: byEmail } = await supabaseAdmin
+    .from('event_tickets')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_id', event.id)
+    .eq('buyer_email', buyerEmail.toLowerCase())
+    .in('status', ['valid', 'checked_in', 'pending_payment']);
+  if ((byEmail ?? 0) + quantity > TICKET_MAX_QTY) {
+    return NextResponse.json(
+      { error: `Limite de ${TICKET_MAX_QTY} billets par personne pour cet événement.` },
+      { status: 409 },
+    );
+  }
+
   // Création des billets (un code unique par billet)
   const rows = Array.from({ length: quantity }, () => ({
     event_id: event.id,
@@ -143,6 +160,13 @@ export async function POST(
   const APP = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   if (isFree) {
+    auditLog({
+      restaurantId: restaurant.id,
+      action: 'event_tickets_issued',
+      targetType: 'event',
+      targetId: event.id,
+      metadata: { quantity, buyerEmail: buyerEmail.toLowerCase(), free: true, ip },
+    });
     sendEventTicketsEmail({
       to: buyerEmail,
       buyerName,

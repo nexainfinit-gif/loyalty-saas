@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { stripe } from '@/lib/stripe';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { sendEventTicketsEmail } from '@/lib/email';
+import { auditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
@@ -91,6 +92,14 @@ export async function POST(request: Request) {
     .select('title, location, starts_at')
     .eq('id', first.event_id)
     .single();
+
+  auditLog({
+    restaurantId: first.restaurant_id,
+    action: 'event_tickets_issued',
+    targetType: 'event',
+    targetId: first.event_id,
+    metadata: { quantity: tickets.length, buyerEmail: tickets[0].buyer_email, free: false, sessionId },
+  });
 
   const APP = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   if (event) {

@@ -1987,6 +1987,9 @@
     "already": "Entrada ya utilizada",
     "invalid": "Entrada no válida",
     "alreadyAt": "Primer acceso a las {time}",
-    "check": "Validar"
+    "check": "Validar",
+    "wrongEvent": "Entrada de otro evento",
+    "cancelledEvent": "Evento cancelado",
+    "allEvents": "Todos los eventos"
   }
 }

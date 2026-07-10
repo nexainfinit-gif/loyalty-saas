@@ -1991,6 +1991,9 @@
     "already": "Ticket al gebruikt",
     "invalid": "Ongeldig ticket",
     "alreadyAt": "Eerste scan om {time}",
-    "check": "Valideren"
+    "check": "Valideren",
+    "wrongEvent": "Ticket voor een ander evenement",
+    "cancelledEvent": "Evenement geannuleerd",
+    "allEvents": "Alle evenementen"
   }
 }

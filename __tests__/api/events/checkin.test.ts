@@ -27,21 +27,41 @@ vi.mock('@/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock('@/lib/rate-limit', () => ({
+  rateLimit: () => ({ check: () => ({ success: true }) }),
+  getClientIp: () => '127.0.0.1',
+}));
+
+const mockAuditLog = vi.fn();
+vi.mock('@/lib/audit', () => ({
+  auditLog: (p: unknown) => mockAuditLog(p),
+}));
+
 import { POST } from '@/app/api/events/checkin/route';
 
 /* ── Fixtures ──────────────────────────────────────────────────────────── */
 
 const EVENT_A = {
-  id: 'event-a-001',
+  id: 'ceceb0de-0000-4000-8000-000000000001',
   restaurant_id: RESTAURANT.id,
   title: 'Concert Test',
   starts_at: '2026-08-01T20:00:00Z',
   capacity: 100,
+  status: 'published',
+};
+
+const EVENT_A2 = {
+  id: 'ceceb0de-0000-4000-8000-000000000002',
+  restaurant_id: RESTAURANT.id,
+  title: 'Autre Soirée',
+  starts_at: '2026-08-05T20:00:00Z',
+  capacity: 100,
+  status: 'published',
 };
 
 const TICKET_VALID = {
   id: 'tk-001',
-  event_id: EVENT_A.id,
+  event_id: 'ceceb0de-0000-4000-8000-000000000001',
   restaurant_id: RESTAURANT.id,
   code: 'EV-AAAA-2222',
   buyer_name: 'Alice Achat',
@@ -59,16 +79,23 @@ const TICKET_B = {
   checked_in_at: null,
 };
 
-function seedDb(tickets: Record<string, unknown>[] = [{ ...TICKET_VALID }, { ...TICKET_B }]) {
+function seedDb(
+  tickets: Record<string, unknown>[] = [{ ...TICKET_VALID }, { ...TICKET_B }],
+  events: Record<string, unknown>[] = [
+    { ...EVENT_A }, { ...EVENT_A2 },
+    { id: 'event-b-001', restaurant_id: RESTAURANT_B.id, title: 'Event B', starts_at: '2026-08-02T20:00:00Z', capacity: 50, status: 'published' },
+  ],
+) {
   dbHolder.db = createFakeDb({
-    events: [{ ...EVENT_A }, { id: 'event-b-001', restaurant_id: RESTAURANT_B.id, title: 'Event B', starts_at: '2026-08-02T20:00:00Z', capacity: 50 }],
+    events,
     event_tickets: tickets,
+    audit_log: [],
   });
   return dbHolder.db;
 }
 
-function checkin(code: string) {
-  return POST(buildRequest('/api/events/checkin', { method: 'POST', body: { code } }));
+function checkin(code: string, eventId?: string) {
+  return POST(buildRequest('/api/events/checkin', { method: 'POST', body: { code, ...(eventId ? { eventId } : {}) } }));
 }
 
 beforeEach(() => {
@@ -137,6 +164,37 @@ describe('POST /api/events/checkin', () => {
     // Le billet de B n'a PAS été consommé
     const row = dbHolder.db.rows('event_tickets').find(r => r.id === 'tk-b-001');
     expect(row?.status).toBe('valid');
+  });
+
+  it('ANTI-FRAUDE : billet d\'un événement annulé → invalid (event_cancelled)', async () => {
+    seedDb([{ ...TICKET_VALID }], [{ ...EVENT_A, status: 'cancelled' }]);
+    const json = await (await checkin('EV-AAAA-2222')).json();
+    expect(json.result).toBe('invalid');
+    expect(json.reason).toBe('event_cancelled');
+    // Le billet n'a pas été consommé
+    expect(dbHolder.db.rows('event_tickets').find(r => r.id === 'tk-001')?.status).toBe('valid');
+  });
+
+  it('ANTI-FRAUDE : épinglage — billet d\'un AUTRE événement → wrong_event, non consommé', async () => {
+    const json = await (await checkin('EV-AAAA-2222', EVENT_A2.id)).json();
+    expect(json.result).toBe('wrong_event');
+    expect(json.eventTitle).toBe('Concert Test');
+    expect(dbHolder.db.rows('event_tickets').find(r => r.id === 'tk-001')?.status).toBe('valid');
+  });
+
+  it('épinglage sur le BON événement → ok', async () => {
+    const json = await (await checkin('EV-AAAA-2222', EVENT_A.id)).json();
+    expect(json.result).toBe('ok');
+  });
+
+  it('un check-in réussi est journalisé dans l\'audit', async () => {
+    mockAuditLog.mockClear();
+    await checkin('EV-AAAA-2222');
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'event_checkin',
+      restaurantId: RESTAURANT.id,
+      targetId: 'tk-001',
+    }));
   });
 
   it('staff refusé par le guard → la réponse du guard est renvoyée', async () => {

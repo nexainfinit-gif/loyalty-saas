@@ -16,13 +16,16 @@ type BarcodeDetectorLike = { detect: (source: HTMLVideoElement) => Promise<{ raw
 type BarcodeDetectorCtor = new (options: { formats: string[] }) => BarcodeDetectorLike
 
 interface CheckinResult {
-  result: 'ok' | 'already' | 'invalid'
+  result: 'ok' | 'already' | 'invalid' | 'wrong_event'
+  reason?: string
   buyerName?: string
   eventTitle?: string
   checkedInAt?: string
   checkedIn?: number
   total?: number
 }
+
+interface EvOption { id: string; title: string; starts_at: string; status: string }
 
 const CODE_RE = /^EV-[A-Z2-9]{4}-[A-Z2-9]{4}$/
 
@@ -40,6 +43,30 @@ export default function CheckinPage() {
   const [result, setResult] = useState<CheckinResult | null>(null)
   const [counts, setCounts] = useState<{ checkedIn: number; total: number } | null>(null)
 
+  // Épinglage anti-fraude : le portier choisit l'événement du soir —
+  // un billet valide d'un AUTRE événement est alors signalé, pas admis.
+  const [events, setEvents] = useState<EvOption[]>([])
+  const [pinnedEventId, setPinnedEventId] = useState<string>('')
+  const pinnedRef = useRef<string>('')
+  useEffect(() => { pinnedRef.current = pinnedEventId }, [pinnedEventId])
+
+  useEffect(() => {
+    let stop = false
+    async function loadEvents() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const res = await fetch('/api/events', { headers: { Authorization: `Bearer ${session.access_token}` } })
+      if (!res.ok || stop) return
+      const j = await res.json()
+      const published = (j.events ?? []).filter((e: EvOption) => e.status === 'published')
+      setEvents(published)
+      // Pré-épingle l'événement le plus proche dans le temps
+      if (published.length === 1) setPinnedEventId(published[0].id)
+    }
+    loadEvents()
+    return () => { stop = true }
+  }, [])
+
   const submit = useCallback(async (raw: string) => {
     const code = raw.trim().toUpperCase()
     if (!CODE_RE.test(code) || busyRef.current) {
@@ -53,7 +80,7 @@ export default function CheckinPage() {
       const res = await fetch('/api/events/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, ...(pinnedRef.current ? { eventId: pinnedRef.current } : {}) }),
       })
       const j = await res.json()
       const r: CheckinResult = res.ok && j.result ? j : { result: 'invalid' }
@@ -132,7 +159,9 @@ export default function CheckinPage() {
     ? { bg: '#0BA84A', icon: '✓', title: t('checkin.valid') }
     : result?.result === 'already'
       ? { bg: '#E58F00', icon: '⟳', title: t('checkin.already') }
-      : { bg: '#DC2626', icon: '✕', title: t('checkin.invalid') }
+      : result?.result === 'wrong_event'
+        ? { bg: '#7C3AED', icon: '↷', title: t('checkin.wrongEvent') }
+        : { bg: '#DC2626', icon: '✕', title: result?.reason === 'event_cancelled' ? t('checkin.cancelledEvent') : t('checkin.invalid') }
 
   return (
     <div className="fixed inset-0 z-50 bg-gray-950 text-white flex flex-col">
@@ -146,6 +175,24 @@ export default function CheckinPage() {
           {counts ? `${counts.checkedIn}/${counts.total}` : ''}
         </span>
       </div>
+
+      {/* Épinglage de l'événement du soir */}
+      {events.length > 0 && (
+        <div className="px-4 pb-2">
+          <select
+            value={pinnedEventId}
+            onChange={e => setPinnedEventId(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white text-sm focus:outline-none focus:border-white/40"
+          >
+            <option value="" className="text-gray-900">{t('checkin.allEvents')}</option>
+            {events.map(ev => (
+              <option key={ev.id} value={ev.id} className="text-gray-900">
+                {ev.title} — {new Date(ev.starts_at).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Caméra */}
       <div className="relative flex-1 overflow-hidden">

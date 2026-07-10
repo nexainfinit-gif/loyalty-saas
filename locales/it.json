@@ -1991,6 +1991,9 @@
     "already": "Biglietto già utilizzato",
     "invalid": "Biglietto non valido",
     "alreadyAt": "Primo ingresso alle {time}",
-    "check": "Convalida"
+    "check": "Convalida",
+    "wrongEvent": "Biglietto di un altro evento",
+    "cancelledEvent": "Evento annullato",
+    "allEvents": "Tutti gli eventi"
   }
 }
