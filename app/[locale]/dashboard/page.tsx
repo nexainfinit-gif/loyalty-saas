@@ -716,7 +716,13 @@ export default function DashboardPage() {
     }
     toast.success(t('dashboard.toastLoyaltySaved'));
     // Programme désormais configuré → lève la pop-up obligatoire.
-    setNeedsLoyaltySetup(false);
+    if (needsLoyaltySetup) {
+      setNeedsLoyaltySetup(false);
+      // Enchaîne sur le tutoriel assisté : au chargement il n'avait pas pu
+      // se déclencher (le programme n'existait pas encore) et n'apparaissait
+      // sinon qu'au prochain rechargement de la page.
+      if (!restaurant.tutorial_completed_at) setShowTutorial(true);
+    }
 
     // Auto-provisionne une carte Wallet générique si le restaurant n'en a pas
     // encore : le commerçant n'a jamais à concevoir un template manuellement.
