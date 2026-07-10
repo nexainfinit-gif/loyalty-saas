@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslation } from '@/lib/i18n'
 import { api } from '@/lib/use-api'
+import { EVENT_THEMES, type EventThemeKey } from '@/lib/event-themes'
 
 /**
  * Dashboard Événements (billetterie) — liste, création/édition, publication,
@@ -63,6 +64,37 @@ export default function EventsPage() {
   // fonctionne pas — il faut le dire clairement à l'organisateur).
   const [connect, setConnect] = useState<{ chargesEnabled: boolean } | null>(null)
   const [connectLoading, setConnectLoading] = useState(false)
+
+  // Thème de la page publique (KV events_theme) — nuit / corporate / musée
+  const [theme, setTheme] = useState<EventThemeKey>('nuit')
+  const [themeSaving, setThemeSaving] = useState(false)
+
+  useEffect(() => {
+    let stop = false
+    fetch('/api/restaurant-settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        const v = j?.settings?.events_theme
+        if (!stop && (v === 'nuit' || v === 'corporate' || v === 'musee')) setTheme(v)
+      })
+      .catch(() => {})
+    return () => { stop = true }
+  }, [])
+
+  async function saveTheme(next: EventThemeKey) {
+    const prev = theme
+    setTheme(next)
+    setThemeSaving(true)
+    try {
+      const res = await fetch('/api/restaurant-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events_theme: next }),
+      })
+      if (!res.ok) setTheme(prev)
+    } catch { setTheme(prev) }
+    finally { setThemeSaving(false) }
+  }
 
   useEffect(() => {
     let stop = false
@@ -218,6 +250,34 @@ export default function EventsPage() {
           </button>
         </div>
       )}
+
+      {/* Thème de la page publique */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4 mb-5">
+        <p className="text-xs font-semibold text-gray-500 mb-3">{t('events.themeLabel')}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {(Object.keys(EVENT_THEMES) as EventThemeKey[]).map(k => {
+            const th = EVENT_THEMES[k]
+            const active = theme === k
+            return (
+              <button
+                key={k}
+                onClick={() => saveTheme(k)}
+                disabled={themeSaving}
+                className={`text-left rounded-xl border-2 p-3 transition-colors ${active ? 'border-primary-600 bg-primary-50/40' : 'border-gray-200 hover:border-gray-300'}`}
+              >
+                {/* mini aperçu */}
+                <div className="h-10 rounded-lg overflow-hidden flex mb-2 border border-gray-100">
+                  <div className="flex-1" style={{ background: th.bg }} />
+                  <div className="w-1/4" style={{ background: th.accent }} />
+                  <div className="w-1/6" style={{ background: th.accent2 }} />
+                </div>
+                <p className="text-xs font-semibold text-gray-900">{t(`events.theme_${k}`)}</p>
+                <p className="text-[11px] text-gray-400">{t(`events.theme_${k}Desc`)}</p>
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Paiements : indispensable pour les événements payants */}
       {connect && !connect.chargesEnabled && (

@@ -35,9 +35,11 @@ export async function GET(
     return NextResponse.json({ error: 'Billet introuvable.' }, { status: 404 });
   }
 
-  const [{ data: event }, { data: restaurant }] = await Promise.all([
+  const [{ data: event }, { data: restaurant }, { data: themeKv }] = await Promise.all([
     supabaseAdmin.from('events').select('title, location, starts_at').eq('id', ticket.event_id).single(),
     supabaseAdmin.from('restaurants').select('name, primary_color, logo_url').eq('id', ticket.restaurant_id).single(),
+    supabaseAdmin.from('restaurant_settings').select('value')
+      .eq('restaurant_id', ticket.restaurant_id).eq('key', 'events_theme').maybeSingle(),
   ]);
   if (!event || !restaurant) {
     return NextResponse.json({ error: 'Billet introuvable.' }, { status: 404 });
@@ -47,6 +49,7 @@ export async function GET(
     code: ticket.code,
     buyerName: ticket.buyer_name,
     status: ticket.status,
+    theme: themeKv?.value || 'nuit',
     event: { title: event.title, location: event.location, startsAt: event.starts_at },
     business: { name: restaurant.name, primaryColor: restaurant.primary_color, logoUrl: restaurant.logo_url },
   });

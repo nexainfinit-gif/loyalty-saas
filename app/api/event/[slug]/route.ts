@@ -33,6 +33,14 @@ export async function GET(
 
   const canCharge = !!restaurant.stripe_account_id && restaurant.stripe_charges_enabled === true;
 
+  // Thème de présentation choisi par l'organisateur (KV, défaut « nuit »)
+  const { data: themeKv } = await supabaseAdmin
+    .from('restaurant_settings')
+    .select('value')
+    .eq('restaurant_id', restaurant.id)
+    .eq('key', 'events_theme')
+    .maybeSingle();
+
   const { data: events } = await supabaseAdmin
     .from('events')
     .select('id, title, slug, description, location, starts_at, ends_at, capacity, price, offer_loyalty')
@@ -59,6 +67,7 @@ export async function GET(
     city: restaurant.city,
     primaryColor: restaurant.primary_color,
     logoUrl: restaurant.logo_url,
+    theme: themeKv?.value || 'nuit',
     events: list
       // Les événements payants ne sont proposables que si l'encaissement marche
       .filter(e => Number(e.price) === 0 || canCharge)

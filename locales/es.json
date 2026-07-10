@@ -1936,7 +1936,14 @@
     "connectDesc": "Conecta tu cuenta de Stripe para vender entradas de pago. Las entradas gratuitas funcionan sin ella.",
     "connectWarnHidden": "Tus eventos de pago están OCULTOS en tu página pública hasta que conectes Stripe.",
     "connectBtn": "Conectar Stripe",
-    "paidHidden": "⚠ Oculto en tu página pública: conecta Stripe para vender entradas de pago."
+    "paidHidden": "⚠ Oculto en tu página pública: conecta Stripe para vender entradas de pago.",
+    "themeLabel": "Tema de tu página pública",
+    "theme_nuit": "Noche",
+    "theme_nuitDesc": "Conciertos, clubs, festivales — oscuro y eléctrico",
+    "theme_corporate": "Corporate",
+    "theme_corporateDesc": "Conferencias, seminarios — claro y refinado",
+    "theme_musee": "Museo",
+    "theme_museeDesc": "Exposiciones, talleres culturales — galería depurada"
   },
   "event": {
     "verifying": "Verificando el pago…",

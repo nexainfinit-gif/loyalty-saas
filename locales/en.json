@@ -1958,7 +1958,14 @@
     "connectDesc": "Connect your Stripe account to sell paid tickets. Free tickets work without it.",
     "connectWarnHidden": "Your paid events are HIDDEN from your public page until Stripe is connected.",
     "connectBtn": "Connect Stripe",
-    "paidHidden": "⚠ Hidden from your public page: connect Stripe to sell paid tickets."
+    "paidHidden": "⚠ Hidden from your public page: connect Stripe to sell paid tickets.",
+    "themeLabel": "Your public page theme",
+    "theme_nuit": "Night",
+    "theme_nuitDesc": "Concerts, clubs, festivals — dark and electric",
+    "theme_corporate": "Corporate",
+    "theme_corporateDesc": "Conferences, seminars — light and refined",
+    "theme_musee": "Museum",
+    "theme_museeDesc": "Exhibitions, cultural workshops — clean gallery"
   },
   "event": {
     "verifying": "Verifying payment…",

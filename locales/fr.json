@@ -1958,7 +1958,14 @@
     "connectDesc": "Connectez votre compte Stripe pour vendre des billets payants. Les billets gratuits fonctionnent sans.",
     "connectWarnHidden": "Vos événements payants sont INVISIBLES sur votre page publique tant que Stripe n'est pas connecté.",
     "connectBtn": "Connecter Stripe",
-    "paidHidden": "⚠ Invisible sur votre page publique : connectez Stripe pour vendre des billets payants."
+    "paidHidden": "⚠ Invisible sur votre page publique : connectez Stripe pour vendre des billets payants.",
+    "themeLabel": "Thème de votre page publique",
+    "theme_nuit": "Nuit",
+    "theme_nuitDesc": "Concerts, clubs, festivals — sombre et électrique",
+    "theme_corporate": "Corporate",
+    "theme_corporateDesc": "Conférences, séminaires — clair et raffiné",
+    "theme_musee": "Musée",
+    "theme_museeDesc": "Expos, ateliers culturels — galerie épurée"
   },
   "event": {
     "verifying": "Vérification du paiement…",

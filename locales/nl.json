@@ -1940,7 +1940,14 @@
     "connectDesc": "Koppel uw Stripe-account om betaalde tickets te verkopen. Gratis tickets werken zonder.",
     "connectWarnHidden": "Uw betaalde evenementen zijn ONZICHTBAAR op uw publieke pagina tot Stripe gekoppeld is.",
     "connectBtn": "Stripe koppelen",
-    "paidHidden": "⚠ Onzichtbaar op uw publieke pagina: koppel Stripe om betaalde tickets te verkopen."
+    "paidHidden": "⚠ Onzichtbaar op uw publieke pagina: koppel Stripe om betaalde tickets te verkopen.",
+    "themeLabel": "Thema van uw publieke pagina",
+    "theme_nuit": "Nacht",
+    "theme_nuitDesc": "Concerten, clubs, festivals — donker en elektrisch",
+    "theme_corporate": "Corporate",
+    "theme_corporateDesc": "Conferenties, seminars — licht en verfijnd",
+    "theme_musee": "Museum",
+    "theme_museeDesc": "Tentoonstellingen, culturele workshops — strakke galerij"
   },
   "event": {
     "verifying": "Betaling controleren…",
