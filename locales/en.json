@@ -629,7 +629,9 @@
     "identityDesc": "Start here: name, logo (auto-cropped) and colour. They style your Wallet card, your emails and your sign-up page. Save, then click Next.",
     "bookingTitle": "Bookings",
     "bookingDesc": "Your business runs on appointments: let's set up your services, your team and your hours together. The guide walks you through each screen.",
-    "bookingCta": "Set up →"
+    "bookingCta": "Set up →",
+    "gateIdentity": "Add your logo (and save) to continue.",
+    "gateIdentityDone": "Logo in place — you can continue."
   },
   "register": {
     "firstNameRequired": "First name is required",
@@ -1883,6 +1885,10 @@
     "goThere": "Go there",
     "next": "Next step",
     "finish": "Finish",
-    "quit": "Exit guide"
+    "quit": "Exit guide",
+    "gateServices": "Create at least one service to continue.",
+    "gateStaff": "Add at least one team member to continue.",
+    "doneServices": "{count} service(s) created — you can continue.",
+    "doneStaff": "{count} team member(s) — you can continue."
   }
 }

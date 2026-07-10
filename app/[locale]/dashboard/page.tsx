@@ -1001,6 +1001,7 @@ export default function DashboardPage() {
             }
           }}
           onTabChange={(tab: Tab) => setActiveTab(tab)}
+          identityDone={!!restaurant?.logo_url}
           bookingEligible={pf('booking') && BOOKING_ELIGIBLE_TYPES.has(restaurant?.business_type ?? '')}
           onStartBooking={async () => {
             setShowTutorial(false);

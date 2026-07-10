@@ -612,7 +612,9 @@
     "identityDesc": "Begin hier: naam, logo (automatisch bijgesneden) en kleur. Ze bepalen de stijl van uw Wallet-kaart, e-mails en inschrijfpagina. Sla op en klik daarna op Volgende.",
     "bookingTitle": "Reserveringen",
     "bookingDesc": "Uw zaak werkt op afspraak: we stellen samen uw diensten, uw team en uw uren in. De gids begeleidt u scherm per scherm.",
-    "bookingCta": "Instellen →"
+    "bookingCta": "Instellen →",
+    "gateIdentity": "Voeg uw logo toe (en sla op) om verder te gaan.",
+    "gateIdentityDone": "Logo staat klaar — u kunt verdergaan."
   },
   "register": {
     "firstNameRequired": "Voornaam is verplicht",
@@ -1865,6 +1867,10 @@
     "goThere": "Ga ernaartoe",
     "next": "Volgende stap",
     "finish": "Afronden",
-    "quit": "Gids sluiten"
+    "quit": "Gids sluiten",
+    "gateServices": "Maak minstens één dienst aan om verder te gaan.",
+    "gateStaff": "Voeg minstens één teamlid toe om verder te gaan.",
+    "doneServices": "{count} dienst(en) aangemaakt — u kunt verdergaan.",
+    "doneStaff": "{count} teamlid/-leden — u kunt verdergaan."
   }
 }

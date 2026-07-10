@@ -14,6 +14,9 @@ interface TutorialStep {
   /** Étape finale « réservations » (métiers éligibles) : ancre = le lien
    *  sidebar Booking, bouton principal = départ du guide de configuration. */
   booking?: boolean;
+  /** Étape verrouillante : Suivant reste désactivé (et Passer masqué) tant
+   *  que la configuration n'est pas réellement faite. */
+  gate?: 'identity';
 }
 
 interface Props {
@@ -24,9 +27,11 @@ interface Props {
    *  équipe → réglages. */
   bookingEligible?: boolean;
   onStartBooking?: () => void;
+  /** Identité configurée (logo uploadé) — déverrouille l'étape 1. */
+  identityDone?: boolean;
 }
 
-export default function DashboardTutorial({ onComplete, onTabChange, bookingEligible, onStartBooking }: Props) {
+export default function DashboardTutorial({ onComplete, onTabChange, bookingEligible, onStartBooking, identityDone }: Props) {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
@@ -39,7 +44,7 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
   // qui lance le guide de configuration des réservations.
   const steps = useMemo<TutorialStep[]>(() => {
     const s: TutorialStep[] = [
-      { tab: 'settings',   titleKey: 'tutorial.identityTitle',   descKey: 'tutorial.identityDesc', interactive: true },
+      { tab: 'settings',   titleKey: 'tutorial.identityTitle',   descKey: 'tutorial.identityDesc', interactive: true, gate: 'identity' },
       { tab: 'loyalty',    titleKey: 'tutorial.loyaltyTitle',    descKey: 'tutorial.loyaltyDesc',  interactive: true },
       { tab: 'overview',   titleKey: 'tutorial.overviewTitle',   descKey: 'tutorial.overviewDesc' },
       { tab: 'clients',    titleKey: 'tutorial.clientsTitle',    descKey: 'tutorial.clientsDesc' },
@@ -54,6 +59,8 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
 
   const step = steps[currentStep];
   const isLast = currentStep === steps.length - 1;
+  // Étape verrouillée : la configuration attendue n'est pas encore faite.
+  const gated = step.gate === 'identity' && !identityDone;
 
   // Position tooltip next to the sidebar item (or below on mobile)
   const positionTooltip = useCallback(() => {
@@ -110,13 +117,14 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
   }, [positionTooltip]);
 
   const handleNext = useCallback(() => {
+    if (gated) return;
     if (isLast) {
       if (step.booking && onStartBooking) onStartBooking();
       else onComplete();
     } else {
       setCurrentStep(s => s + 1);
     }
-  }, [isLast, step.booking, onStartBooking, onComplete]);
+  }, [gated, isLast, step.booking, onStartBooking, onComplete]);
 
   return (
     <>
@@ -197,16 +205,33 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
 
               {/* Description */}
               <p className="text-sm text-gray-500 leading-relaxed">{t(step.descKey)}</p>
+
+              {/* Verrou : ce qu'il reste à faire pour continuer / confirmation */}
+              {step.gate === 'identity' && (
+                gated ? (
+                  <p className="mt-2.5 text-xs font-medium text-amber-600 bg-amber-50 rounded-xl px-3 py-2">
+                    {t('tutorial.gateIdentity')}
+                  </p>
+                ) : (
+                  <p className="mt-2.5 text-xs font-medium text-success-700 bg-success-50 rounded-xl px-3 py-2">
+                    {t('tutorial.gateIdentityDone')}
+                  </p>
+                )
+              )}
             </div>
 
             {/* Actions */}
             <div className="px-5 pb-4 flex items-center justify-between">
-              <button
-                onClick={onComplete}
-                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                {t('tutorial.skip')}
-              </button>
+              {/* Passer : masqué tant qu'une étape verrouillante est incomplète
+                  — la configuration fait partie du tutoriel, pas d'échappatoire. */}
+              {gated ? <span /> : (
+                <button
+                  onClick={onComplete}
+                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {t('tutorial.skip')}
+                </button>
+              )}
 
               <div className="flex items-center gap-2">
                 {currentStep > 0 && (
@@ -219,7 +244,13 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
                 )}
                 <button
                   onClick={handleNext}
-                  className="px-4 py-2 bg-gray-900 text-white text-xs font-semibold rounded-xl hover:bg-gray-800 transition-colors"
+                  disabled={gated}
+                  className={[
+                    'px-4 py-2 text-xs font-semibold rounded-xl transition-colors',
+                    gated
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-900 text-white hover:bg-gray-800',
+                  ].join(' ')}
                 >
                   {isLast ? (step.booking ? t('tutorial.bookingCta') : t('tutorial.start')) : t('tutorial.nextBtn')}
                 </button>

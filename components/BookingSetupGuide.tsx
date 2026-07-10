@@ -1,7 +1,8 @@
 'use client';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
+import { api } from '@/lib/use-api';
 
 /**
  * Guide de configuration des réservations, suite du tutoriel dashboard pour
@@ -45,6 +46,30 @@ export default function BookingSetupGuide() {
   const router = useLocaleRouter();
   const pathname = usePathname();
   const stepId = useSyncExternalStore(subscribe, readStep, () => null);
+  // Compteurs réels (null = pas encore chargé) : le guide VÉRIFIE que la
+  // configuration est faite avant de laisser avancer.
+  const [counts, setCounts] = useState<{ services: number | null; staff: number | null }>({ services: null, staff: null });
+
+  useEffect(() => {
+    if (!stepId) return;
+    let stop = false;
+    const load = async () => {
+      const [s, st] = await Promise.all([
+        api<{ services: unknown[] }>('/api/appointments/services'),
+        api<{ staff: unknown[] }>('/api/appointments/staff'),
+      ]);
+      if (stop) return;
+      setCounts({
+        services: s.data ? s.data.services.length : null,
+        staff: st.data ? st.data.staff.length : null,
+      });
+    };
+    load();
+    // Le commerçant crée ses éléments dans la page à côté de la carte :
+    // on re-vérifie régulièrement pour déverrouiller dès que c'est fait.
+    const iv = setInterval(load, 4000);
+    return () => { stop = true; clearInterval(iv); };
+  }, [stepId]);
 
   if (!stepId) return null;
 
@@ -54,6 +79,13 @@ export default function BookingSetupGuide() {
   // Le commerçant est-il sur la page de l'étape courante ?
   const onStepPage = pathname?.endsWith(step.path) ?? false;
 
+  // Verrouillage : impossible d'avancer tant que l'étape n'est pas VRAIMENT
+  // configurée (au moins 1 prestation, puis au moins 1 membre d'équipe).
+  const gated =
+    step.id === 'services' ? (counts.services ?? 0) < 1 :
+    step.id === 'staff'    ? (counts.staff ?? 0) < 1 :
+    false;
+
   const quit = () => writeStep(null);
 
   const advance = () => {
@@ -61,6 +93,7 @@ export default function BookingSetupGuide() {
       router.push(step.path);
       return;
     }
+    if (gated) return;
     if (isLast) {
       quit();
       return;
@@ -88,16 +121,41 @@ export default function BookingSetupGuide() {
           <h3 className="text-sm font-bold text-gray-900 mb-1.5">{t(step.titleKey)}</h3>
           <p className="text-[13px] text-gray-500 leading-relaxed">{t(step.descKey)}</p>
 
+          {/* Verrou : reste à faire / fait */}
+          {step.id !== 'settings' && (
+            gated ? (
+              <p className="mt-2 text-xs font-medium text-amber-600 bg-amber-50 rounded-xl px-3 py-2">
+                {t(step.id === 'services' ? 'bookingSetup.gateServices' : 'bookingSetup.gateStaff')}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs font-medium text-success-700 bg-success-50 rounded-xl px-3 py-2">
+                {t(step.id === 'services' ? 'bookingSetup.doneServices' : 'bookingSetup.doneStaff', {
+                  count: (step.id === 'services' ? counts.services : counts.staff) ?? 0,
+                })}
+              </p>
+            )
+          )}
+
           <div className="flex items-center justify-between mt-3">
-            <button
-              onClick={quit}
-              className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              {t('bookingSetup.quit')}
-            </button>
+            {/* Quitter : masqué tant que l'étape est verrouillée — la
+                configuration fait partie du parcours. */}
+            {gated ? <span /> : (
+              <button
+                onClick={quit}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {t('bookingSetup.quit')}
+              </button>
+            )}
             <button
               onClick={advance}
-              className="px-4 py-2 bg-gray-900 text-white text-xs font-semibold rounded-xl hover:bg-gray-800 transition-colors"
+              disabled={onStepPage && gated}
+              className={[
+                'px-4 py-2 text-xs font-semibold rounded-xl transition-colors',
+                onStepPage && gated
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-900 text-white hover:bg-gray-800',
+              ].join(' ')}
             >
               {!onStepPage
                 ? t('bookingSetup.goThere')

@@ -612,7 +612,9 @@
     "identityDesc": "Inizia da qui: nome, logo (ritaglio automatico) e colore. Danno stile alla tua carta Wallet, alle email e alla pagina di iscrizione. Salva, poi clicca Avanti.",
     "bookingTitle": "Prenotazioni",
     "bookingDesc": "La tua attività lavora su appuntamento: configuriamo insieme i servizi, il team e gli orari. La guida ti accompagna schermata per schermata.",
-    "bookingCta": "Configura →"
+    "bookingCta": "Configura →",
+    "gateIdentity": "Aggiungi il tuo logo (e salva) per continuare.",
+    "gateIdentityDone": "Logo a posto — puoi continuare."
   },
   "register": {
     "firstNameRequired": "Il nome è obbligatorio",
@@ -1865,6 +1867,10 @@
     "goThere": "Vai",
     "next": "Passo successivo",
     "finish": "Concludi",
-    "quit": "Esci dalla guida"
+    "quit": "Esci dalla guida",
+    "gateServices": "Crea almeno un servizio per continuare.",
+    "gateStaff": "Aggiungi almeno un membro del team per continuare.",
+    "doneServices": "{count} servizio/i creato/i — puoi continuare.",
+    "doneStaff": "{count} membro/i nel team — puoi continuare."
   }
 }
