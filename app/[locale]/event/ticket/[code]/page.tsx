@@ -48,7 +48,7 @@ export default function TicketPage() {
         ${T.displayUppercase ? 'text-transform: uppercase;' : ''}
         ${T.displayTracking ? `letter-spacing: ${T.displayTracking};` : ''}
       }
-      .tk-mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+      .tk-mono { font-family: ${T.labelFamily}; }
       .tk-bg { background: ${T.bg}; position: relative; }
       ${T.grain ? `
       .tk-bg::before {

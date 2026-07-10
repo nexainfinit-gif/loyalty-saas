@@ -1943,7 +1943,9 @@
     "theme_corporate": "Corporate",
     "theme_corporateDesc": "Conferencias, seminarios — claro y refinado",
     "theme_musee": "Museo",
-    "theme_museeDesc": "Exposiciones, talleres culturales — galería depurada"
+    "theme_museeDesc": "Exposiciones, talleres culturales — galería depurada",
+    "theme_minimal": "Sobrio",
+    "theme_minimalDesc": "Lanzamientos de producto, meetups — limpio y premium"
   },
   "event": {
     "verifying": "Verificando el pago…",

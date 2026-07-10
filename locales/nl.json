@@ -1947,7 +1947,9 @@
     "theme_corporate": "Corporate",
     "theme_corporateDesc": "Conferenties, seminars — licht en verfijnd",
     "theme_musee": "Museum",
-    "theme_museeDesc": "Tentoonstellingen, culturele workshops — strakke galerij"
+    "theme_museeDesc": "Tentoonstellingen, culturele workshops — strakke galerij",
+    "theme_minimal": "Strak",
+    "theme_minimalDesc": "Productlanceringen, meetups — clean en premium"
   },
   "event": {
     "verifying": "Betaling controleren…",

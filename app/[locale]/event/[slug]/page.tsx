@@ -67,6 +67,8 @@ function themeCss(T: EventTheme): string {
     }
     .ev-input-${k}:focus { outline: none; border-color: ${T.accent}; ${T.dark ? 'box-shadow: 4px 4px 0 rgba(200,255,46,0.25);' : `box-shadow: 0 0 0 3px ${T.accent}22;`} }
     .ev-input-${k}::placeholder { color: ${T.faint}; }
+    /* Police des labels propre au thème (mono technique ou sans produit) */
+    .ev-card-${k} .ev-mono { font-family: ${T.labelFamily}; }
   `
 }
 
@@ -77,7 +79,7 @@ function PageStyles({ shell, used }: { shell: EventTheme; used: EventTheme[] }) 
     <style>{`
       ${imports}
       body { background: ${shell.bg}; }
-      .ev-mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+      .ev-mono { font-family: ${shell.labelFamily}; }
       .ev-bg { background: ${shell.bg}; position: relative; overflow-x: hidden; }
       ${shell.grain ? `
       .ev-bg::before {
@@ -116,6 +118,7 @@ function PageStyles({ shell, used }: { shell: EventTheme; used: EventTheme[] }) 
 
 /** Bandeau marquee (nuit) ou filet éditorial (thèmes clairs). */
 function TopBand({ T }: { T: EventTheme }) {
+  if (T.band === 'none') return null
   if (!T.marquee) {
     return <div className="relative z-10 h-1.5" style={{ background: `linear-gradient(90deg, ${T.accent}, ${T.accent2})` }} />
   }

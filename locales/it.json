@@ -1947,7 +1947,9 @@
     "theme_corporate": "Corporate",
     "theme_corporateDesc": "Conferenze, seminari — chiaro e raffinato",
     "theme_musee": "Museo",
-    "theme_museeDesc": "Mostre, laboratori culturali — galleria essenziale"
+    "theme_museeDesc": "Mostre, laboratori culturali — galleria essenziale",
+    "theme_minimal": "Sobrio",
+    "theme_minimalDesc": "Lanci di prodotto, meetup — essenziale e premium"
   },
   "event": {
     "verifying": "Verifica del pagamento…",

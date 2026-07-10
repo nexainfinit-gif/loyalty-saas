@@ -397,7 +397,7 @@ export default function EventsPage() {
             {/* Thème de présentation de CET événement */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t('events.themeLabel')}</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {(Object.keys(EVENT_THEMES) as EventThemeKey[]).map(k => {
                   const th = EVENT_THEMES[k]
                   const active = form.theme === k

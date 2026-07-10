@@ -18,7 +18,7 @@ const createSchema = z.object({
   price:        z.number().min(0),
   status:       z.enum(['draft', 'published']).optional(),
   offer_loyalty: z.boolean().optional(),
-  theme:        z.enum(['nuit', 'corporate', 'musee']).optional(),
+  theme:        z.enum(['nuit', 'corporate', 'musee', 'minimal']).optional(),
 });
 
 const updateSchema = createSchema.partial().extend({

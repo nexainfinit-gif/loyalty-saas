@@ -1965,7 +1965,9 @@
     "theme_corporate": "Corporate",
     "theme_corporateDesc": "Conférences, séminaires — clair et raffiné",
     "theme_musee": "Musée",
-    "theme_museeDesc": "Expos, ateliers culturels — galerie épurée"
+    "theme_museeDesc": "Expos, ateliers culturels — galerie épurée",
+    "theme_minimal": "Sobre",
+    "theme_minimalDesc": "Lancements produit, meetups — épuré et premium"
   },
   "event": {
     "verifying": "Vérification du paiement…",

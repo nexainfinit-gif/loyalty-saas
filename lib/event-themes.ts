@@ -4,7 +4,7 @@
  * et un séminaire d'entreprise ne se présentent pas pareil.
  * Module client-safe — uniquement des tokens.
  */
-export type EventThemeKey = 'nuit' | 'corporate' | 'musee';
+export type EventThemeKey = 'nuit' | 'corporate' | 'musee' | 'minimal';
 
 export interface EventTheme {
   key: EventThemeKey;
@@ -18,6 +18,8 @@ export interface EventTheme {
   displayUppercase: boolean;
   /** Interlettrage des titres (ex. '-0.03em' pour un grotesk serré). */
   displayTracking?: string;
+  /** Police des labels/boutons (mono technique ou sans produit). */
+  labelFamily: string;
   /** Couleurs. */
   bg: string;         // fond de page
   surface: string;    // cartes
@@ -39,6 +41,8 @@ export interface EventTheme {
   grain: boolean;     // texture bruit
   vibe: string | null; // fond d'ambiance (css background) ou null
   marquee: boolean;   // bandeau défilant
+  /** 'none' = aucun bandeau en haut de page (par défaut : filet dégradé). */
+  band?: 'none';
   /** Variante STRUCTURELLE des cartes : 'catalog' = cartel d'exposition
    *  (filet épais, № numéroté, pas de bloc date) au lieu du billet-affiche. */
   variant?: 'catalog';
@@ -53,6 +57,7 @@ export const EVENT_THEMES: Record<EventThemeKey, EventTheme> = {
     displayWeight: 900,
     displayItalic: false,
     displayUppercase: true,
+    labelFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
     bg: '#0B0B10',
     surface: '#131318',
     headerBg: '#0B0B10',
@@ -82,6 +87,7 @@ export const EVENT_THEMES: Record<EventThemeKey, EventTheme> = {
     displayItalic: false,
     displayUppercase: true,
     displayTracking: '-0.02em',
+    labelFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
     bg: '#FAFAF8',
     surface: '#FFFFFF',
     headerBg: '#101010',
@@ -110,6 +116,7 @@ export const EVENT_THEMES: Record<EventThemeKey, EventTheme> = {
     displayItalic: true,
     displayUppercase: false,
     displayTracking: '-0.01em',
+    labelFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
     bg: '#F7F3EA',
     surface: '#FFFDF8',
     headerBg: '#EFE7D5',
@@ -129,6 +136,37 @@ export const EVENT_THEMES: Record<EventThemeKey, EventTheme> = {
     vibe: null,
     marquee: false,
     variant: 'catalog',
+  },
+  /** Lancements produit, meetups, ateliers — sobre UI/UX (Apple/Uber/Airbnb) :
+   *  blanc pur, sans produit, CTA noir, grands rayons, ombres douces,
+   *  un seul accent chaud réservé à la rareté. */
+  minimal: {
+    key: 'minimal',
+    fontImport: 'https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700;800&display=swap',
+    display: "'Figtree', system-ui, sans-serif",
+    displayWeight: 700,
+    displayItalic: false,
+    displayUppercase: false,
+    displayTracking: '-0.02em',
+    labelFamily: "'Figtree', system-ui, sans-serif",
+    bg: '#FFFFFF',
+    surface: '#FFFFFF',
+    headerBg: '#111111',
+    ink: '#111111',
+    muted: '#6A6A6A',
+    faint: '#9E9E9E',
+    accent: '#111111',
+    accentInk: '#FFFFFF',
+    accent2: '#FF385C',
+    border: '#E8E8E8',
+    dark: false,
+    radius: '16px',
+    shadow: '0 1px 2px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.04)',
+    shadowHover: '0 2px 4px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.10)',
+    grain: false,
+    vibe: null,
+    marquee: false,
+    band: 'none',
   },
 };
 
