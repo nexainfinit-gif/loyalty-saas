@@ -22,6 +22,8 @@ export interface EventTheme {
   bg: string;         // fond de page
   surface: string;    // cartes
   headerBg: string;   // en-tête du billet
+  /** Texte posé sur headerBg (défaut blanc — utile si en-tête clair). */
+  headerInk?: string;
   ink: string;        // texte principal (sur bg/surface)
   muted: string;      // texte secondaire
   faint: string;      // texte discret
@@ -37,6 +39,9 @@ export interface EventTheme {
   grain: boolean;     // texture bruit
   vibe: string | null; // fond d'ambiance (css background) ou null
   marquee: boolean;   // bandeau défilant
+  /** Variante STRUCTURELLE des cartes : 'catalog' = cartel d'exposition
+   *  (filet épais, № numéroté, pas de bloc date) au lieu du billet-affiche. */
+  variant?: 'catalog';
 }
 
 export const EVENT_THEMES: Record<EventThemeKey, EventTheme> = {
@@ -95,31 +100,35 @@ export const EVENT_THEMES: Record<EventThemeKey, EventTheme> = {
     vibe: null,
     marquee: false,
   },
-  /** Musées, expos, ateliers culturels — blanc galerie + terracotta. */
+  /** Musées, expos, ateliers culturels — cartel d'exposition : serif
+   *  éditorial italique XXL, filets épais, № numérotés, carton crème. */
   musee: {
     key: 'musee',
-    fontImport: 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&display=swap',
-    display: "'Cormorant Garamond', Georgia, serif",
-    displayWeight: 700,
+    fontImport: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,650;1,9..144,500;1,9..144,650&display=swap',
+    display: "'Fraunces', Georgia, serif",
+    displayWeight: 650,
     displayItalic: true,
     displayUppercase: false,
-    bg: '#FAF7F1',
-    surface: '#FFFFFF',
-    headerBg: '#1C1917',
+    displayTracking: '-0.01em',
+    bg: '#F7F3EA',
+    surface: '#FFFDF8',
+    headerBg: '#EFE7D5',
+    headerInk: '#1C1917',
     ink: '#1C1917',
-    muted: '#78716C',
-    faint: '#A8A29E',
-    accent: '#BC4A22',
-    accentInk: '#FFFFFF',
+    muted: '#6E675E',
+    faint: '#A39B8D',
+    accent: '#B2451F',
+    accentInk: '#FFFDF8',
     accent2: '#1C1917',
-    border: '#E7E0D2',
+    border: '#DDD3BF',
     dark: false,
     radius: '0px',
-    shadow: '0 1px 0 rgba(28,25,23,0.08)',
-    shadowHover: '0 14px 34px rgba(28,25,23,0.12)',
+    shadow: '0 1px 0 rgba(28,25,23,0.10)',
+    shadowHover: '0 16px 38px rgba(28,25,23,0.13)',
     grain: false,
     vibe: null,
     marquee: false,
+    variant: 'catalog',
   },
 };
 

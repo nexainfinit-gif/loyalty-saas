@@ -38,6 +38,7 @@ function themeCss(T: EventTheme): string {
     }
     .ev-card-${k} {
       background: ${T.surface}; border: ${T.dark ? '2px' : '1px'} solid ${T.border};
+      ${T.variant === 'catalog' ? `border-top: 5px solid ${T.ink};` : ''}
       border-radius: ${T.radius};
       box-shadow: ${T.shadow};
       transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
@@ -306,19 +307,46 @@ function EventContent() {
             const month = d.toLocaleDateString(locale, { month: 'short' }).replace('.', '')
             const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
             const accent = business.primaryColor && business.primaryColor !== '#ffffff' ? business.primaryColor : C.accent2
+            const isCatalog = C.variant === 'catalog'
+            const longDate = d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
             return (
               <article key={ev.id} className={`ev-card-${C.key} ev-up overflow-hidden`} style={{ animationDelay: `${0.08 + idx * 0.07}s` }}>
-                <div className="flex">
-                  {/* Bloc date — talon gauche */}
+                <div className={isCatalog ? '' : 'flex'}>
+                  {/* Bloc date — talon gauche (variante affiche uniquement) */}
+                  {!isCatalog && (
                   <div className="flex flex-col items-center justify-center px-4 py-5 border-r border-dashed min-w-[86px]" style={{ borderColor: C.border }}>
                     <span className={`ev-display-${C.key} text-3xl leading-none`} style={{ color: C.accent }}>{day}</span>
                     <span className="ev-mono text-[11px] uppercase tracking-[0.2em] mt-1" style={{ color: C.muted }}>{month}</span>
                     <span className="ev-mono text-[11px] mt-2" style={{ color: C.faint }}>{time}</span>
                   </div>
+                  )}
 
-                  <div className="flex-1 p-5 min-w-0">
-                    <div className="flex items-start justify-between gap-3">
-                      <h2 className={`ev-display-${C.key} text-xl leading-tight break-words`} style={{ color: C.ink }}>{ev.title}</h2>
+                  <div className={`flex-1 min-w-0 ${isCatalog ? 'p-6 sm:p-7' : 'p-5'}`}>
+                    {/* Variante « cartel » : № numéroté façon catalogue d'exposition */}
+                    {isCatalog && (
+                      <div className="flex items-baseline justify-between gap-3 mb-2">
+                        <span className="ev-mono text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: C.accent }}>
+                          № {String(idx + 1).padStart(2, '0')}
+                        </span>
+                        <span
+                          className="ev-mono flex-shrink-0 text-xs font-bold px-2.5 py-1"
+                          style={ev.price > 0
+                            ? { color: C.accentInk, background: C.accent, borderRadius: C.radius }
+                            : { color: C.accent, border: `1.5px solid ${C.accent}`, borderRadius: C.radius }}
+                        >
+                          {ev.price > 0 ? `${ev.price} €` : t('event.free').toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className={isCatalog ? '' : 'flex items-start justify-between gap-3'}>
+                      <h2
+                        className={`ev-display-${C.key} ${isCatalog ? 'text-3xl sm:text-4xl' : 'text-xl'} leading-tight break-words`}
+                        style={{ color: C.ink }}
+                      >
+                        {ev.title}
+                      </h2>
+                      {!isCatalog && (
                       <span
                         className="ev-mono flex-shrink-0 text-xs font-bold px-2.5 py-1"
                         style={ev.price > 0
@@ -327,15 +355,23 @@ function EventContent() {
                       >
                         {ev.price > 0 ? `${ev.price} €` : t('event.free').toUpperCase()}
                       </span>
+                      )}
                     </div>
-                    {ev.location && (
+
+                    {/* Ligne date/lieu : petites capitales entre filets (cartel) */}
+                    {isCatalog ? (
+                      <p className="ev-mono text-[11px] uppercase tracking-[0.22em] mt-3 py-2 border-t border-b"
+                        style={{ color: C.muted, borderColor: C.border }}>
+                        {longDate} · {time}{ev.location ? ` · ${ev.location}` : ''}
+                      </p>
+                    ) : ev.location && (
                       <p className="ev-mono text-[11px] uppercase tracking-[0.15em] mt-1.5" style={{ color: C.faint }}>📍 {ev.location}</p>
                     )}
                     {ev.description && (
                       <p className="text-sm mt-2 whitespace-pre-line leading-relaxed" style={{ color: C.muted }}>{ev.description}</p>
                     )}
                     {ev.remaining !== null && !soldOut && ev.remaining <= 5 && (
-                      <p className="ev-mono text-[11px] font-bold uppercase tracking-[0.15em] mt-2" style={{ color: C.accent2 }}>
+                      <p className="ev-mono text-[11px] font-bold uppercase tracking-[0.15em] mt-2" style={{ color: isCatalog ? C.accent : C.accent2 }}>
                         ⚡ {t('event.fewLeft', { count: ev.remaining })}
                       </p>
                     )}

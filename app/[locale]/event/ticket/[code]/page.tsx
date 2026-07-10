@@ -108,6 +108,10 @@ export default function TicketPage() {
   })
   const accent = ticket.business.primaryColor && ticket.business.primaryColor !== '#ffffff'
     ? ticket.business.primaryColor : T.accent2
+  // En-tête clair (ex. carton crème « musée ») : encre sombre + filets sombres.
+  const headerInk = T.headerInk ?? '#FFFFFF'
+  const headerSub = T.headerInk ? `${T.headerInk}A6` : 'rgba(255,255,255,0.65)'
+  const perfo = T.headerInk ? 'rgba(28,25,23,0.25)' : 'rgba(255,255,255,0.25)'
 
   return (
     <div className="tk-bg min-h-screen flex items-center justify-center p-5">
@@ -120,15 +124,15 @@ export default function TicketPage() {
       >
         <div className="overflow-hidden" style={{ background: '#FDFDFB', border: `${T.dark ? '2px' : '1px'} solid ${T.dark ? '#26262e' : T.border}`, borderRadius: T.radius }}>
 
-          {/* En-tête affiche */}
+          {/* En-tête affiche (ou carton d'invitation si en-tête clair) */}
           <div className="p-6 pb-5" style={{ background: T.headerBg }}>
-            <p className="tk-mono text-[10px] uppercase tracking-[0.3em] mb-3" style={{ color: T.dark ? T.accent : T.accent2 }}>
+            <p className="tk-mono text-[10px] uppercase tracking-[0.3em] mb-3" style={{ color: T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2) }}>
               ✦ Rebites Events
             </p>
-            <h1 className="tk-display text-2xl leading-tight text-white break-words">
+            <h1 className="tk-display text-2xl leading-tight break-words" style={{ color: headerInk }}>
               {ticket.event.title}
             </h1>
-            <p className="tk-mono text-[11px] uppercase tracking-[0.15em] mt-2" style={{ color: 'rgba(255,255,255,0.65)' }}>
+            <p className="tk-mono text-[11px] uppercase tracking-[0.15em] mt-2" style={{ color: headerSub }}>
               {when}{ticket.event.location ? ` — ${ticket.event.location}` : ''}
             </p>
             <p className="tk-mono text-[11px] uppercase tracking-[0.15em] mt-1" style={{ color: accent }}>
@@ -138,7 +142,7 @@ export default function TicketPage() {
 
           {/* Perforation + encoches */}
           <div className="tk-notch-row" style={{ background: T.headerBg }}>
-            <div className="border-t-2 border-dashed mx-5" style={{ borderColor: 'rgba(255,255,255,0.25)' }} />
+            <div className="border-t-2 border-dashed mx-5" style={{ borderColor: perfo }} />
           </div>
 
           {/* Corps du billet — QR */}
