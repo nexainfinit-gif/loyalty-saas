@@ -273,7 +273,12 @@
     "helpTitle": "Aiuto",
     "relaunchTutorial": "Rilancia il tutorial di onboarding →",
     "languageTitle": "Lingua",
-    "languageDesc": "Scegli la lingua dell'interfaccia"
+    "languageDesc": "Scegli la lingua dell'interfaccia",
+    "servicesTitle": "Servizi Rebites",
+    "servicesDesc": "Attiva nuovi servizi quando ne hai bisogno.",
+    "serviceActive": "Attivo",
+    "serviceActivate": "Attiva",
+    "serviceActivated": "Servizio attivato!"
   },
   "loyalty": {
     "title": "Fedeltà",
@@ -776,7 +781,17 @@
     "productBookingDesc": "Agenda online, servizi, team, promemoria automatici",
     "productTicketing": "Vendere biglietti per eventi",
     "productTicketingDesc": "Biglietteria gratuita — piccola commissione solo sui biglietti a pagamento",
-    "productsRequired": "Scegli almeno un servizio."
+    "productsRequired": "Scegli almeno un servizio.",
+    "chooseTitle": "Benvenuto su Rebites",
+    "chooseSubtitle": "Cosa vuoi creare oggi?",
+    "chooseBusiness": "La mia attività",
+    "chooseBusinessDesc": "Fedeltà, carte Wallet, campagne e prenotazioni per la tua attività",
+    "chooseEvents": "Rebites Events",
+    "chooseEventsDesc": "Biglietteria per eventi — gratis, piccola commissione sui biglietti a pagamento",
+    "chooseHint": "Potrai attivare gli altri servizi più tardi, dalle impostazioni.",
+    "eventsTitle": "Rebites Events",
+    "eventsSubtitle": "Crea il tuo spazio organizzatore in 1 minuto",
+    "orgNameLabel": "Nome dell'organizzazione *"
   },
   "plan": {
     "loading": "Caricamento...",

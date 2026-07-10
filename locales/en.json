@@ -290,7 +290,12 @@
     "helpTitle": "Help",
     "relaunchTutorial": "Relaunch the onboarding tutorial →",
     "languageTitle": "Language",
-    "languageDesc": "Choose the interface language"
+    "languageDesc": "Choose the interface language",
+    "servicesTitle": "Rebites services",
+    "servicesDesc": "Enable new services whenever you need them.",
+    "serviceActive": "Active",
+    "serviceActivate": "Enable",
+    "serviceActivated": "Service enabled!"
   },
   "loyalty": {
     "title": "Loyalty",
@@ -793,7 +798,17 @@
     "productBookingDesc": "Online agenda, services, team, automatic reminders",
     "productTicketing": "Sell event tickets",
     "productTicketingDesc": "Free ticketing — small fee only on paid tickets",
-    "productsRequired": "Choose at least one service."
+    "productsRequired": "Choose at least one service.",
+    "chooseTitle": "Welcome to Rebites",
+    "chooseSubtitle": "What do you want to create today?",
+    "chooseBusiness": "My business",
+    "chooseBusinessDesc": "Loyalty, Wallet cards, campaigns and bookings for your business",
+    "chooseEvents": "Rebites Events",
+    "chooseEventsDesc": "Event ticketing — free, small fee on paid tickets",
+    "chooseHint": "You can enable the other services later, from your settings.",
+    "eventsTitle": "Rebites Events",
+    "eventsSubtitle": "Create your organizer space in 1 minute",
+    "orgNameLabel": "Organization name *"
   },
   "plan": {
     "loading": "Loading...",

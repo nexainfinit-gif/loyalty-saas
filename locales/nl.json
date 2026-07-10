@@ -273,7 +273,12 @@
     "helpTitle": "Hulp",
     "relaunchTutorial": "Introductie opnieuw starten →",
     "languageTitle": "Taal",
-    "languageDesc": "Kies de taal van de interface"
+    "languageDesc": "Kies de taal van de interface",
+    "servicesTitle": "Rebites-diensten",
+    "servicesDesc": "Activeer nieuwe diensten wanneer u ze nodig hebt.",
+    "serviceActive": "Actief",
+    "serviceActivate": "Activeren",
+    "serviceActivated": "Dienst geactiveerd!"
   },
   "loyalty": {
     "title": "Loyaliteit",
@@ -776,7 +781,17 @@
     "productBookingDesc": "Online agenda, diensten, team, automatische herinneringen",
     "productTicketing": "Tickets voor evenementen verkopen",
     "productTicketingDesc": "Gratis ticketing — kleine commissie enkel op betaalde tickets",
-    "productsRequired": "Kies minstens één dienst."
+    "productsRequired": "Kies minstens één dienst.",
+    "chooseTitle": "Welkom bij Rebites",
+    "chooseSubtitle": "Wat wilt u vandaag aanmaken?",
+    "chooseBusiness": "Mijn zaak",
+    "chooseBusinessDesc": "Klantenbinding, Wallet-kaarten, campagnes en reserveringen voor uw zaak",
+    "chooseEvents": "Rebites Events",
+    "chooseEventsDesc": "Ticketing voor evenementen — gratis, kleine commissie op betaalde tickets",
+    "chooseHint": "U kunt de andere diensten later activeren via uw instellingen.",
+    "eventsTitle": "Rebites Events",
+    "eventsSubtitle": "Maak uw organisatorruimte aan in 1 minuut",
+    "orgNameLabel": "Naam van de organisatie *"
   },
   "plan": {
     "loading": "Laden...",

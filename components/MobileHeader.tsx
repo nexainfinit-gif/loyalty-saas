@@ -30,7 +30,7 @@ interface Props {
 }
 
 const BUSINESS_TYPE_EMOJI: Record<string, string> = {
-  restaurant: '🍽️', cafe: '☕', salon_beaute: '💅', salon_coiffure: '💇', boutique: '🛍️',
+  organisateur: '🎟️', restaurant: '🍽️', cafe: '☕', salon_beaute: '💅', salon_coiffure: '💇', boutique: '🛍️',
 };
 
 

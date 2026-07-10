@@ -20,8 +20,11 @@ export default function OnboardingPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [businessType, setBusinessType] = useState('restaurant');
   const [customType, setCustomType] = useState('');
-  // Profil produit (T0) : services choisis — fidélité proposée par défaut.
-  const [products, setProducts] = useState<string[]>(['loyalty']);
+  // Deux univers DISSOCIÉS (T0.5) : commerce (fidélité + réservations) ou
+  // organisateur d'événements (Rebites Events, billetterie seule). Le profil
+  // produit est implicite — les autres services s'activent plus tard depuis
+  // les Paramètres, pas à l'inscription.
+  const [mode, setMode] = useState<'business' | 'events' | null>(null);
   const [authEmail, setAuthEmail] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // ?new=1 : création d'un établissement SUPPLÉMENTAIRE depuis le sélecteur
@@ -88,7 +91,7 @@ export default function OnboardingPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (products.length === 0) return;
+    if (!mode) return;
     setStatus('loading');
     setErrorMsg('');
 
@@ -99,7 +102,10 @@ export default function OnboardingPage() {
     const phone = (form.get('phone') as string).trim();
     const primary_color = form.get('color') as string;
     const slug = generateSlug(name);
-    const final_business_type = businessType === 'autre' ? customType.trim() : businessType;
+    const final_business_type = mode === 'events'
+      ? 'organisateur'
+      : businessType === 'autre' ? customType.trim() : businessType;
+    const products = mode === 'events' ? ['ticketing'] : ['loyalty', 'booking'];
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
@@ -143,10 +149,9 @@ export default function OnboardingPage() {
         // Bascule sur le nouvel établissement (même cookie que le sélecteur).
         document.cookie = `selected_restaurant=${data.restaurant.id}; path=/; max-age=31536000; samesite=lax`;
       }
-      // Billetterie seule = plan gratuit (commission par billet) : accès
+      // Rebites Events = plan gratuit (commission par billet) : accès
       // direct au dashboard, pas de choix de plan payant.
-      const ticketingOnly = !products.includes('loyalty') && !products.includes('booking');
-      window.location.href = `/${locale}/${ticketingOnly ? 'dashboard' : 'choose-plan'}`;
+      window.location.href = `/${locale}/${mode === 'events' ? 'dashboard' : 'choose-plan'}`;
     } catch (err) {
       console.error('Create error:', err);
       setErrorMsg(t('onboarding.networkError'));
@@ -179,6 +184,51 @@ export default function OnboardingPage() {
     );
   }
 
+  /* ── Écran 1 : choix d'univers (deux plateformes dissociées) ── */
+  if (!mode) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-primary-100 opacity-40 blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-purple-100 opacity-30 blur-3xl" />
+        </div>
+        <div className="relative w-full max-w-md animate-fade-up text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('onboarding.chooseTitle')}</h1>
+          <p className="text-sm text-gray-500 mb-6">{t('onboarding.chooseSubtitle')}</p>
+          <div className="space-y-3">
+            <button
+              onClick={() => setMode('business')}
+              className="w-full bg-white rounded-2xl border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.06)] p-6 text-left hover:border-gray-900 transition-colors group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center text-2xl flex-shrink-0">🏪</div>
+                <div className="min-w-0">
+                  <p className="text-base font-bold text-gray-900">{t('onboarding.chooseBusiness')}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">{t('onboarding.chooseBusinessDesc')}</p>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => setMode('events')}
+              className="w-full bg-gray-900 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.15)] p-6 text-left hover:bg-gray-800 transition-colors"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-2xl flex-shrink-0">🎟️</div>
+                <div className="min-w-0">
+                  <p className="text-base font-bold text-white">{t('onboarding.chooseEvents')}</p>
+                  <p className="text-sm text-white/60 mt-0.5">{t('onboarding.chooseEventsDesc')}</p>
+                </div>
+              </div>
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-5">{t('onboarding.chooseHint')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isEvents = mode === 'events';
+
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-4">
       {/* Background decoration */}
@@ -188,17 +238,32 @@ export default function OnboardingPage() {
       </div>
 
       <div className="relative w-full max-w-md animate-fade-up">
-        {/* Header */}
-        <div className="bg-gray-900 rounded-t-2xl px-8 py-8 text-center">
+        {/* Header — branding par univers */}
+        <div className="bg-gray-900 rounded-t-2xl px-8 py-8 text-center relative">
+          <button
+            type="button"
+            onClick={() => setMode(null)}
+            className="absolute left-4 top-4 text-white/50 hover:text-white text-xs transition-colors"
+          >
+            ←
+          </button>
           <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
-              <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
-              <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
-            </svg>
+            {isEvents ? (
+              <span className="text-2xl">🎟️</span>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+                <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
+                <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
+              </svg>
+            )}
           </div>
-          <h1 className="text-xl font-bold text-white mb-1">{t('onboarding.title')}</h1>
-          <p className="text-sm text-white/60">{t('onboarding.subtitle')}</p>
+          <h1 className="text-xl font-bold text-white mb-1">
+            {isEvents ? t('onboarding.eventsTitle') : t('onboarding.title')}
+          </h1>
+          <p className="text-sm text-white/60">
+            {isEvents ? t('onboarding.eventsSubtitle') : t('onboarding.subtitle')}
+          </p>
         </div>
 
         {/* Form */}
@@ -228,12 +293,12 @@ export default function OnboardingPage() {
             {/* Nom */}
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                {t('onboarding.nameLabel')}
+                {isEvents ? t('onboarding.orgNameLabel') : t('onboarding.nameLabel')}
               </label>
               <input
                 name="name"
                 autoComplete="organization"
-                placeholder="Ex: Le Petit Bistro"
+                placeholder={isEvents ? 'Ex: Collectif Nova' : 'Ex: Le Petit Bistro'}
                 required
                 onBlur={(e) => validateField('name', e.target.value)}
                 className={`w-full px-4 py-3 text-sm bg-gray-50 border rounded-xl placeholder:text-gray-400 transition-colors focus:border-gray-900 focus:outline-none ${fieldErrors.name ? 'border-red-400' : 'border-gray-200'}`}
@@ -243,7 +308,8 @@ export default function OnboardingPage() {
               )}
             </div>
 
-            {/* Type activité */}
+            {/* Type activité — implicite (« organisateur ») côté Events */}
+            {!isEvents && (
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">
                 {t('onboarding.typeLabel')}
@@ -258,42 +324,10 @@ export default function OnboardingPage() {
                 ))}
               </select>
             </div>
-
-            {/* Services (T0) : profil produit de l'établissement */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                {t('onboarding.productsLabel')}
-              </label>
-              <div className="space-y-2">
-                {([
-                  { key: 'loyalty',   title: t('onboarding.productLoyalty'),   desc: t('onboarding.productLoyaltyDesc') },
-                  { key: 'booking',   title: t('onboarding.productBooking'),   desc: t('onboarding.productBookingDesc') },
-                  { key: 'ticketing', title: t('onboarding.productTicketing'), desc: t('onboarding.productTicketingDesc') },
-                ] as const).map(p => (
-                  <label
-                    key={p.key}
-                    className={`flex items-start gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${products.includes(p.key) ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50/50'}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={products.includes(p.key)}
-                      onChange={e => setProducts(prev => e.target.checked ? [...prev, p.key] : prev.filter(x => x !== p.key))}
-                      className="mt-0.5 accent-gray-900"
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-gray-900">{p.title}</span>
-                      <span className="block text-xs text-gray-500">{p.desc}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              {products.length === 0 && (
-                <p className="text-xs text-red-500 mt-1.5">{t('onboarding.productsRequired')}</p>
-              )}
-            </div>
+            )}
 
             {/* Champ custom si "autre" */}
-            {businessType === 'autre' && (
+            {!isEvents && businessType === 'autre' && (
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">
                   Précisez votre activité *

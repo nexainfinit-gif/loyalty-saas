@@ -138,6 +138,7 @@ interface RestaurantMetrics {
 }
 
 const BUSINESS_TYPE_EMOJI: Record<string, string> = {
+  organisateur: '🎟️',
   restaurant: '🍽️',
   cafe: '☕',
   salon_beaute: '💅',
@@ -688,6 +689,34 @@ export default function DashboardPage() {
       toast.error(data.error || t('dashboard.toastDeleteError'));
     }
     setBusyAction(null);
+  }
+
+  /** Active un service supplémentaire (T0.5) — billetterie : immédiat ;
+   *  fidélité/réservations sur plan gratuit : bascule vers le choix de plan. */
+  async function activateProduct(key: 'loyalty' | 'booking' | 'ticketing') {
+    if (!restaurant) return;
+    setBusyAction(`product-${key}`);
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) return;
+      // (!) Dossier PascalCase historique : l'URL est /api/Restaurant/…
+      const res = await fetch('/api/Restaurant/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
+        body: JSON.stringify({ add: key }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error || t('common.error')); return; }
+      if (json.needsPlan) {
+        // Le service demande un plan payant : direction le choix de plan.
+        window.location.href = `/${locale}/choose-plan`;
+        return;
+      }
+      setRestaurant(prev => prev ? { ...prev, products: json.products } : prev);
+      toast.success(t('settings.serviceActivated'));
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   async function saveLoyaltySettings() {
@@ -2259,6 +2288,42 @@ export default function DashboardPage() {
                   {logoSaved && (
                     <p className="mt-2 text-xs text-emerald-600">{t('settings.logoSaved')}</p>
                   )}
+                </div>
+
+                {/* Services Rebites (T0.5) — activation dynamique des produits */}
+                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('settings.servicesTitle')}</h3>
+                  <p className="text-xs text-gray-400 mb-4">{t('settings.servicesDesc')}</p>
+                  <div className="space-y-3">
+                    {([
+                      { key: 'loyalty',   title: t('onboarding.productLoyalty'),   desc: t('onboarding.productLoyaltyDesc') },
+                      { key: 'booking',   title: t('onboarding.productBooking'),   desc: t('onboarding.productBookingDesc') },
+                      { key: 'ticketing', title: t('onboarding.productTicketing'), desc: t('onboarding.productTicketingDesc') },
+                    ] as const).map(svc => {
+                      const active = (restaurant?.products ?? ['loyalty']).includes(svc.key);
+                      return (
+                        <div key={svc.key} className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900">{svc.title}</p>
+                            <p className="text-xs text-gray-400">{svc.desc}</p>
+                          </div>
+                          {active ? (
+                            <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-success-50 text-success-700">
+                              {t('settings.serviceActive')}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => activateProduct(svc.key)}
+                              disabled={busyAction === `product-${svc.key}`}
+                              className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold text-primary-600 bg-primary-50 rounded-xl hover:bg-primary-100 disabled:opacity-50 transition-colors"
+                            >
+                              {t('settings.serviceActivate')}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* KPI parameters — restaurant-level settings inputs */}
