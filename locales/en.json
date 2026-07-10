@@ -793,7 +793,8 @@
     "popular": "Popular",
     "redirecting": "Redirecting...",
     "startWith": "Start with {name}",
-    "checkoutError": "Error creating payment."
+    "checkoutError": "Error creating payment.",
+    "backTo": "← Back to {name}"
   },
   "billing": {
     "title": "Billing",

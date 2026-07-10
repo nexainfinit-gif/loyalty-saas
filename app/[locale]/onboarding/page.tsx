@@ -136,11 +136,10 @@ export default function OnboardingPage() {
       }
 
       if (isAdditional && data.restaurant?.id) {
-        // Bascule directe sur le nouvel établissement (même cookie que le
-        // sélecteur) — son tutoriel de configuration démarrera tout seul.
+        // Bascule sur le nouvel établissement (même cookie que le sélecteur).
+        // Direction choose-plan : chaque établissement a son propre
+        // abonnement — le dashboard y renverrait de toute façon.
         document.cookie = `selected_restaurant=${data.restaurant.id}; path=/; max-age=31536000; samesite=lax`;
-        window.location.href = `/${locale}/dashboard`;
-        return;
       }
       window.location.href = `/${locale}/choose-plan`;
     } catch (err) {

@@ -88,15 +88,19 @@ export async function PATCH(req: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Premier restaurant non-démo (un owner peut avoir plusieurs lignes)
+  // Établissement courant : celui du cookie `selected_restaurant` s'il est
+  // possédé (même résolution que getAuthContext), sinon le plus ancien —
+  // indispensable en multi-établissements, sinon le renommage visait
+  // toujours le plus ancien.
   const { data: restos } = await supabase
     .from('restaurants')
     .select('id')
     .eq('owner_id', user.id)
     .eq('is_demo', false)
     .order('created_at', { ascending: true })
-    .limit(1)
-  const restaurant = restos?.[0] ?? null
+  const cookieHeader = req.headers.get('cookie') ?? ''
+  const selectedId = cookieHeader.match(/(?:^|;\s*)selected_restaurant=([^;]+)/)?.[1]?.trim()
+  const restaurant = (selectedId && restos?.find(r => r.id === selectedId)) || restos?.[0] || null
 
   if (!restaurant) return Response.json({ error: 'Restaurant introuvable' }, { status: 404 })
 

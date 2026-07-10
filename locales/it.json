@@ -776,7 +776,8 @@
     "popular": "Popolare",
     "redirecting": "Reindirizzamento...",
     "startWith": "Inizia con {name}",
-    "checkoutError": "Errore nella creazione del pagamento."
+    "checkoutError": "Errore nella creazione del pagamento.",
+    "backTo": "← Torna a {name}"
   },
   "billing": {
     "title": "Fatturazione",

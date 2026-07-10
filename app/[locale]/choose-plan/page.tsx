@@ -27,11 +27,13 @@ const CROSS = (
 
 export default function ChoosePlanPage() {
   const router = useLocaleRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [selecting, setSelecting] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
+  // Autre établissement du compte déjà actif → lien de retour.
+  const [fallback, setFallback] = useState<{ id: string; name: string } | null>(null);
 
   // Check if user already has active subscription → redirect to dashboard
   useEffect(() => {
@@ -39,24 +41,31 @@ export default function ChoosePlanPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace('/dashboard/login'); return; }
 
-      // NB: an owner can have several restaurants (incl. demo ones) —
-      // .maybeSingle() errors silently on >1 row and caused an infinite
-      // dashboard → choose-plan → onboarding loop. Same pattern as the
-      // dashboard: first non-demo restaurant.
+      // Résolution IDENTIQUE au dashboard (et à getAuthContext côté serveur) :
+      // l'établissement du cookie `selected_restaurant` s'il est possédé,
+      // sinon le plus ancien non-démo. Diverger ici créait une boucle :
+      // le dashboard bloquait le NOUVEL établissement (sans abonnement) pendant
+      // que choose-plan regardait le plus ancien (actif) et renvoyait aussitôt.
       const { data: restos } = await supabase
         .from('restaurants')
-        .select('id, subscription_status')
+        .select('id, name, subscription_status')
         .eq('owner_id', session.user.id)
         .eq('is_demo', false)
-        .order('created_at', { ascending: true })
-        .limit(1);
-      const resto = restos?.[0] ?? null;
+        .order('created_at', { ascending: true });
+      const list = restos ?? [];
+      const selectedId = document.cookie.match(/(?:^|;\s*)selected_restaurant=([^;]+)/)?.[1];
+      const resto = (selectedId && list.find(r => r.id === selectedId)) || list[0] || null;
 
       if (!resto) { router.replace('/onboarding'); return; }
       if (resto.subscription_status === 'active') {
         router.replace('/dashboard');
         return;
       }
+      // Porte de sortie multi-établissements : si un AUTRE établissement du
+      // compte est actif, proposer d'y revenir (sinon l'owner est coincé ici
+      // tant que le nouveau n'a pas de plan).
+      const active = list.find(r => r.id !== resto.id && r.subscription_status === 'active');
+      if (active) setFallback({ id: active.id, name: active.name ?? '' });
       setChecking(false);
     }
     check();
@@ -136,6 +145,17 @@ export default function ChoosePlanPage() {
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-1">{t('plan.title')}</h2>
             <p className="text-sm text-gray-500">{t('plan.subtitle')}</p>
+            {fallback && (
+              <button
+                onClick={() => {
+                  document.cookie = `selected_restaurant=${fallback.id}; path=/; max-age=31536000; samesite=lax`;
+                  window.location.href = `/${locale}/dashboard`;
+                }}
+                className="mt-3 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+              >
+                {t('plan.backTo', { name: fallback.name })}
+              </button>
+            )}
           </div>
 
           {/* Plans grid */}

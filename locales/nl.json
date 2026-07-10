@@ -776,7 +776,8 @@
     "popular": "Populair",
     "redirecting": "Doorsturen...",
     "startWith": "Beginnen met {name}",
-    "checkoutError": "Fout bij het aanmaken van de betaling."
+    "checkoutError": "Fout bij het aanmaken van de betaling.",
+    "backTo": "← Terug naar {name}"
   },
   "billing": {
     "title": "Facturatie",
