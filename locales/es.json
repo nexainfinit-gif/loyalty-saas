@@ -605,7 +605,12 @@
     "stepOf": "Paso {current} de {total}",
     "skip": "Omitir",
     "start": "¡Empezar!",
-    "nextBtn": "Siguiente →"
+    "nextBtn": "Siguiente →",
+    "identityTitle": "Tu identidad",
+    "identityDesc": "Empieza aquí: nombre, logo (recorte automático) y color. Dan estilo a tu tarjeta Wallet, tus emails y tu página de registro. Guarda y luego haz clic en Siguiente.",
+    "bookingTitle": "Reservas",
+    "bookingDesc": "Tu negocio funciona con citas: configuremos juntos tus servicios, tu equipo y tus horarios. La guía te acompaña pantalla a pantalla.",
+    "bookingCta": "Configurar →"
   },
   "register": {
     "firstNameRequired": "El nombre es obligatorio",
@@ -1844,5 +1849,18 @@
     "iosHint2": "y luego \"Añadir a pantalla de inicio\"",
     "androidBtn": "Instalar la aplicación",
     "dismiss": "Cerrar"
+  },
+  "bookingSetup": {
+    "badge": "Configuración guiada",
+    "servicesTitle": "Crea tus servicios",
+    "servicesDesc": "Añade al menos un servicio con su duración y precio — por ejemplo «Corte y peinado · 45 min · 35 €». Podrás añadir más en cualquier momento.",
+    "staffTitle": "Añade tu equipo",
+    "staffDesc": "Crea cada miembro del equipo, asígnale sus servicios y define sus horarios de trabajo. ¿Trabajas solo/a? Añádete simplemente a ti mismo/a.",
+    "settingsTitle": "Ajustes y compartir",
+    "settingsDesc": "Revisa tus horarios de apertura y preferencias, y luego comparte tu enlace de reservas con tus clientes. ¡Listo!",
+    "goThere": "Ir",
+    "next": "Siguiente paso",
+    "finish": "Terminar",
+    "quit": "Salir de la guía"
   }
 }

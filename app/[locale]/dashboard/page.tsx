@@ -1001,6 +1001,20 @@ export default function DashboardPage() {
             }
           }}
           onTabChange={(tab: Tab) => setActiveTab(tab)}
+          bookingEligible={pf('booking') && BOOKING_ELIGIBLE_TYPES.has(restaurant?.business_type ?? '')}
+          onStartBooking={async () => {
+            setShowTutorial(false);
+            // Le tour du dashboard est terminé — on enchaîne sur le guide de
+            // configuration des réservations (prestations → équipe → réglages).
+            if (restaurant) {
+              await supabase
+                .from('restaurants')
+                .update({ tutorial_completed_at: new Date().toISOString() })
+                .eq('id', restaurant.id);
+            }
+            try { localStorage.setItem('rebites_booking_setup', 'services'); } catch { /* navigation privée */ }
+            router.push('/dashboard/appointments/services');
+          }}
         />
       )}
 
@@ -1160,6 +1174,7 @@ export default function DashboardPage() {
           {pf('booking') && BOOKING_ELIGIBLE_TYPES.has(restaurant?.business_type ?? '') && (
             <Link prefetch={false}
               href={`/${locale}/dashboard/appointments`}
+              data-tutorial-booking
               aria-label={t('nav.booking')}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-all${!sidebarOpen ? ' justify-center px-0' : ''}`}
             >

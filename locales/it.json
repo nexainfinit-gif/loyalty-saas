@@ -607,7 +607,12 @@
     "stepOf": "Passo {current} di {total}",
     "skip": "Salta",
     "start": "Iniziamo!",
-    "nextBtn": "Avanti →"
+    "nextBtn": "Avanti →",
+    "identityTitle": "La tua identità",
+    "identityDesc": "Inizia da qui: nome, logo (ritaglio automatico) e colore. Danno stile alla tua carta Wallet, alle email e alla pagina di iscrizione. Salva, poi clicca Avanti.",
+    "bookingTitle": "Prenotazioni",
+    "bookingDesc": "La tua attività lavora su appuntamento: configuriamo insieme i servizi, il team e gli orari. La guida ti accompagna schermata per schermata.",
+    "bookingCta": "Configura →"
   },
   "register": {
     "firstNameRequired": "Il nome è obbligatorio",
@@ -1848,5 +1853,18 @@
     "iosHint2": "poi \"Aggiungi a Home\"",
     "androidBtn": "Installa l'app",
     "dismiss": "Chiudi"
+  },
+  "bookingSetup": {
+    "badge": "Configurazione guidata",
+    "servicesTitle": "Crea i tuoi servizi",
+    "servicesDesc": "Aggiungi almeno un servizio con durata e prezzo — ad esempio “Taglio & piega · 45 min · 35 €”. Potrai aggiungerne altri in qualsiasi momento.",
+    "staffTitle": "Aggiungi il tuo team",
+    "staffDesc": "Crea ogni membro del team, assegna i servizi e imposta gli orari di lavoro. Lavori da solo/a? Aggiungi semplicemente te stesso/a.",
+    "settingsTitle": "Impostazioni e condivisione",
+    "settingsDesc": "Controlla orari di apertura e preferenze, poi condividi il link di prenotazione con i tuoi clienti. Fatto!",
+    "goThere": "Vai",
+    "next": "Passo successivo",
+    "finish": "Concludi",
+    "quit": "Esci dalla guida"
   }
 }

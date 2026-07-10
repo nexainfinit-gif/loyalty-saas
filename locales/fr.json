@@ -624,7 +624,12 @@
     "stepOf": "Étape {current} sur {total}",
     "skip": "Passer",
     "start": "Commencer !",
-    "nextBtn": "Suivant →"
+    "nextBtn": "Suivant →",
+    "identityTitle": "Votre identité",
+    "identityDesc": "Commencez ici : nom, logo (recadrage automatique) et couleur. Ils habillent votre carte Wallet, vos emails et votre page d'inscription. Enregistrez, puis cliquez Suivant.",
+    "bookingTitle": "Réservations",
+    "bookingDesc": "Votre activité fonctionne sur rendez-vous : configurons ensemble vos prestations, votre équipe et vos horaires. Le guide vous accompagne écran par écran.",
+    "bookingCta": "Configurer →"
   },
   "register": {
     "firstNameRequired": "Le prénom est requis",
@@ -1866,5 +1871,18 @@
     "iosHint2": "puis « Sur l'écran d'accueil »",
     "androidBtn": "Installer l'application",
     "dismiss": "Fermer"
+  },
+  "bookingSetup": {
+    "badge": "Configuration guidée",
+    "servicesTitle": "Créez vos prestations",
+    "servicesDesc": "Ajoutez au moins une prestation avec sa durée et son prix — par exemple « Coupe & brushing · 45 min · 35 € ». Vous pourrez en ajouter d'autres à tout moment.",
+    "staffTitle": "Ajoutez votre équipe",
+    "staffDesc": "Créez chaque membre de l'équipe, associez-lui ses prestations et définissez ses horaires de travail. Seul(e) ? Ajoutez-vous simplement vous-même.",
+    "settingsTitle": "Réglages & partage",
+    "settingsDesc": "Vérifiez vos horaires d'ouverture et vos préférences, puis partagez votre lien de réservation avec vos clients. C'est terminé !",
+    "goThere": "Y aller",
+    "next": "Étape suivante",
+    "finish": "Terminer",
+    "quit": "Quitter le guide"
   }
 }

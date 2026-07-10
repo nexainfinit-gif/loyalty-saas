@@ -624,7 +624,12 @@
     "stepOf": "Step {current} of {total}",
     "skip": "Skip",
     "start": "Get started!",
-    "nextBtn": "Next →"
+    "nextBtn": "Next →",
+    "identityTitle": "Your identity",
+    "identityDesc": "Start here: name, logo (auto-cropped) and colour. They style your Wallet card, your emails and your sign-up page. Save, then click Next.",
+    "bookingTitle": "Bookings",
+    "bookingDesc": "Your business runs on appointments: let's set up your services, your team and your hours together. The guide walks you through each screen.",
+    "bookingCta": "Set up →"
   },
   "register": {
     "firstNameRequired": "First name is required",
@@ -1866,5 +1871,18 @@
     "iosHint2": "then \"Add to Home Screen\"",
     "androidBtn": "Install the app",
     "dismiss": "Close"
+  },
+  "bookingSetup": {
+    "badge": "Guided setup",
+    "servicesTitle": "Create your services",
+    "servicesDesc": "Add at least one service with its duration and price — for example “Cut & blow-dry · 45 min · €35”. You can add more at any time.",
+    "staffTitle": "Add your team",
+    "staffDesc": "Create each team member, assign their services and set their working hours. Working solo? Simply add yourself.",
+    "settingsTitle": "Settings & sharing",
+    "settingsDesc": "Check your opening hours and preferences, then share your booking link with your clients. All done!",
+    "goThere": "Go there",
+    "next": "Next step",
+    "finish": "Finish",
+    "quit": "Exit guide"
   }
 }

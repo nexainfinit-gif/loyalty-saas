@@ -607,7 +607,12 @@
     "stepOf": "Stap {current} van {total}",
     "skip": "Overslaan",
     "start": "Beginnen!",
-    "nextBtn": "Volgende →"
+    "nextBtn": "Volgende →",
+    "identityTitle": "Uw identiteit",
+    "identityDesc": "Begin hier: naam, logo (automatisch bijgesneden) en kleur. Ze bepalen de stijl van uw Wallet-kaart, e-mails en inschrijfpagina. Sla op en klik daarna op Volgende.",
+    "bookingTitle": "Reserveringen",
+    "bookingDesc": "Uw zaak werkt op afspraak: we stellen samen uw diensten, uw team en uw uren in. De gids begeleidt u scherm per scherm.",
+    "bookingCta": "Instellen →"
   },
   "register": {
     "firstNameRequired": "Voornaam is verplicht",
@@ -1848,5 +1853,18 @@
     "iosHint2": "en dan \"Zet op beginscherm\"",
     "androidBtn": "App installeren",
     "dismiss": "Sluiten"
+  },
+  "bookingSetup": {
+    "badge": "Begeleide configuratie",
+    "servicesTitle": "Maak uw diensten aan",
+    "servicesDesc": "Voeg minstens één dienst toe met duur en prijs — bijvoorbeeld “Knippen & brushing · 45 min · € 35”. U kunt er altijd meer toevoegen.",
+    "staffTitle": "Voeg uw team toe",
+    "staffDesc": "Maak elk teamlid aan, koppel de diensten en stel de werkuren in. Werkt u alleen? Voeg gewoon uzelf toe.",
+    "settingsTitle": "Instellingen & delen",
+    "settingsDesc": "Controleer uw openingsuren en voorkeuren en deel daarna uw reserveringslink met uw klanten. Klaar!",
+    "goThere": "Ga ernaartoe",
+    "next": "Volgende stap",
+    "finish": "Afronden",
+    "quit": "Gids sluiten"
   }
 }

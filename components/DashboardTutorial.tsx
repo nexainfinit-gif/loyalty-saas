@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from '@/lib/i18n';
 
 type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings';
@@ -9,49 +9,73 @@ interface TutorialStep {
   titleKey: string;
   descKey: string;
   /** Étape interactive : le voile ne bloque pas, le commerçant manipule
-   *  réellement l'écran (ici : configurer + enregistrer son programme). */
+   *  réellement l'écran (identité, programme de fidélité…). */
   interactive?: boolean;
+  /** Étape finale « réservations » (métiers éligibles) : ancre = le lien
+   *  sidebar Booking, bouton principal = départ du guide de configuration. */
+  booking?: boolean;
 }
-
-// Étape 1 = configuration du programme de fidélité : la première action
-// essentielle d'un nouveau commerçant. Elle est INTERACTIVE — il remplit et
-// enregistre son programme en direct (sa carte Wallet est alors créée
-// automatiquement). Le reste est une visite rapide.
-const STEPS: TutorialStep[] = [
-  { tab: 'loyalty',    titleKey: 'tutorial.loyaltyTitle',    descKey: 'tutorial.loyaltyDesc', interactive: true },
-  { tab: 'overview',   titleKey: 'tutorial.overviewTitle',   descKey: 'tutorial.overviewDesc' },
-  { tab: 'clients',    titleKey: 'tutorial.clientsTitle',    descKey: 'tutorial.clientsDesc' },
-  { tab: 'campaigns',  titleKey: 'tutorial.campaignsTitle',  descKey: 'tutorial.campaignsDesc' },
-  { tab: 'analytics',  titleKey: 'tutorial.analyticsTitle',  descKey: 'tutorial.analyticsDesc' },
-  { tab: 'settings',   titleKey: 'tutorial.settingsTitle',   descKey: 'tutorial.settingsDesc' },
-];
 
 interface Props {
   onComplete: () => void;
   onTabChange: (tab: Tab) => void;
+  /** Métier à rendez-vous (salon, institut…) avec le booking actif sur le
+   *  plan : ajoute l'étape finale qui enchaîne sur le guide prestations →
+   *  équipe → réglages. */
+  bookingEligible?: boolean;
+  onStartBooking?: () => void;
 }
 
-export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
+export default function DashboardTutorial({ onComplete, onTabChange, bookingEligible, onStartBooking }: Props) {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  const step = STEPS[currentStep];
-  const isLast = currentStep === STEPS.length - 1;
+  // Parcours : d'abord les deux configurations essentielles EN DIRECT
+  // (identité puis programme de fidélité — sa carte Wallet naît au save),
+  // ensuite la visite rapide, et pour les métiers à rendez-vous l'étape
+  // qui lance le guide de configuration des réservations.
+  const steps = useMemo<TutorialStep[]>(() => {
+    const s: TutorialStep[] = [
+      { tab: 'settings',   titleKey: 'tutorial.identityTitle',   descKey: 'tutorial.identityDesc', interactive: true },
+      { tab: 'loyalty',    titleKey: 'tutorial.loyaltyTitle',    descKey: 'tutorial.loyaltyDesc',  interactive: true },
+      { tab: 'overview',   titleKey: 'tutorial.overviewTitle',   descKey: 'tutorial.overviewDesc' },
+      { tab: 'clients',    titleKey: 'tutorial.clientsTitle',    descKey: 'tutorial.clientsDesc' },
+      { tab: 'campaigns',  titleKey: 'tutorial.campaignsTitle',  descKey: 'tutorial.campaignsDesc' },
+      { tab: 'analytics',  titleKey: 'tutorial.analyticsTitle',  descKey: 'tutorial.analyticsDesc' },
+    ];
+    if (bookingEligible) {
+      s.push({ tab: 'analytics', titleKey: 'tutorial.bookingTitle', descKey: 'tutorial.bookingDesc', booking: true });
+    }
+    return s;
+  }, [bookingEligible]);
+
+  const step = steps[currentStep];
+  const isLast = currentStep === steps.length - 1;
 
   // Position tooltip next to the sidebar item (or below on mobile)
   const positionTooltip = useCallback(() => {
-    const el = document.querySelector(`[data-tutorial-tab="${step.tab}"]`);
-    if (!el) return;
-
-    const rect = el.getBoundingClientRect();
-    setHighlightRect(rect);
-
+    const el = document.querySelector(
+      step.booking ? '[data-tutorial-booking]' : `[data-tutorial-tab="${step.tab}"]`,
+    );
     const tooltipHeight = tooltipRef.current?.offsetHeight ?? 200;
     const tooltipWidth = tooltipRef.current?.offsetWidth ?? 320;
     const vw = window.innerWidth;
+
+    if (!el) {
+      // Ancre absente (ex. sidebar repliée) : tooltip centré, pas de spotlight.
+      setHighlightRect(null);
+      setTooltipPos({
+        top: Math.max(16, (window.innerHeight - tooltipHeight) / 2),
+        left: Math.max(12, (vw - tooltipWidth) / 2),
+      });
+      return;
+    }
+
+    const rect = el.getBoundingClientRect();
+    setHighlightRect(rect);
 
     if (vw < 1024) {
       // Mobile: center tooltip horizontally, position below the element
@@ -69,15 +93,15 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
         left: rect.right + 16,
       });
     }
-  }, [step.tab]);
+  }, [step.tab, step.booking]);
 
   // Navigate tab + position tooltip on step change
   useEffect(() => {
-    onTabChange(step.tab);
+    if (!step.booking) onTabChange(step.tab);
     // Small delay to let the tab render, then position
     const timer = setTimeout(positionTooltip, 80);
     return () => clearTimeout(timer);
-  }, [currentStep, step.tab, onTabChange, positionTooltip]);
+  }, [currentStep, step.tab, step.booking, onTabChange, positionTooltip]);
 
   // Reposition on resize
   useEffect(() => {
@@ -87,18 +111,19 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
 
   const handleNext = useCallback(() => {
     if (isLast) {
-      onComplete();
+      if (step.booking && onStartBooking) onStartBooking();
+      else onComplete();
     } else {
       setCurrentStep(s => s + 1);
     }
-  }, [isLast, onComplete]);
+  }, [isLast, step.booking, onStartBooking, onComplete]);
 
   return (
     <>
       {/* Full-screen overlay.
           - Étape normale : voile sombre qui bloque toute interaction.
-          - Étape interactive (loyalty) : transparent + pointer-events-none →
-            le commerçant peut réellement remplir/enregistrer le formulaire. */}
+          - Étape interactive (identité, fidélité) : transparent +
+            pointer-events-none → le commerçant remplit/enregistre en direct. */}
       <div
         className={[
           'fixed inset-0 z-[90] transition-opacity duration-300',
@@ -131,36 +156,40 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
           style={{ top: tooltipPos.top, left: tooltipPos.left }}
         >
           {/* Arrow — points left on desktop, up on mobile */}
-          <div
-            className="absolute w-0 h-0 hidden lg:block -left-2 top-1/2 -translate-y-1/2"
-            style={{
-              borderTop: '8px solid transparent',
-              borderBottom: '8px solid transparent',
-              borderRight: '8px solid white',
-            }}
-          />
-          <div
-            className="absolute w-0 h-0 lg:hidden left-1/2 -translate-x-1/2 -top-2"
-            style={{
-              borderLeft: '8px solid transparent',
-              borderRight: '8px solid transparent',
-              borderBottom: '8px solid white',
-            }}
-          />
+          {highlightRect && (
+            <>
+              <div
+                className="absolute w-0 h-0 hidden lg:block -left-2 top-1/2 -translate-y-1/2"
+                style={{
+                  borderTop: '8px solid transparent',
+                  borderBottom: '8px solid transparent',
+                  borderRight: '8px solid white',
+                }}
+              />
+              <div
+                className="absolute w-0 h-0 lg:hidden left-1/2 -translate-x-1/2 -top-2"
+                style={{
+                  borderLeft: '8px solid transparent',
+                  borderRight: '8px solid transparent',
+                  borderBottom: '8px solid white',
+                }}
+              />
+            </>
+          )}
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_16px_48px_rgba(0,0,0,0.15)] overflow-hidden">
             {/* Progress bar */}
             <div className="h-1 bg-gray-100">
               <div
                 className="h-full bg-primary-600 transition-all duration-300 ease-out"
-                style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
+                style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
               />
             </div>
 
             <div className="p-5">
               {/* Step counter */}
               <p className="text-[11px] font-semibold text-primary-600 mb-1.5">
-                {t('tutorial.stepOf', { current: currentStep + 1, total: STEPS.length })}
+                {t('tutorial.stepOf', { current: currentStep + 1, total: steps.length })}
               </p>
 
               {/* Title */}
@@ -192,14 +221,14 @@ export default function DashboardTutorial({ onComplete, onTabChange }: Props) {
                   onClick={handleNext}
                   className="px-4 py-2 bg-gray-900 text-white text-xs font-semibold rounded-xl hover:bg-gray-800 transition-colors"
                 >
-                  {isLast ? t('tutorial.start') : t('tutorial.nextBtn')}
+                  {isLast ? (step.booking ? t('tutorial.bookingCta') : t('tutorial.start')) : t('tutorial.nextBtn')}
                 </button>
               </div>
             </div>
 
             {/* Step dots */}
             <div className="flex justify-center gap-1.5 pb-4">
-              {STEPS.map((_, i) => (
+              {steps.map((_, i) => (
                 <div
                   key={i}
                   className={[

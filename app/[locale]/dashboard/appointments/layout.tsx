@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
+import BookingSetupGuide from '@/components/BookingSetupGuide'
 
 export default function AppointmentsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -45,6 +46,10 @@ export default function AppointmentsLayout({ children }: { children: React.React
       </div>
 
       {children}
+
+      {/* Guide de configuration (suite du tutoriel dashboard) — ne s'affiche
+          que si le parcours guidé est en cours (localStorage). */}
+      <BookingSetupGuide />
     </div>
   )
 }
