@@ -46,6 +46,7 @@ export default function TicketPage() {
         font-weight: ${T.displayWeight};
         ${T.displayItalic ? 'font-style: italic;' : ''}
         ${T.displayUppercase ? 'text-transform: uppercase;' : ''}
+        ${T.displayTracking ? `letter-spacing: ${T.displayTracking};` : ''}
       }
       .tk-mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
       .tk-bg { background: ${T.bg}; position: relative; }

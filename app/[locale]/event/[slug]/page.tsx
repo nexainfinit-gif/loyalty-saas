@@ -34,6 +34,7 @@ function themeCss(T: EventTheme): string {
       font-weight: ${T.displayWeight};
       ${T.displayItalic ? 'font-style: italic;' : ''}
       ${T.displayUppercase ? 'text-transform: uppercase;' : ''}
+      ${T.displayTracking ? `letter-spacing: ${T.displayTracking};` : ''}
     }
     .ev-card-${k} {
       background: ${T.surface}; border: ${T.dark ? '2px' : '1px'} solid ${T.border};

@@ -16,6 +16,8 @@ export interface EventTheme {
   displayWeight: number;
   displayItalic: boolean;
   displayUppercase: boolean;
+  /** Interlettrage des titres (ex. '-0.03em' pour un grotesk serré). */
+  displayTracking?: string;
   /** Couleurs. */
   bg: string;         // fond de page
   surface: string;    // cartes
@@ -64,28 +66,31 @@ export const EVENT_THEMES: Record<EventThemeKey, EventTheme> = {
     vibe: 'radial-gradient(circle at 30% 30%, #C8FF2E, transparent 55%), radial-gradient(circle at 70% 70%, #FF3EA5, transparent 55%), radial-gradient(circle at 60% 20%, #4F6BED, transparent 45%)',
     marquee: true,
   },
-  /** Conférences, séminaires, lancements — clair raffiné marine + bronze. */
+  /** Conférences, séminaires, lancements — style suisse international :
+   *  papier blanc, grotesk serré, bleu Klein électrique + rouge affiche,
+   *  filets hairline, angles nets. */
   corporate: {
     key: 'corporate',
-    fontImport: 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap',
-    display: "'Fraunces', Georgia, serif",
-    displayWeight: 700,
+    fontImport: 'https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800;900&display=swap',
+    display: "'Archivo', 'Helvetica Neue', Arial, sans-serif",
+    displayWeight: 800,
     displayItalic: false,
-    displayUppercase: false,
-    bg: '#F6F5F1',
+    displayUppercase: true,
+    displayTracking: '-0.02em',
+    bg: '#FAFAF8',
     surface: '#FFFFFF',
-    headerBg: '#16202B',
-    ink: '#16202B',
-    muted: '#5F6B76',
-    faint: '#9AA3AC',
-    accent: '#1E3A5F',
+    headerBg: '#101010',
+    ink: '#101010',
+    muted: '#55565A',
+    faint: '#9B9C9F',
+    accent: '#1F3AFF',
     accentInk: '#FFFFFF',
-    accent2: '#A3763B',
-    border: '#E3E0D8',
+    accent2: '#E63312',
+    border: '#E4E4E0',
     dark: false,
-    radius: '4px',
-    shadow: '0 1px 2px rgba(22,32,43,0.06)',
-    shadowHover: '0 10px 30px rgba(22,32,43,0.12)',
+    radius: '0px',
+    shadow: '0 0 0 rgba(0,0,0,0)',
+    shadowHover: '0 12px 32px rgba(16,16,16,0.10)',
     grain: false,
     vibe: null,
     marquee: false,
