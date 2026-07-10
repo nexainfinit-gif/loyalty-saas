@@ -67,6 +67,15 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
     const el = document.querySelector(
       step.booking ? '[data-tutorial-booking]' : `[data-tutorial-tab="${step.tab}"]`,
     );
+
+    // Étape interactive : la carte est ANCRÉE en bas à droite (via CSS) pour
+    // ne jamais recouvrir le formulaire à remplir — on ne calcule que l'anneau.
+    if (step.interactive) {
+      setHighlightRect(el ? el.getBoundingClientRect() : null);
+      setTooltipPos(null);
+      return;
+    }
+
     const tooltipHeight = tooltipRef.current?.offsetHeight ?? 200;
     const tooltipWidth = tooltipRef.current?.offsetWidth ?? 320;
     const vw = window.innerWidth;
@@ -100,7 +109,7 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
         left: rect.right + 16,
       });
     }
-  }, [step.tab, step.booking]);
+  }, [step.tab, step.booking, step.interactive]);
 
   // Navigate tab + position tooltip on step change
   useEffect(() => {
@@ -156,15 +165,19 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
         />
       )}
 
-      {/* Tooltip */}
-      {tooltipPos && (
+      {/* Tooltip — étape interactive : docké en bas à droite (l'écran reste
+          entièrement libre pour la configuration) ; sinon accroché à l'ancre. */}
+      {(tooltipPos || step.interactive) && (
         <div
           ref={tooltipRef}
-          className="fixed z-[100] w-[calc(100vw-24px)] sm:w-80 max-w-80 animate-fade-up"
-          style={{ top: tooltipPos.top, left: tooltipPos.left }}
+          className={[
+            'fixed z-[100] w-[calc(100vw-24px)] sm:w-80 max-w-80 animate-fade-up',
+            step.interactive ? 'bottom-4 right-3 sm:right-4' : '',
+          ].join(' ')}
+          style={step.interactive ? undefined : { top: tooltipPos!.top, left: tooltipPos!.left }}
         >
           {/* Arrow — points left on desktop, up on mobile */}
-          {highlightRect && (
+          {highlightRect && !step.interactive && (
             <>
               <div
                 className="absolute w-0 h-0 hidden lg:block -left-2 top-1/2 -translate-y-1/2"
