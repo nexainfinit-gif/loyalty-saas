@@ -74,9 +74,12 @@ export async function GET(
         ? ((ticket.seats ?? 1) > 1 ? `${ticket.tier_name} · ${ticket.seats} places` : ticket.tier_name)
         : '',
       relevant_date:   d.toISOString(),
-      // Couleurs du thème (fond = en-tête du billet web, encre = headerInk)
+      // Couleurs alignées sur la page billet web : fond = en-tête du talon,
+      // encre = headerInk, étiquettes = le même accent que « ✦ Rebites
+      // Events » sur le talon, perforation adaptée aux en-têtes clairs.
       foregroundColor: T.headerInk ?? '#FFFFFF',
-      labelColor:      T.headerInk ?? '#FFFFFF',
+      labelColor:      T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2),
+      perfoColor:      T.headerInk ? 'rgba(28,25,23,0.3)' : 'rgba(255,255,255,0.3)',
       barcodeAltText:  ticket.code,
       showLogoText:    true,
       logoText:        restaurant.name,

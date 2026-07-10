@@ -578,6 +578,57 @@ async function generateProgressStrip(opts: {
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
+/**
+ * Strip « talon de billet » pour les pass ÉVÉNEMENT — reprend le langage
+ * visuel de la page billet web : zone en-tête aux couleurs du thème (le nom
+ * de l'événement, rendu par Apple, s'y pose), perforation en pointillés avec
+ * encoches latérales, puis bande papier avec le code-barres décoratif.
+ * AUCUN texte (pas de police système sur Vercel) — le motif parle seul.
+ */
+async function generateEventStrip(opts: {
+  width:    number;
+  height:   number;
+  headerBg: string;   // fond du thème (continu avec le fond du pass)
+  perfo:    string;   // couleur des pointillés/encoches
+}): Promise<Buffer> {
+  const { width, height, headerBg, perfo } = opts;
+  const paper = '#F7F5F0';
+  const ink   = '#1C1917';
+
+  // Frontière en-tête / papier (le champ ÉVÉNEMENT rend dans la zone haute)
+  const splitY = Math.round(height * 0.62);
+  const notchR = Math.round(height * 0.11);
+
+  // Code-barres décoratif déterministe (même famille que le talon web)
+  const pattern = [2, 1, 3, 1, 2, 2, 1, 3, 2, 1, 1, 3, 1, 2, 3, 1, 2, 1];
+  const barTop = splitY + Math.round((height - splitY) * 0.28);
+  const barH   = Math.round((height - splitY) * 0.46);
+  const unit   = Math.max(1, Math.round(width / 340));
+  let bars = '';
+  let x = Math.round(width * 0.08);
+  const xEnd = Math.round(width * 0.92);
+  let i = 0;
+  while (x < xEnd) {
+    const w = pattern[i % pattern.length] * unit;
+    bars += `<rect x="${x}" y="${barTop}" width="${w}" height="${barH}" fill="${ink}"/>`;
+    x += w + pattern[(i + 7) % pattern.length] * unit;
+    i++;
+  }
+
+  const dash = Math.round(width / 94);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  <rect width="${width}" height="${height}" fill="${headerBg}"/>
+  <rect y="${splitY}" width="${width}" height="${height - splitY}" fill="${paper}"/>
+  <line x1="${notchR + dash}" y1="${splitY}" x2="${width - notchR - dash}" y2="${splitY}"
+    stroke="${perfo}" stroke-width="2" stroke-dasharray="${dash} ${dash}"/>
+  ${bars}
+  <circle cx="0" cy="${splitY}" r="${notchR}" fill="${headerBg}"/>
+  <circle cx="${width}" cy="${splitY}" r="${notchR}" fill="${headerBg}"/>
+</svg>`;
+
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
 /* ── Image helpers ──────────────────────────────────────────────────────────── */
 
 async function solidSquare(
@@ -813,6 +864,9 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
 
   // Auto-generate stamp grid strip for stamps mode (unless custom strip is set)
   const autoStampStrip = input.passKind === 'stamps' && !stripImageUrl;
+  // Strip « talon » auto pour les billets d'événement (aligné sur la page
+  // billet web : en-tête thème + perforation + papier code-barres)
+  const autoEventStrip = input.passKind === 'event' && !stripImageUrl;
   // Barre de progression auto en mode points (sauf strip custom)
   const autoProgressStrip = input.passKind === 'points' && !stripImageUrl;
   const autoRewardStrip = (input.passKind === 'stamps' || input.passKind === 'points') && !stripImageUrl && input.rewardPending;
@@ -851,6 +905,16 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     imagePromises.push(
       generateRewardStrip({ ...rewardOpts, width: 375, height: 123 }),
       generateRewardStrip({ ...rewardOpts, width: 750, height: 246 }),
+    );
+  } else if (autoEventStrip) {
+    const eventStripOpts = {
+      headerBg: (cfg.bgColor as string) || color,
+      perfo:    (cfg.perfoColor as string) || 'rgba(255,255,255,0.3)',
+    };
+    // eventTicket « strip style » : 375×98 pt (≠ 123 des storeCards)
+    imagePromises.push(
+      generateEventStrip({ ...eventStripOpts, width: 375, height: 98 }),
+      generateEventStrip({ ...eventStripOpts, width: 750, height: 196 }),
     );
   } else if (autoStampStrip) {
     const stampOpts = {
