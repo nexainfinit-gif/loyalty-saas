@@ -6,9 +6,9 @@ import { useTranslation } from '@/lib/i18n'
 
 /**
  * Page publique billetterie — /[locale]/event/[slug].
- * Liste les événements publiés de l'établissement ; achat inline
- * (gratuit = billets immédiats, payant = Checkout Stripe du commerçant) ;
- * retour de paiement ?purchase&session → confirmation serveur → codes.
+ * Identité « Rebites Events » : poster-brutalisme nocturne (fond noir grain,
+ * vibration acide animée, typo Unbounded XXL, bordures dures, ombres lime).
+ * Univers volontairement dissocié du design system dashboard.
  */
 interface PubEvent {
   id: string
@@ -22,6 +22,83 @@ interface PubEvent {
   offer_loyalty: boolean
 }
 
+const ACID = '#C8FF2E'
+const MAGENTA = '#FF3EA5'
+const INK = '#0B0B10'
+
+const BrandStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&display=swap');
+    .ev-display { font-family: 'Unbounded', system-ui, sans-serif; }
+    .ev-mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+    /* Le body doit suivre : sinon bande blanche sous le pli. */
+    body { background: ${INK}; }
+    .ev-bg {
+      background: ${INK};
+      position: relative;
+      overflow-x: hidden;
+    }
+    .ev-bg::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+      opacity: 0.05;
+    }
+    .ev-vibe {
+      position: fixed; width: 60vmax; height: 60vmax; border-radius: 50%;
+      filter: blur(90px); opacity: 0.32; z-index: 0; pointer-events: none;
+      background: radial-gradient(circle at 30% 30%, ${ACID}, transparent 55%),
+                  radial-gradient(circle at 70% 70%, ${MAGENTA}, transparent 55%),
+                  radial-gradient(circle at 60% 20%, #4F6BED, transparent 45%);
+      animation: ev-drift 22s ease-in-out infinite alternate;
+      top: -20vmax; right: -20vmax;
+    }
+    @keyframes ev-drift {
+      0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
+      100% { transform: translate(-16vmax, 24vmax) rotate(50deg) scale(1.18); }
+    }
+    @keyframes ev-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .ev-marquee-track { animation: ev-marquee 22s linear infinite; }
+    @keyframes ev-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    .ev-up { animation: ev-up 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+    .ev-card {
+      background: #131318; border: 2px solid #26262e;
+      box-shadow: 6px 6px 0 #000;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    .ev-card:hover { transform: translate(-2px, -2px); box-shadow: 9px 9px 0 ${ACID}; border-color: ${ACID}; }
+    .ev-btn {
+      background: ${ACID}; color: #0B0B10; border: 2px solid ${ACID};
+      box-shadow: 5px 5px 0 #000; transition: all 0.15s ease;
+    }
+    .ev-btn:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 ${MAGENTA}; }
+    .ev-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
+    .ev-input {
+      background: #0B0B10; border: 2px solid #2e2e38; color: #F4F4F6;
+    }
+    .ev-input:focus { outline: none; border-color: ${ACID}; box-shadow: 4px 4px 0 rgba(200,255,46,0.25); }
+    .ev-input::placeholder { color: #56565f; }
+    .ev-stub-code {
+      background: #F4F4F6; color: #0B0B10; border: 2px solid #F4F4F6;
+      box-shadow: 5px 5px 0 ${MAGENTA}; transition: all 0.15s ease; display: block;
+    }
+    .ev-stub-code:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 ${ACID}; }
+  `}</style>
+)
+
+/** Bandeau marquee « fait main » façon affiche de salle. */
+function Marquee() {
+  const chunk = Array.from({ length: 10 }, (_, i) => (
+    <span key={i} className="ev-mono text-[11px] font-bold tracking-[0.25em] uppercase mx-4" style={{ color: INK }}>
+      Rebites Events <span className="mx-2">✦</span>
+    </span>
+  ))
+  return (
+    <div className="relative z-10 overflow-hidden py-1.5 border-b-2 border-black" style={{ background: ACID }}>
+      <div className="ev-marquee-track flex whitespace-nowrap w-max">{chunk}{chunk}</div>
+    </div>
+  )
+}
+
 function EventContent() {
   const { t, locale } = useTranslation()
   const params = useParams()
@@ -33,7 +110,6 @@ function EventContent() {
   const [unavailable, setUnavailable] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  // Achat en cours (formulaire déplié sur un événement)
   const [openId, setOpenId] = useState<string | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [buyerName, setBuyerName] = useState('')
@@ -42,7 +118,6 @@ function EventContent() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  // Retour de paiement / billets gratuits émis
   const purchaseId = sp.get('purchase')
   const sessionId = sp.get('session')
   const [confirmState, setConfirmState] = useState<'idle' | 'verifying' | 'failed'>(purchaseId && sessionId ? 'verifying' : 'idle')
@@ -92,164 +167,223 @@ function EventContent() {
     }
   }
 
-  const color = business?.primaryColor ?? '#111827'
+  /* ── Écrans d'état ── */
+  const Shell = ({ children }: { children: React.ReactNode }) => (
+    <div className="ev-bg min-h-screen">
+      <BrandStyles />
+      <div className="ev-vibe" />
+      <Marquee />
+      <div className="relative z-10">{children}</div>
+    </div>
+  )
 
   if (loading || confirmState === 'verifying') {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-10 h-10 border-3 border-gray-200 border-t-gray-900 rounded-full animate-ds-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-500">{confirmState === 'verifying' ? t('event.verifying') : t('common.loading')}</p>
+      <Shell>
+        <div className="min-h-[80vh] flex items-center justify-center px-4">
+          <p className="ev-mono text-xs uppercase tracking-[0.3em] animate-pulse" style={{ color: ACID }}>
+            {confirmState === 'verifying' ? t('event.verifying') : t('common.loading')}
+          </p>
         </div>
-      </div>
+      </Shell>
     )
   }
 
   if (codes) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.06)] p-8 max-w-md w-full text-center">
-          <div className="text-4xl mb-3">🎟️</div>
-          <h1 className="text-xl font-bold text-gray-900 mb-1">{t('event.successTitle')}</h1>
-          <p className="text-sm text-gray-500 mb-6">{t('event.successDesc')}</p>
-          {codes.map(c => (
-            <a
-              key={c}
-              href={`/${locale}/event/ticket/${c}`}
-              className="block rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-4 mb-3 hover:bg-gray-100 transition-colors"
-            >
-              <p className="font-mono text-lg font-bold tracking-[0.12em] text-gray-900">{c}</p>
-              <p className="text-xs font-medium mt-1" style={{ color }}>{t('event.showTicket')}</p>
-            </a>
-          ))}
-          <p className="text-xs text-gray-400">{t('event.emailSent')}</p>
+      <Shell>
+        <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md ev-up">
+            <p className="ev-mono text-[11px] uppercase tracking-[0.3em] mb-3" style={{ color: ACID }}>✦ {t('event.successTitle')}</p>
+            <h1 className="ev-display text-3xl font-black text-white leading-tight mb-2">{t('event.successDesc')}</h1>
+            <div className="mt-6 space-y-4">
+              {codes.map((c, i) => (
+                <a key={c} href={`/${locale}/event/ticket/${c}`} className="ev-stub-code p-4 text-center ev-up" style={{ animationDelay: `${0.1 + i * 0.08}s` }}>
+                  <span className="ev-mono block text-xl font-bold tracking-[0.15em]">{c}</span>
+                  <span className="ev-mono block text-[10px] uppercase tracking-[0.25em] mt-1 opacity-60">{t('event.showTicket')}</span>
+                </a>
+              ))}
+            </div>
+            <p className="ev-mono text-[11px] text-gray-500 mt-6 uppercase tracking-wider">{t('event.emailSent')}</p>
+          </div>
         </div>
-      </div>
+      </Shell>
     )
   }
 
   if (confirmState === 'failed') {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
-        <div className="text-center max-w-sm">
-          <div className="text-3xl mb-3">⚠️</div>
-          <h1 className="text-lg font-semibold mb-2">{t('event.paymentIssue')}</h1>
-          <p className="text-sm text-gray-500">{t('event.paymentIssueDesc')}</p>
+      <Shell>
+        <div className="min-h-[80vh] flex items-center justify-center px-4">
+          <div className="max-w-sm ev-up">
+            <h1 className="ev-display text-2xl font-black text-white mb-3">{t('event.paymentIssue')}</h1>
+            <p className="ev-mono text-sm text-gray-400">{t('event.paymentIssueDesc')}</p>
+          </div>
         </div>
-      </div>
+      </Shell>
     )
   }
 
   if (unavailable || !business) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
-        <p className="text-sm text-gray-500">{t('event.unavailable')}</p>
-      </div>
+      <Shell>
+        <div className="min-h-[80vh] flex items-center justify-center px-4">
+          <p className="ev-mono text-sm text-gray-400">{t('event.unavailable')}</p>
+        </div>
+      </Shell>
     )
   }
 
+  const accent = business.primaryColor && business.primaryColor !== '#ffffff' ? business.primaryColor : MAGENTA
+
   return (
-    <div className="min-h-screen bg-surface py-10 px-4">
-      <div className="max-w-md mx-auto">
-        <div className="text-center mb-6">
-          {business.logoUrl
-            ? /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={business.logoUrl} alt="" className="mx-auto mb-3 max-h-20 max-w-[180px] object-contain" />
-            : <div className="text-4xl mb-2">🎟️</div>}
-          <h1 className="text-2xl font-bold text-gray-900">{business.name}</h1>
-          <p className="text-sm text-gray-500 mt-1">{t('event.pageSubtitle')}{business.city ? ` · ${business.city}` : ''}</p>
-        </div>
+    <Shell>
+      <div className="max-w-lg mx-auto px-4 pb-16">
+        {/* Header organisateur — affiche */}
+        <header className="pt-10 pb-8 ev-up">
+          {business.logoUrl && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={business.logoUrl} alt="" className="max-h-16 max-w-[150px] object-contain mb-4" />
+          )}
+          <h1 className="ev-display text-4xl sm:text-5xl font-black text-white leading-[0.95] uppercase break-words">
+            {business.name}
+          </h1>
+          <p className="ev-mono text-[11px] uppercase tracking-[0.3em] mt-3" style={{ color: ACID }}>
+            {t('event.pageSubtitle')}{business.city ? ` — ${business.city}` : ''}
+          </p>
+        </header>
 
         {events.length === 0 && (
-          <p className="text-center text-sm text-gray-500 bg-white rounded-2xl border border-gray-100 p-8">{t('event.noEvents')}</p>
+          <div className="ev-card p-8 text-center ev-up">
+            <p className="ev-mono text-sm text-gray-400">{t('event.noEvents')}</p>
+          </div>
         )}
 
-        <div className="space-y-4">
-          {events.map(ev => {
+        {/* Affiches événements */}
+        <div className="space-y-6">
+          {events.map((ev, idx) => {
             const soldOut = ev.remaining !== null && ev.remaining <= 0
             const isOpen = openId === ev.id
-            const when = new Date(ev.starts_at).toLocaleString(locale, {
-              weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
-            })
+            const d = new Date(ev.starts_at)
+            const day = d.toLocaleDateString(locale, { day: '2-digit' })
+            const month = d.toLocaleDateString(locale, { month: 'short' }).replace('.', '')
+            const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
             return (
-              <div key={ev.id} className="bg-white rounded-2xl border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.06)] p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="text-base font-bold text-gray-900">{ev.title}</h2>
-                    <p className="text-xs text-gray-500 mt-0.5">{when}{ev.location ? ` · ${ev.location}` : ''}</p>
+              <article key={ev.id} className="ev-card ev-up" style={{ animationDelay: `${0.08 + idx * 0.07}s` }}>
+                <div className="flex">
+                  {/* Bloc date — talon gauche */}
+                  <div className="flex flex-col items-center justify-center px-4 py-5 border-r-2 border-dashed border-[#2e2e38] min-w-[86px]">
+                    <span className="ev-display text-3xl font-black leading-none" style={{ color: ACID }}>{day}</span>
+                    <span className="ev-mono text-[11px] uppercase tracking-[0.2em] text-gray-400 mt-1">{month}</span>
+                    <span className="ev-mono text-[11px] text-gray-500 mt-2">{time}</span>
                   </div>
-                  <span className="flex-shrink-0 text-sm font-bold" style={{ color }}>
-                    {ev.price > 0 ? `${ev.price} €` : t('event.free')}
-                  </span>
-                </div>
-                {ev.description && <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">{ev.description}</p>}
-                {ev.remaining !== null && !soldOut && ev.remaining <= 20 && (
-                  <p className="text-xs font-medium text-amber-600 mt-2">{t('event.fewLeft', { count: ev.remaining })}</p>
-                )}
 
-                {soldOut ? (
-                  <p className="mt-3 text-sm font-semibold text-gray-400">{t('event.soldOut')}</p>
-                ) : !isOpen ? (
-                  <button
-                    onClick={() => { setOpenId(ev.id); setError(''); setQuantity(1); setJoinLoyalty(false) }}
-                    className="mt-3 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity"
-                    style={{ background: color }}
-                  >
-                    {ev.price > 0 ? t('event.buyBtn') : t('event.reserveBtn')}
-                  </button>
-                ) : (
-                  <form onSubmit={e => submit(e, ev)} className="mt-4 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <label className="text-xs font-semibold text-gray-500">{t('event.quantity')}</label>
-                      <select
-                        value={quantity}
-                        onChange={e => setQuantity(Number(e.target.value))}
-                        className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none"
+                  <div className="flex-1 p-5 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <h2 className="ev-display text-xl font-bold text-white leading-tight break-words">{ev.title}</h2>
+                      <span
+                        className="ev-mono flex-shrink-0 text-xs font-bold px-2.5 py-1 border-2"
+                        style={ev.price > 0
+                          ? { color: INK, background: ACID, borderColor: ACID }
+                          : { color: ACID, borderColor: ACID }}
                       >
-                        {[1, 2, 3, 4, 5, 6]
-                          .filter(n => ev.remaining === null || n <= ev.remaining)
-                          .map(n => <option key={n} value={n}>{n}</option>)}
-                      </select>
+                        {ev.price > 0 ? `${ev.price} €` : t('event.free').toUpperCase()}
+                      </span>
                     </div>
-                    <input required value={buyerName} onChange={e => setBuyerName(e.target.value)} maxLength={100}
-                      placeholder={t('event.buyerName')} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10" />
-                    <input required type="email" value={buyerEmail} onChange={e => setBuyerEmail(e.target.value)} maxLength={255}
-                      placeholder={t('event.buyerEmail')} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10" />
-                    {ev.offer_loyalty && (
-                      <label className="flex items-start gap-2 text-xs text-gray-600">
-                        <input type="checkbox" checked={joinLoyalty} onChange={e => setJoinLoyalty(e.target.checked)} className="mt-0.5" />
-                        {t('event.joinLoyalty', { business: business.name })}
-                      </label>
+                    {ev.location && (
+                      <p className="ev-mono text-[11px] uppercase tracking-[0.15em] text-gray-500 mt-1.5">📍 {ev.location}</p>
                     )}
-                    {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-                    <button
-                      type="submit" disabled={submitting}
-                      className="w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
-                      style={{ background: color }}
-                    >
-                      {submitting ? '…' : ev.price > 0
-                        ? t('event.payBtn', { amount: (ev.price * quantity).toFixed(2).replace(/\.00$/, '') })
-                        : t('event.confirmFreeBtn')}
-                    </button>
-                    {ev.price > 0 && <p className="text-[11px] text-gray-400 text-center">{t('event.securePayment')}</p>}
-                  </form>
-                )}
-              </div>
+                    {ev.description && (
+                      <p className="text-sm text-gray-400 mt-2 whitespace-pre-line leading-relaxed">{ev.description}</p>
+                    )}
+                    {ev.remaining !== null && !soldOut && ev.remaining <= 5 && (
+                      <p className="ev-mono text-[11px] font-bold uppercase tracking-[0.15em] mt-2" style={{ color: MAGENTA }}>
+                        ⚡ {t('event.fewLeft', { count: ev.remaining })}
+                      </p>
+                    )}
+
+                    {soldOut ? (
+                      <p className="ev-mono mt-4 text-sm font-bold uppercase tracking-[0.2em] text-gray-600 line-through">
+                        {t('event.soldOut')}
+                      </p>
+                    ) : !isOpen ? (
+                      <button
+                        onClick={() => { setOpenId(ev.id); setError(''); setQuantity(1); setJoinLoyalty(false) }}
+                        className="ev-btn ev-mono mt-4 w-full py-3 text-sm font-bold uppercase tracking-[0.15em]"
+                      >
+                        {ev.price > 0 ? t('event.buyBtn') : t('event.reserveBtn')} →
+                      </button>
+                    ) : (
+                      <form onSubmit={e => submit(e, ev)} className="mt-4 space-y-3">
+                        <div className="flex items-center gap-3">
+                          <label className="ev-mono text-[11px] uppercase tracking-[0.15em] text-gray-400">{t('event.quantity')}</label>
+                          <div className="flex gap-1.5">
+                            {[1, 2, 3, 4, 5, 6]
+                              .filter(n => ev.remaining === null || n <= ev.remaining)
+                              .map(n => (
+                                <button
+                                  key={n} type="button"
+                                  onClick={() => setQuantity(n)}
+                                  className="ev-mono w-8 h-8 text-xs font-bold border-2 transition-colors"
+                                  style={quantity === n
+                                    ? { background: ACID, color: INK, borderColor: ACID }
+                                    : { color: '#9a9aa4', borderColor: '#2e2e38' }}
+                                >
+                                  {n}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                        <input required value={buyerName} onChange={e => setBuyerName(e.target.value)} maxLength={100}
+                          placeholder={t('event.buyerName')} className="ev-input w-full px-3 py-3 text-sm" />
+                        <input required type="email" value={buyerEmail} onChange={e => setBuyerEmail(e.target.value)} maxLength={255}
+                          placeholder={t('event.buyerEmail')} className="ev-input w-full px-3 py-3 text-sm" />
+                        {ev.offer_loyalty && (
+                          <label className="flex items-start gap-2 text-xs text-gray-400">
+                            <input type="checkbox" checked={joinLoyalty} onChange={e => setJoinLoyalty(e.target.checked)}
+                              className="mt-0.5 accent-[#C8FF2E]" />
+                            {t('event.joinLoyalty', { business: business.name })}
+                          </label>
+                        )}
+                        {error && (
+                          <p className="ev-mono text-xs px-3 py-2 border-2" style={{ color: MAGENTA, borderColor: MAGENTA }}>{error}</p>
+                        )}
+                        <button
+                          type="submit" disabled={submitting}
+                          className="ev-btn ev-mono w-full py-3.5 text-sm font-bold uppercase tracking-[0.15em] disabled:opacity-50"
+                        >
+                          {submitting ? '…' : ev.price > 0
+                            ? t('event.payBtn', { amount: (ev.price * quantity).toFixed(2).replace(/\.00$/, '') })
+                            : t('event.confirmFreeBtn')}
+                        </button>
+                        {ev.price > 0 && (
+                          <p className="ev-mono text-[10px] uppercase tracking-[0.2em] text-gray-600 text-center">{t('event.securePayment')}</p>
+                        )}
+                      </form>
+                    )}
+                  </div>
+                </div>
+                {/* liseré organisateur */}
+                <div className="h-1" style={{ background: accent }} />
+              </article>
             )
           })}
         </div>
 
-        <p className="text-center text-[11px] text-gray-400 mt-8">
-          {business.name} — {t('event.poweredBy')} <a href="https://rebites.be" className="underline">Rebites</a>
-        </p>
+        <footer className="mt-14 text-center ev-up" style={{ animationDelay: '0.4s' }}>
+          <p className="ev-mono text-[10px] uppercase tracking-[0.3em] text-gray-600">
+            {business.name} ✦ {t('event.poweredBy')}{' '}
+            <a href="https://rebites.be" className="underline" style={{ color: ACID }}>Rebites Events</a>
+          </p>
+        </footer>
       </div>
-    </div>
+    </Shell>
   )
 }
 
 export default function EventPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-surface" />}>
+    <Suspense fallback={<div className="min-h-screen" style={{ background: '#0B0B10' }} />}>
       <EventContent />
     </Suspense>
   )

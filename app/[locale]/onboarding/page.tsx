@@ -210,12 +210,12 @@ export default function OnboardingPage() {
             </button>
             <button
               onClick={() => setMode('events')}
-              className="w-full bg-gray-900 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.15)] p-6 text-left hover:bg-gray-800 transition-colors"
+              className="w-full bg-gray-900 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.15)] p-6 text-left hover:bg-gray-800 transition-colors border-2 border-transparent hover:border-[#C8FF2E]"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-2xl flex-shrink-0">🎟️</div>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: 'rgba(200,255,46,0.15)' }}>🎟️</div>
                 <div className="min-w-0">
-                  <p className="text-base font-bold text-white">{t('onboarding.chooseEvents')}</p>
+                  <p className="text-base font-bold" style={{ color: '#C8FF2E' }}>{t('onboarding.chooseEvents')}</p>
                   <p className="text-sm text-white/60 mt-0.5">{t('onboarding.chooseEventsDesc')}</p>
                 </div>
               </div>
