@@ -1945,7 +1945,8 @@
     "theme_musee": "Museo",
     "theme_museeDesc": "Exposiciones, talleres culturales — galería depurada",
     "theme_minimal": "Sobrio",
-    "theme_minimalDesc": "Lanzamientos de producto, meetups — limpio y premium"
+    "theme_minimalDesc": "Lanzamientos de producto, meetups — limpio y premium",
+    "checkinBtn": "Escanear entradas"
   },
   "event": {
     "verifying": "Verificando el pago…",
@@ -1975,5 +1976,17 @@
     "alreadyCheckedIn": "Entrada ya utilizada",
     "showAtEntrance": "Muestra este QR en la entrada",
     "addToWallet": "Añadir a Apple Wallet"
+  },
+  "checkin": {
+    "title": "Check-in",
+    "back": "Eventos",
+    "starting": "Iniciando la cámara…",
+    "noCamera": "Cámara no disponible — usa la entrada manual de abajo.",
+    "cameraBlocked": "Acceso a la cámara denegado — permite la cámara o escribe el código.",
+    "valid": "Entrada válida — bienvenido",
+    "already": "Entrada ya utilizada",
+    "invalid": "Entrada no válida",
+    "alreadyAt": "Primer acceso a las {time}",
+    "check": "Validar"
   }
 }

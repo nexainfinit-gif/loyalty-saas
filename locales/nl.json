@@ -1949,7 +1949,8 @@
     "theme_musee": "Museum",
     "theme_museeDesc": "Tentoonstellingen, culturele workshops — strakke galerij",
     "theme_minimal": "Strak",
-    "theme_minimalDesc": "Productlanceringen, meetups — clean en premium"
+    "theme_minimalDesc": "Productlanceringen, meetups — clean en premium",
+    "checkinBtn": "Tickets scannen"
   },
   "event": {
     "verifying": "Betaling controleren…",
@@ -1979,5 +1980,17 @@
     "alreadyCheckedIn": "Ticket al gebruikt",
     "showAtEntrance": "Toon deze QR aan de ingang",
     "addToWallet": "Toevoegen aan Apple Wallet"
+  },
+  "checkin": {
+    "title": "Check-in",
+    "back": "Evenementen",
+    "starting": "Camera starten…",
+    "noCamera": "Camera niet beschikbaar — gebruik de handmatige invoer hieronder.",
+    "cameraBlocked": "Cameratoegang geweigerd — sta de camera toe of typ de code.",
+    "valid": "Geldig ticket — welkom",
+    "already": "Ticket al gebruikt",
+    "invalid": "Ongeldig ticket",
+    "alreadyAt": "Eerste scan om {time}",
+    "check": "Valideren"
   }
 }

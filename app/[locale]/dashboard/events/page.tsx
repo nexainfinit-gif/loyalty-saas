@@ -203,12 +203,21 @@ export default function EventsPage() {
           <h1 className="text-lg font-bold text-gray-900">{t('events.title')}</h1>
           <p className="text-sm text-gray-500">{t('events.subtitle')}</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="px-4 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-xl hover:bg-primary-700 transition-colors"
-        >
-          + {t('events.createBtn')}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/${locale}/dashboard/events/checkin`}
+            className="px-4 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors inline-flex items-center gap-2"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+            {t('events.checkinBtn')}
+          </Link>
+          <button
+            onClick={openCreate}
+            className="px-4 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-xl hover:bg-primary-700 transition-colors"
+          >
+            + {t('events.createBtn')}
+          </button>
+        </div>
       </div>
 
       {/* Lien public */}

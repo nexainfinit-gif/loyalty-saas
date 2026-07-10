@@ -1949,7 +1949,8 @@
     "theme_musee": "Museo",
     "theme_museeDesc": "Mostre, laboratori culturali — galleria essenziale",
     "theme_minimal": "Sobrio",
-    "theme_minimalDesc": "Lanci di prodotto, meetup — essenziale e premium"
+    "theme_minimalDesc": "Lanci di prodotto, meetup — essenziale e premium",
+    "checkinBtn": "Scansiona biglietti"
   },
   "event": {
     "verifying": "Verifica del pagamento…",
@@ -1979,5 +1980,17 @@
     "alreadyCheckedIn": "Biglietto già utilizzato",
     "showAtEntrance": "Mostra questo QR all'ingresso",
     "addToWallet": "Aggiungi ad Apple Wallet"
+  },
+  "checkin": {
+    "title": "Check-in",
+    "back": "Eventi",
+    "starting": "Avvio fotocamera…",
+    "noCamera": "Fotocamera non disponibile — usa l'inserimento manuale qui sotto.",
+    "cameraBlocked": "Accesso alla fotocamera negato — consenti la fotocamera o digita il codice.",
+    "valid": "Biglietto valido — benvenuto",
+    "already": "Biglietto già utilizzato",
+    "invalid": "Biglietto non valido",
+    "alreadyAt": "Primo ingresso alle {time}",
+    "check": "Convalida"
   }
 }

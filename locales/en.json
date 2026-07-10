@@ -1967,7 +1967,8 @@
     "theme_musee": "Museum",
     "theme_museeDesc": "Exhibitions, cultural workshops — clean gallery",
     "theme_minimal": "Clean",
-    "theme_minimalDesc": "Product launches, meetups — sleek and premium"
+    "theme_minimalDesc": "Product launches, meetups — sleek and premium",
+    "checkinBtn": "Scan tickets"
   },
   "event": {
     "verifying": "Verifying payment…",
@@ -1997,5 +1998,17 @@
     "alreadyCheckedIn": "Ticket already used",
     "showAtEntrance": "Show this QR at the entrance",
     "addToWallet": "Add to Apple Wallet"
+  },
+  "checkin": {
+    "title": "Check-in",
+    "back": "Events",
+    "starting": "Starting camera…",
+    "noCamera": "Camera unavailable — use manual entry below.",
+    "cameraBlocked": "Camera access denied — allow the camera or type the code.",
+    "valid": "Valid ticket — welcome in",
+    "already": "Ticket already used",
+    "invalid": "Invalid ticket",
+    "alreadyAt": "First entry at {time}",
+    "check": "Check"
   }
 }
