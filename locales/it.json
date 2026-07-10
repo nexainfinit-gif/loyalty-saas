@@ -1977,6 +1977,7 @@
     "poweredBy": "biglietteria di",
     "ticketNotFound": "Biglietto non trovato.",
     "alreadyCheckedIn": "Biglietto già utilizzato",
-    "showAtEntrance": "Mostra questo QR all'ingresso"
+    "showAtEntrance": "Mostra questo QR all'ingresso",
+    "addToWallet": "Aggiungi ad Apple Wallet"
   }
 }

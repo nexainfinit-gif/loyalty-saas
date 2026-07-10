@@ -1977,6 +1977,7 @@
     "poweredBy": "ticketing door",
     "ticketNotFound": "Ticket niet gevonden.",
     "alreadyCheckedIn": "Ticket al gebruikt",
-    "showAtEntrance": "Toon deze QR aan de ingang"
+    "showAtEntrance": "Toon deze QR aan de ingang",
+    "addToWallet": "Toevoegen aan Apple Wallet"
   }
 }

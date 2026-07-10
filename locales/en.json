@@ -1995,6 +1995,7 @@
     "poweredBy": "ticketing by",
     "ticketNotFound": "Ticket not found.",
     "alreadyCheckedIn": "Ticket already used",
-    "showAtEntrance": "Show this QR at the entrance"
+    "showAtEntrance": "Show this QR at the entrance",
+    "addToWallet": "Add to Apple Wallet"
   }
 }

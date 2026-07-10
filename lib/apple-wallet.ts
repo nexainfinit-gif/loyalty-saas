@@ -220,13 +220,32 @@ function buildPassJson(
     };
     base.storeCard = storeCard;
   } else {
-    // event
-    const eventName = String(cfg.event_name ?? input.restaurantName);
-    const eventDate = String(cfg.event_date ?? '');
+    // event — billet d'événement (billetterie Rebites Events)
+    const eventName     = String(cfg.event_name ?? input.restaurantName);
+    const eventDate     = String(cfg.event_date ?? '');
+    const eventTime     = String(cfg.event_time ?? '');
+    const eventLocation = String(cfg.event_location ?? '');
+    const ticketCode    = String(cfg.ticket_code ?? '');
+    const holderName    = `${input.firstName} ${input.lastName}`.trim();
+
+    base.description = `Billet – ${eventName}`;
+    // relevantDate : iOS propose le billet sur l'écran verrouillé à l'heure H.
+    if (cfg.relevant_date) base.relevantDate = String(cfg.relevant_date);
+
     base.eventTicket = {
-      primaryFields:   [{ key: 'event', label: 'ÉVÉNEMENT', value: eventName }],
-      auxiliaryFields: eventDate ? [{ key: 'date', label: 'DATE', value: eventDate }] : [],
-      backFields:      [holderField, ...cfgBackFields],
+      headerFields: eventTime ? [{ key: 'time', label: 'HEURE', value: eventTime }] : [],
+      primaryFields: [{ key: 'event', label: 'ÉVÉNEMENT', value: eventName }],
+      secondaryFields: [
+        ...(eventDate ? [{ key: 'date', label: 'DATE', value: eventDate }] : []),
+        ...(eventLocation ? [{ key: 'location', label: 'LIEU', value: eventLocation }] : []),
+      ],
+      auxiliaryFields: holderName ? [{ key: 'holder', label: 'TITULAIRE', value: holderName }] : [],
+      backFields: [
+        ...(ticketCode ? [{ key: 'code', label: 'Code du billet', value: ticketCode }] : []),
+        { key: 'org',   label: 'Organisateur', value: input.restaurantName },
+        { key: 'terms', label: 'Conditions',   value: 'Billet valable une seule fois. Présentez le QR à l\'entrée.' },
+        ...cfgBackFields,
+      ],
     };
   }
 

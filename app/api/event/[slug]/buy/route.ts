@@ -151,7 +151,11 @@ export async function POST(
       eventTitle: event.title,
       eventStartsAt: event.starts_at,
       eventLocation: event.location,
-      tickets: tickets.map(t => ({ code: t.code, url: `${APP}/fr/event/ticket/${t.code}` })),
+      tickets: tickets.map(t => ({
+        code: t.code,
+        url: `${APP}/fr/event/ticket/${t.code}`,
+        walletUrl: `${APP}/api/event/ticket/${t.code}/pkpass`,
+      })),
     }).catch(err => logger.error({ ctx: 'event-buy', rid: restaurant.id, msg: 'email failed', err }));
     return NextResponse.json({ success: true, free: true, codes: tickets.map(t => t.code) });
   }

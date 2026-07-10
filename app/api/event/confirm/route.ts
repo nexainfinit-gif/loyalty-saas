@@ -102,7 +102,11 @@ export async function POST(request: Request) {
       eventTitle: event.title,
       eventStartsAt: event.starts_at,
       eventLocation: event.location,
-      tickets: tickets.map(t => ({ code: t.code, url: `${APP}/fr/event/ticket/${t.code}` })),
+      tickets: tickets.map(t => ({
+        code: t.code,
+        url: `${APP}/fr/event/ticket/${t.code}`,
+        walletUrl: `${APP}/api/event/ticket/${t.code}/pkpass`,
+      })),
     }).catch(err => logger.error({ ctx: 'event-confirm', rid: restaurant.id, msg: 'email failed', err }));
   }
 

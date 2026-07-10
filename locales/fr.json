@@ -1995,6 +1995,7 @@
     "poweredBy": "billetterie par",
     "ticketNotFound": "Billet introuvable.",
     "alreadyCheckedIn": "Billet déjà utilisé",
-    "showAtEntrance": "Présentez ce QR à l'entrée"
+    "showAtEntrance": "Présentez ce QR à l'entrée",
+    "addToWallet": "Ajouter à Apple Wallet"
   }
 }
