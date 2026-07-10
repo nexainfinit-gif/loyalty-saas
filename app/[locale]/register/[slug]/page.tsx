@@ -242,12 +242,12 @@ export default function RegisterPage() {
           }} />
 
           {restaurant?.logo_url ? (
+            /* Sans cadre, comme les emails : logo nu sur le fond coloré
+               (une tuile blanche rend les logos blancs invisibles).
+               Contrainte orientée largeur pour les logos-texte. */
             <img src={restaurant.logo_url} alt={restaurant.name} style={{
-              width: '84px', height: '84px', objectFit: 'contain',
-              borderRadius: '20px', background: 'white', padding: '10px',
-              margin: '0 auto 1rem', display: 'block',
-              border: '3px solid rgba(255,255,255,0.35)',
-              boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+              maxWidth: '200px', maxHeight: '96px', objectFit: 'contain',
+              margin: '0 auto 1rem', display: 'block', position: 'relative',
             }} />
           ) : (
             <div style={{
