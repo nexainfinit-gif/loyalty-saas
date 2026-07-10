@@ -14,7 +14,9 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Vérifie si un restaurant (non-démo) existe déjà pour cet owner.
+  const { name, slug, email, city, phone, business_type, primary_color, logo_url, additional } = await req.json()
+
+  // Vérifie les restaurants (non-démo) existants pour cet owner.
   // NB: .single() échouait silencieusement dès que l'owner avait plusieurs
   // lignes (restos démo) — le garde ne bloquait plus rien.
   const { data: existingOwner } = await supabase
@@ -22,11 +24,12 @@ export async function POST(req: Request) {
     .select('id')
     .eq('owner_id', user.id)
     .eq('is_demo', false)
-    .limit(1)
 
-  if (existingOwner?.length) return Response.json({ error: 'Restaurant déjà créé' }, { status: 409 })
-
-  const { name, slug, email, city, phone, business_type, primary_color, logo_url } = await req.json()
+  // Sans le flag `additional` (onboarding initial), un seul établissement :
+  // protège contre les doubles soumissions. Avec le flag (bouton « Ajouter
+  // un établissement » du sélecteur), on autorise jusqu'à 10 par compte.
+  if (!additional && existingOwner?.length) return Response.json({ error: 'Restaurant déjà créé' }, { status: 409 })
+  if ((existingOwner?.length ?? 0) >= 10) return Response.json({ error: "Limite d'établissements atteinte." }, { status: 409 })
 
   if (!name || !slug) {
     return Response.json({ error: 'Nom et slug requis' }, { status: 400 })

@@ -20,10 +20,11 @@ interface Props {
   enabledKpiKeys?: string[];
   showUpgrade?: boolean;
   onUpgrade?: () => void;
-  /** Multi-établissements : liste + bascule (affiché seulement si > 1). */
+  /** Multi-établissements : liste + bascule + création. */
   restaurants?: { id: string; name: string }[];
   currentRestaurantId?: string;
   onSwitchRestaurant?: (id: string) => void;
+  onAddRestaurant?: () => void;
 }
 
 const BUSINESS_TYPE_EMOJI: Record<string, string> = {
@@ -36,11 +37,13 @@ export default function MobileHeader({
   activeTab, onTabChange, onSignOut,
   drawerOpen, onDrawerToggle,
   enabledKpiKeys = [], showUpgrade, onUpgrade,
-  restaurants = [], currentRestaurantId, onSwitchRestaurant,
+  restaurants = [], currentRestaurantId, onSwitchRestaurant, onAddRestaurant,
 }: Props) {
   const { t } = useTranslation();
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const canSwitch = restaurants.length > 1 && !!onSwitchRestaurant;
+  // Le menu s'ouvre aussi avec 1 seul établissement : il donne accès à la
+  // création d'un établissement supplémentaire.
+  const canSwitch = (restaurants.length > 1 && !!onSwitchRestaurant) || !!onAddRestaurant;
 
   const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
     { id: 'overview',   label: t('nav.overview'),   icon: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z' },
@@ -208,6 +211,15 @@ export default function MobileHeader({
                 )}
               </button>
             ))}
+            {onAddRestaurant && (
+              <button
+                onClick={() => { setSwitcherOpen(false); onAddRestaurant(); }}
+                className="w-full text-left px-2 py-2.5 rounded-lg text-sm flex items-center gap-2 text-primary-600 font-medium hover:bg-white active:bg-white transition-colors"
+              >
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                <span className="truncate flex-1">{t('dashboard.addRestaurant')}</span>
+              </button>
+            )}
           </div>
         )}
 

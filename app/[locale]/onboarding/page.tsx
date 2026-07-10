@@ -22,6 +22,9 @@ export default function OnboardingPage() {
   const [customType, setCustomType] = useState('');
   const [authEmail, setAuthEmail] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // ?new=1 : création d'un établissement SUPPLÉMENTAIRE depuis le sélecteur
+  // du dashboard — on saute la redirection « déjà un établissement ».
+  const [isAdditional, setIsAdditional] = useState(false);
 
   const validateField = (name: string, value: string) => {
     let error = '';
@@ -51,6 +54,13 @@ export default function OnboardingPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/dashboard/login');
+        return;
+      }
+      const wantsAdditional = new URLSearchParams(window.location.search).get('new') === '1';
+      if (wantsAdditional) {
+        setIsAdditional(true);
+        setAuthEmail(session.user.email ?? '');
+        setChecking(false);
         return;
       }
       // Même pattern robuste que le dashboard (commit 81a8d97) : un owner peut
@@ -109,6 +119,7 @@ export default function OnboardingPage() {
           phone: phone || null,
           business_type: final_business_type,
           primary_color,
+          additional: isAdditional,
         }),
       });
 
@@ -124,6 +135,13 @@ export default function OnboardingPage() {
         return;
       }
 
+      if (isAdditional && data.restaurant?.id) {
+        // Bascule directe sur le nouvel établissement (même cookie que le
+        // sélecteur) — son tutoriel de configuration démarrera tout seul.
+        document.cookie = `selected_restaurant=${data.restaurant.id}; path=/; max-age=31536000; samesite=lax`;
+        window.location.href = `/${locale}/dashboard`;
+        return;
+      }
       window.location.href = `/${locale}/choose-plan`;
     } catch (err) {
       console.error('Create error:', err);

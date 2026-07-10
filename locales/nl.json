@@ -87,7 +87,8 @@
     "toastCampaignError": "Fout: {error}",
     "toastNetworkError": "Netwerkfout",
     "manualAddLabel": "Handmatige toevoeging dashboard",
-    "switchRestaurant": "Wissel van vestiging"
+    "switchRestaurant": "Wissel van vestiging",
+    "addRestaurant": "Zaak toevoegen"
   },
   "clients": {
     "title": "Klanten",

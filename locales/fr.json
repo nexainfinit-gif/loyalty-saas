@@ -87,7 +87,8 @@
     "toastCampaignError": "Erreur : {error}",
     "toastNetworkError": "Erreur réseau",
     "manualAddLabel": "Ajout manuel dashboard",
-    "switchRestaurant": "Changer d'établissement"
+    "switchRestaurant": "Changer d'établissement",
+    "addRestaurant": "Ajouter un établissement"
   },
   "clients": {
     "title": "Clients",

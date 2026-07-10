@@ -1067,33 +1067,37 @@ export default function DashboardPage() {
           </div>
           {sidebarOpen && (
             <div className="min-w-0 flex-1 relative">
-              {myRestaurants.length > 1 ? (
-                <>
+              {/* Menu toujours disponible (même avec 1 seul établissement) :
+                  il donne accès à la création d'un établissement supplémentaire. */}
+              <button
+                onClick={() => setRestaurantMenuOpen(o => !o)}
+                className="flex items-center gap-1 max-w-full text-left group"
+              >
+                <span className="text-base font-semibold text-gray-900 truncate">{restaurant?.name}</span>
+                <svg className="w-4 h-4 text-gray-400 flex-shrink-0 group-hover:text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+              </button>
+              {restaurantMenuOpen && (
+                <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-xl border border-gray-100 shadow-[0_8px_24px_rgba(0,0,0,0.12)] py-1 z-50">
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('dashboard.switchRestaurant')}</p>
+                  {myRestaurants.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => r.id === restaurant?.id ? setRestaurantMenuOpen(false) : switchRestaurant(r.id)}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 transition-colors ${r.id === restaurant?.id ? 'text-primary-600 font-semibold' : 'text-gray-700'}`}
+                    >
+                      <span className="truncate flex-1">{r.name}</span>
+                      {r.id === restaurant?.id && <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                    </button>
+                  ))}
+                  <div className="my-1 border-t border-gray-100" />
                   <button
-                    onClick={() => setRestaurantMenuOpen(o => !o)}
-                    className="flex items-center gap-1 max-w-full text-left group"
+                    onClick={() => { setRestaurantMenuOpen(false); router.push('/onboarding?new=1'); }}
+                    className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 text-primary-600 font-medium hover:bg-primary-50 transition-colors"
                   >
-                    <span className="text-base font-semibold text-gray-900 truncate">{restaurant?.name}</span>
-                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0 group-hover:text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                    <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    <span className="truncate flex-1">{t('dashboard.addRestaurant')}</span>
                   </button>
-                  {restaurantMenuOpen && (
-                    <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-xl border border-gray-100 shadow-[0_8px_24px_rgba(0,0,0,0.12)] py-1 z-50">
-                      <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('dashboard.switchRestaurant')}</p>
-                      {myRestaurants.map(r => (
-                        <button
-                          key={r.id}
-                          onClick={() => r.id === restaurant?.id ? setRestaurantMenuOpen(false) : switchRestaurant(r.id)}
-                          className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 transition-colors ${r.id === restaurant?.id ? 'text-primary-600 font-semibold' : 'text-gray-700'}`}
-                        >
-                          <span className="truncate flex-1">{r.name}</span>
-                          {r.id === restaurant?.id && <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-base font-semibold text-gray-900 truncate">{restaurant?.name}</p>
+                </div>
               )}
               <span className={[
                 'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md',
@@ -1251,6 +1255,7 @@ export default function DashboardPage() {
           restaurants={myRestaurants}
           currentRestaurantId={restaurant?.id}
           onSwitchRestaurant={switchRestaurant}
+          onAddRestaurant={() => router.push('/onboarding?new=1')}
         />
 
         {/* Top nav bar (desktop only) */}
