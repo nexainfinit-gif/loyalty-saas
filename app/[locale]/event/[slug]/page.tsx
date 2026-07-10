@@ -219,12 +219,24 @@ function EventContent() {
     </div>
   )
 
-  if (loading || confirmState === 'verifying') {
+  // Chargement : loader NEUTRE (sans thème) pour ne jamais laisser
+  // apparaître le thème « nuit » par défaut avant le thème réel.
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
+        <style>{`@keyframes ev-neutral-spin{to{transform:rotate(360deg)}}`}</style>
+        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid #ececec', borderTopColor: '#111', animation: 'ev-neutral-spin 0.7s linear infinite' }} />
+      </div>
+    )
+  }
+
+  // Vérification du paiement : le thème est désormais connu (fetch résolu).
+  if (confirmState === 'verifying') {
     return (
       <Shell>
         <div className="min-h-[80vh] flex items-center justify-center px-4">
           <p className="ev-mono text-xs uppercase tracking-[0.3em] animate-pulse" style={{ color: T.accent }}>
-            {confirmState === 'verifying' ? t('event.verifying') : t('common.loading')}
+            {t('event.verifying')}
           </p>
         </div>
       </Shell>
@@ -460,7 +472,7 @@ function EventContent() {
 
 export default function EventPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen" style={{ background: '#0B0B10' }} />}>
+    <Suspense fallback={<div className="min-h-screen" style={{ background: '#ffffff' }} />}>
       <EventContent />
     </Suspense>
   )

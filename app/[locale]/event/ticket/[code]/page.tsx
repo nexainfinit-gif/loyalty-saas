@@ -93,11 +93,13 @@ export default function TicketPage() {
       </div>
     )
   }
+  // Chargement : loader NEUTRE (le thème du billet n'est pas encore connu →
+  // ne jamais laisser apparaître le thème « nuit » par défaut).
   if (!ticket) {
     return (
-      <div className="tk-bg min-h-screen flex items-center justify-center">
-        {styles}
-        <p className="tk-mono text-xs uppercase tracking-[0.3em] animate-pulse relative" style={{ color: T.accent }}>···</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
+        <style>{`@keyframes tk-neutral-spin{to{transform:rotate(360deg)}}`}</style>
+        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid #ececec', borderTopColor: '#111', animation: 'tk-neutral-spin 0.7s linear infinite' }} />
       </div>
     )
   }
