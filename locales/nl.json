@@ -1935,7 +1935,12 @@
     "status_draft": "Concept",
     "status_published": "Gepubliceerd",
     "status_cancelled": "Geannuleerd",
-    "status_ended": "Afgelopen"
+    "status_ended": "Afgelopen",
+    "connectTitle": "Ontvang betalingen voor uw tickets",
+    "connectDesc": "Koppel uw Stripe-account om betaalde tickets te verkopen. Gratis tickets werken zonder.",
+    "connectWarnHidden": "Uw betaalde evenementen zijn ONZICHTBAAR op uw publieke pagina tot Stripe gekoppeld is.",
+    "connectBtn": "Stripe koppelen",
+    "paidHidden": "⚠ Onzichtbaar op uw publieke pagina: koppel Stripe om betaalde tickets te verkopen."
   },
   "event": {
     "verifying": "Betaling controleren…",

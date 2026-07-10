@@ -1953,7 +1953,12 @@
     "status_draft": "Brouillon",
     "status_published": "Publié",
     "status_cancelled": "Annulé",
-    "status_ended": "Terminé"
+    "status_ended": "Terminé",
+    "connectTitle": "Encaissez vos billets payants",
+    "connectDesc": "Connectez votre compte Stripe pour vendre des billets payants. Les billets gratuits fonctionnent sans.",
+    "connectWarnHidden": "Vos événements payants sont INVISIBLES sur votre page publique tant que Stripe n'est pas connecté.",
+    "connectBtn": "Connecter Stripe",
+    "paidHidden": "⚠ Invisible sur votre page publique : connectez Stripe pour vendre des billets payants."
   },
   "event": {
     "verifying": "Vérification du paiement…",

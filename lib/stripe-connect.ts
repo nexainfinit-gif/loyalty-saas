@@ -53,12 +53,15 @@ export async function ensureConnectAccount(restaurantId: string): Promise<string
 export async function createOnboardingLink(
   accountId: string,
   locale: string,
+  // Page de retour selon le contexte (réglages booking par défaut ;
+  // les organisateurs Rebites Events reviennent sur leurs événements).
+  returnPath: string = '/dashboard/appointments/settings',
 ): Promise<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const link = await stripe.accountLinks.create({
     account: accountId,
-    refresh_url: `${appUrl}/${locale}/dashboard/appointments/settings?connect=refresh`,
-    return_url:  `${appUrl}/${locale}/dashboard/appointments/settings?connect=done`,
+    refresh_url: `${appUrl}/${locale}${returnPath}?connect=refresh`,
+    return_url:  `${appUrl}/${locale}${returnPath}?connect=done`,
     type: 'account_onboarding',
   });
   return link.url;

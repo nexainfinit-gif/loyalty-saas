@@ -58,6 +58,35 @@ export default function EventsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [copied, setCopied] = useState(false)
 
+  // Stripe Connect : requis pour vendre des billets PAYANTS (les événements
+  // payants sont masqués de la page publique tant que l'encaissement ne
+  // fonctionne pas — il faut le dire clairement à l'organisateur).
+  const [connect, setConnect] = useState<{ chargesEnabled: boolean } | null>(null)
+  const [connectLoading, setConnectLoading] = useState(false)
+
+  useEffect(() => {
+    let stop = false
+    fetch('/api/stripe/connect')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j && !stop) setConnect({ chargesEnabled: !!j.chargesEnabled }) })
+      .catch(() => {})
+    return () => { stop = true }
+  }, [])
+
+  async function startConnectOnboarding() {
+    setConnectLoading(true)
+    try {
+      const res = await fetch('/api/stripe/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale, returnPath: '/dashboard/events' }),
+      })
+      const j = await res.json()
+      if (res.ok && j.url) { window.location.href = j.url; return }
+      setError(j.error || t('common.error'))
+    } finally { setConnectLoading(false) }
+  }
+
   // Rechargement par compteur (pattern lint-safe : setState uniquement dans
   // le callback async, jamais synchrone dans l'effet).
   const [refreshKey, setRefreshKey] = useState(0)
@@ -190,6 +219,29 @@ export default function EventsPage() {
         </div>
       )}
 
+      {/* Paiements : indispensable pour les événements payants */}
+      {connect && !connect.chargesEnabled && (
+        <div className="bg-white rounded-2xl border border-amber-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4 mb-5">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900">{t('events.connectTitle')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {events.some(e => e.status === 'published' && e.price > 0)
+                  ? t('events.connectWarnHidden')
+                  : t('events.connectDesc')}
+              </p>
+            </div>
+            <button
+              onClick={startConnectOnboarding}
+              disabled={connectLoading}
+              className="flex-shrink-0 px-4 py-2 text-xs font-semibold bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {connectLoading ? '…' : t('events.connectBtn')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2 mb-4">{error}</p>}
 
       {events.length === 0 && !showForm && (
@@ -219,6 +271,9 @@ export default function EventsPage() {
                 <p className="text-xs text-gray-400 mt-0.5">
                   {t('events.sold', { count: ev.tickets_valid })}{ev.capacity != null ? ` / ${ev.capacity}` : ''}
                 </p>
+                {ev.status === 'published' && ev.price > 0 && connect && !connect.chargesEnabled && (
+                  <p className="text-xs font-medium text-amber-600 mt-1">{t('events.paidHidden')}</p>
+                )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {ev.status === 'draft' && (

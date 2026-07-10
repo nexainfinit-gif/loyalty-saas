@@ -1931,7 +1931,12 @@
     "status_draft": "Borrador",
     "status_published": "Publicado",
     "status_cancelled": "Cancelado",
-    "status_ended": "Finalizado"
+    "status_ended": "Finalizado",
+    "connectTitle": "Cobra tus entradas de pago",
+    "connectDesc": "Conecta tu cuenta de Stripe para vender entradas de pago. Las entradas gratuitas funcionan sin ella.",
+    "connectWarnHidden": "Tus eventos de pago están OCULTOS en tu página pública hasta que conectes Stripe.",
+    "connectBtn": "Conectar Stripe",
+    "paidHidden": "⚠ Oculto en tu página pública: conecta Stripe para vender entradas de pago."
   },
   "event": {
     "verifying": "Verificando el pago…",

@@ -1935,7 +1935,12 @@
     "status_draft": "Bozza",
     "status_published": "Pubblicato",
     "status_cancelled": "Annullato",
-    "status_ended": "Concluso"
+    "status_ended": "Concluso",
+    "connectTitle": "Incassa i tuoi biglietti a pagamento",
+    "connectDesc": "Collega il tuo account Stripe per vendere biglietti a pagamento. I biglietti gratuiti funzionano senza.",
+    "connectWarnHidden": "I tuoi eventi a pagamento sono INVISIBILI sulla pagina pubblica finché Stripe non è collegato.",
+    "connectBtn": "Collega Stripe",
+    "paidHidden": "⚠ Invisibile sulla tua pagina pubblica: collega Stripe per vendere biglietti a pagamento."
   },
   "event": {
     "verifying": "Verifica del pagamento…",

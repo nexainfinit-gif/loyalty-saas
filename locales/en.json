@@ -1953,7 +1953,12 @@
     "status_draft": "Draft",
     "status_published": "Published",
     "status_cancelled": "Cancelled",
-    "status_ended": "Ended"
+    "status_ended": "Ended",
+    "connectTitle": "Get paid for your tickets",
+    "connectDesc": "Connect your Stripe account to sell paid tickets. Free tickets work without it.",
+    "connectWarnHidden": "Your paid events are HIDDEN from your public page until Stripe is connected.",
+    "connectBtn": "Connect Stripe",
+    "paidHidden": "⚠ Hidden from your public page: connect Stripe to sell paid tickets."
   },
   "event": {
     "verifying": "Verifying payment…",
