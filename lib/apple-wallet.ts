@@ -241,26 +241,23 @@ function buildPassJson(
     if (isVoided) base.voided = true;
     base.suppressStripShine = true;
 
-    // Le titre reste un CHAMP Wallet (pas cuit dans le strip) : Apple le pose
-    // sur le strip en police SF native, adaptative, jamais recadrée. Les
-    // dates passent en ISO + dateStyle/timeStyle : Wallet les rend dans la
-    // langue et le fuseau du téléphone.
+    // Le titre est CUIT dans le strip (voir generateEventStrip) : Apple ne
+    // permet qu'un seul foregroundColor global — un champ natif serait encre
+    // sombre sur carte sombre. primaryFields reste donc vide, et le corps
+    // (sur papier) ne garde qu'une rangée sobre, comme le billet web.
     base.eventTicket = {
       headerFields: startIso ? [{
         key: 'time', label: 'HEURE', value: startIso,
         dateStyle: 'PKDateStyleNone', timeStyle: 'PKDateStyleShort',
       }] : [],
-      primaryFields: [{ key: 'event', label: '✦ REBITES EVENTS', value: eventName }],
+      primaryFields: [],
       secondaryFields: [
-        ...(startIso ? [{ key: 'date', label: 'DATE', value: startIso, dateStyle: 'PKDateStyleMedium', timeStyle: 'PKDateStyleShort' }] : []),
-        ...(eventLocation ? [{ key: 'location', label: 'LIEU', value: eventLocation, textAlignment: 'PKTextAlignmentRight' }] : []),
-      ],
-      auxiliaryFields: [
         ...(holderName ? [{ key: 'holder', label: 'TITULAIRE', value: holderName }] : []),
-        ...(tierLabel ? [{ key: 'tier', label: 'CATÉGORIE', value: tierLabel }] : []),
+        ...(tierLabel ? [{ key: 'tier', label: 'CATÉGORIE', value: tierLabel, textAlignment: 'PKTextAlignmentCenter' }] : []),
         // Le STATUT change au check-in → notification lockscreen (changeMessage)
-        { key: 'status', label: 'STATUT', value: isVoided ? 'Déjà utilisé' : 'Valide', changeMessage: 'Billet : %@' },
+        { key: 'status', label: 'STATUT', value: isVoided ? 'Déjà utilisé' : 'Valide', changeMessage: 'Billet : %@', textAlignment: 'PKTextAlignmentRight' },
       ],
+      auxiliaryFields: [],
       backFields: [
         ...(ticketCode ? [{ key: 'code', label: 'Code du billet', value: ticketCode }] : []),
         ...(eventDate ? [{ key: 'date', label: 'Date', value: `${eventDate}${eventTime ? ` à ${eventTime}` : ''}` }] : []),
@@ -597,151 +594,109 @@ async function generateProgressStrip(opts: {
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
-/** PRNG déterministe (mulberry32) — jitter reproductible, jamais Math.random(). */
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Étoile à 4 branches ✦ (ornement fantôme du strip). */
-function starPath(cx: number, cy: number, R: number): string {
-  const d = R * 0.16;
-  return `M ${cx} ${cy - R} Q ${cx + d} ${cy - d} ${cx + R} ${cy} Q ${cx + d} ${cy + d} ${cx} ${cy + R} Q ${cx - d} ${cy + d} ${cx - R} ${cy} Q ${cx - d} ${cy - d} ${cx} ${cy - R} Z`;
-}
-
 /**
- * Rectangle arrondi au périmètre irrégulier (contour de tampon encreur) :
- * échantillonne le périmètre puis décale chaque point d'un jitter seedé.
- * Centré sur (0,0) — à poser dans un groupe translaté/tourné.
- */
-function jitteredRoundedRect(
-  w: number, h: number, r: number,
-  seed: number, amp: number, step: number,
-): string {
-  const rnd = mulberry32(seed);
-  const hw = w / 2, hh = h / 2;
-  const straightW = w - 2 * r, straightH = h - 2 * r, arc = (Math.PI / 2) * r;
-  const total = 2 * straightW + 2 * straightH + 4 * arc;
-  // Point du périmètre à la distance d (sens horaire depuis le haut-gauche)
-  const pointAt = (dist: number): [number, number] => {
-    let d = dist % total;
-    if (d < straightW) return [-hw + r + d, -hh];
-    d -= straightW;
-    if (d < arc) { const a = -Math.PI / 2 + d / r; return [hw - r + r * Math.cos(a), -hh + r + r * Math.sin(a)]; }
-    d -= arc;
-    if (d < straightH) return [hw, -hh + r + d];
-    d -= straightH;
-    if (d < arc) { const a = d / r; return [hw - r + r * Math.cos(a), hh - r + r * Math.sin(a)]; }
-    d -= arc;
-    if (d < straightW) return [hw - r - d, hh];
-    d -= straightW;
-    if (d < arc) { const a = Math.PI / 2 + d / r; return [-hw + r + r * Math.cos(a), hh - r + r * Math.sin(a)]; }
-    d -= arc;
-    if (d < straightH) return [-hw, hh - r - d];
-    d -= straightH;
-    const a = Math.PI + d / r;
-    return [-hw + r + r * Math.cos(a), -hh + r + r * Math.sin(a)];
-  };
-  const n = Math.max(24, Math.round(total / step));
-  let path = '';
-  for (let i = 0; i < n; i++) {
-    const [x, y] = pointAt((i / n) * total);
-    const jx = x + (rnd() * 2 - 1) * amp;
-    const jy = y + (rnd() * 2 - 1) * amp;
-    path += `${i === 0 ? 'M' : 'L'} ${jx.toFixed(1)} ${jy.toFixed(1)} `;
-  }
-  return path + 'Z';
-}
-
-/**
- * Strip pour les pass ÉVÉNEMENT — matière SEULE, aucun texte : Apple pose
- * lui-même le champ primaire (label ✦ REBITES EVENTS + titre) sur le strip
- * en police SF native, et peut recadrer l'image. Le strip fournit :
- * même fond que le pass (aucune couture — les bords restent headerBg pur),
- * un modelé très doux (lueur centrale), micro-grain + guillochures quasi
- * subliminales (motif sécurité billet), un ✦ fantôme en trait fin côté
- * droit, la perforation pointillée du talon, et — billet scanné — un vrai
- * tampon encreur « UTILISÉ » : double contour jitteré, encre érodée par
- * masque de turbulence, léger flou, incliné côté droit.
+ * Strip pour les pass ÉVÉNEMENT — réplique de l'en-tête du billet web :
+ * une CARTE sombre (couleur du thème, coins hauts arrondis) posée sur le
+ * papier du pass, portant tout l'en-tête typographique (label ✦ REBITES
+ * EVENTS, titre, date/heure/lieu, organisateur) et la perforation.
+ *
+ * Le titre est cuit dans l'image : foregroundColor est GLOBAL chez Apple —
+ * impossible d'avoir un titre clair sur carte sombre ET des champs sombres
+ * sur papier avec un champ natif. Sobre : aucun grain, aucune texture.
+ * Billet scanné : pastille outline « ✕ UTILISÉ » (même langage que le web).
  */
 async function generateEventStrip(opts: {
   width:    number;
   height:   number;
-  headerBg: string;
+  paper:    string;    // fond du pass (papier)
+  blockBg:  string;    // carte en-tête (thème)
+  ink:      string;    // encre posée sur la carte (headerInk ?? blanc)
   perfo:    string;
-  accent?:   string;   // ✦ fantôme (couleur d'accent du thème)
-  dark?:     boolean;
-  isVoided?: boolean;  // tampon "UTILISÉ"
+  accent?:  string;    // label ✦ REBITES EVENTS + organisateur
+  border?:  string;    // contour de la carte (thèmes à en-tête clair)
+  light?:   boolean;   // carte claire (musée…) → pastille rouge plus dense
+  title?:    string;
+  subtitle?: string;   // "JEU. 16 JUIL. 2026 À 08:51 — LIEU"
+  orgName?:  string;
+  isVoided?: boolean;
 }): Promise<Buffer> {
-  const { width, height, headerBg, perfo, accent, dark = true, isVoided } = opts;
+  const { width, height, paper, blockBg, ink, perfo, accent, border,
+          light = false, title, subtitle, orgName, isVoided } = opts;
+  const s = width / 375; // géométrie pensée @1x (375×98 pt)
+  const escSvg = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const margin = Math.round(width * 0.07);
-  const perfoY = Math.round(height * 0.93);
-  const dash   = Math.round(width / 94);
-  const notchR = Math.round(height * 0.07);
-  const sw     = Math.max(2, Math.round(height * 0.012));
+  const margin = 16 * s;
+  const topM   = 6 * s;              // liseré de papier au-dessus de la carte
+  const rx     = 12 * s;             // coins hauts arrondis de la carte
+  const accentColor = accent || ink;
 
-  const inkTone = dark ? '#FFFFFF' : '#1C1917';
-  const guilStep = height * 0.075; // pas des guillochures diagonales
+  // Carte : pleine largeur, coins hauts arrondis, fond continu jusqu'en bas
+  // du strip (la transition vers le papier se fait à la frontière du strip).
+  const card = `M 0 ${height} L 0 ${topM + rx} Q 0 ${topM} ${rx} ${topM} L ${width - rx} ${topM} Q ${width} ${topM} ${width} ${topM + rx} L ${width} ${height} Z`;
 
-  // Tampon « UTILISÉ » — côté droit, incliné, ne gêne pas le titre (à gauche)
-  let voidedSvg = '';
-  if (isVoided) {
-    const fs = Math.round(height * 0.19);
-    const cx = width * 0.725, cy = height * 0.43;
-    const stampW = fs * 6.9, stampH = fs * 1.85;
-    const outer = jitteredRoundedRect(stampW, stampH, fs * 0.32, 41, height * 0.009, height * 0.042);
-    const inner = jitteredRoundedRect(stampW - fs * 0.50, stampH - fs * 0.50, fs * 0.20, 87, height * 0.007, height * 0.05);
-    // Masque + flou déclarés dans <defs> ; le groupe externe (non transformé)
-    // porte le masque — userSpaceOnUse s'évalue APRÈS le transform sinon.
-    voidedSvg = `
-  <g mask="url(#inkMask)" opacity="0.88" filter="url(#inkSoft)">
-  <g transform="translate(${cx.toFixed(0)}, ${cy.toFixed(0)}) rotate(-11)">
-    <path d="${outer}" fill="none" stroke="#D92D20" stroke-width="${(fs * 0.10).toFixed(1)}" stroke-linejoin="round"/>
-    <path d="${inner}" fill="none" stroke="#D92D20" stroke-width="${(fs * 0.045).toFixed(1)}" stroke-linejoin="round"/>
-    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="#D92D20" letter-spacing="${(fs * 0.10).toFixed(1)}">UTILISÉ</text>
-  </g>
-  </g>`;
+  let textSvg = '';
+
+  // ✦ REBITES EVENTS — petit, accent, letterspacé (comme le talon web)
+  const labelFs = 8 * s;
+  textSvg += `<text x="${margin}" y="${topM + 18 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${labelFs}" fill="${accentColor}" letter-spacing="${0.3 * labelFs}">✦ REBITES EVENTS</text>`;
+
+  // Titre — gras, auto-ajusté sur une ligne, « … » si trop long
+  if (title?.trim()) {
+    let text = title.trim();
+    const maxW = width - margin * 2;
+    let fs = 23 * s;
+    const fitW = (t: string, size: number) => t.length * size * 0.64;
+    if (fitW(text, fs) > maxW) fs = Math.max(13 * s, maxW / (text.length * 0.64));
+    if (fitW(text, fs) > maxW) {
+      const maxChars = Math.floor(maxW / (fs * 0.64)) - 1;
+      text = text.slice(0, Math.max(4, maxChars)) + '…';
+    }
+    textSvg += `<text x="${margin}" y="${topM + 43 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs.toFixed(1)}" fill="${ink}">${escSvg(text)}</text>`;
   }
 
+  // Date + heure + lieu — uppercase, atténué
+  if (subtitle?.trim()) {
+    let text = subtitle.trim().toUpperCase();
+    const subFs = 8 * s;
+    const maxChars = Math.floor((width - margin * 2) / (subFs * 0.72));
+    if (text.length > maxChars) text = text.slice(0, maxChars - 1) + '…';
+    textSvg += `<text x="${margin}" y="${topM + 62 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-size="${subFs}" fill="${ink}" opacity="0.62" letter-spacing="${0.12 * subFs}">${escSvg(text)}</text>`;
+  }
+
+  // Organisateur — accent, gras
+  if (orgName?.trim()) {
+    const orgFs = 8 * s;
+    textSvg += `<text x="${margin}" y="${topM + 77 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${orgFs}" fill="${accentColor}" letter-spacing="${0.12 * orgFs}">${escSvg(orgName.trim().toUpperCase())}</text>`;
+  }
+
+  // Pastille « ✕ UTILISÉ » — outline sobre en haut à droite (langage du web)
+  let voidedSvg = '';
+  if (isVoided) {
+    const fs = 9 * s;
+    const label = '✕ UTILISÉ';
+    const red = light ? '#DC2626' : '#F87171';
+    const pillW = label.length * fs * 0.72 + 20 * s;
+    const pillH = 22 * s;
+    const pillX = width - margin - pillW;
+    const pillY = topM + 12 * s;
+    voidedSvg = `
+  <rect x="${pillX.toFixed(1)}" y="${pillY.toFixed(1)}" width="${pillW.toFixed(1)}" height="${pillH}" rx="${pillH / 2}" fill="none" stroke="${red}" stroke-width="${1.8 * s}"/>
+  <text x="${(pillX + pillW / 2).toFixed(1)}" y="${(pillY + pillH / 2 + 0.5 * s).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${red}" letter-spacing="${0.15 * fs}">${label}</text>`;
+  }
+
+  // Perforation + encoches (découpe vers le papier)
+  const perfoY = height - 8 * s;
+  const dash   = 4 * s;
+  const notchR = 7 * s;
+
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <defs>
-    <radialGradient id="lift" cx="0.5" cy="0.42" r="0.85">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="${dark ? 0.045 : 0.35}"/>
-      <stop offset="0.75" stop-color="#FFFFFF" stop-opacity="0"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
-    </radialGradient>
-    <pattern id="guil" width="${guilStep}" height="${guilStep}" patternUnits="userSpaceOnUse" patternTransform="rotate(-32)">
-      <rect width="1" height="${guilStep}" fill="${inkTone}"/>
-    </pattern>
-    <filter id="grain" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" stitchTiles="stitch"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 ${dark ? 1 : 0}  0 0 0 0 ${dark ? 1 : 0}  0 0 0 0 ${dark ? 1 : 0}  0.5 0.5 0.5 0 -0.35"/>
-    </filter>
-    <filter id="inkRough" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="3" seed="17" stitchTiles="stitch"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.9 0 0 0 -0.32"/>
-    </filter>
-    <filter id="inkSoft"><feGaussianBlur stdDeviation="${(height * 0.0028).toFixed(2)}"/></filter>
-    <mask id="inkMask" maskUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}">
-      <rect x="0" y="0" width="${width}" height="${height}" fill="white"/>
-      <rect x="0" y="0" width="${width}" height="${height}" filter="url(#inkRough)"/>
-    </mask>
-  </defs>
-  <rect width="${width}" height="${height}" fill="${headerBg}"/>
-  <rect width="${width}" height="${height}" fill="url(#lift)"/>
-  <rect width="${width}" height="${height}" fill="url(#guil)" opacity="${dark ? 0.018 : 0.035}"/>
-  <rect width="${width}" height="${height}" filter="url(#grain)" opacity="${dark ? 0.05 : 0.06}"/>
-  ${accent ? `<path d="${starPath(width * 0.855, height * 0.40, height * 0.30)}" fill="none" stroke="${accent}" stroke-width="${Math.max(1.5, height * 0.011)}" opacity="${isVoided ? 0.05 : 0.13}"/>` : ''}
+  <rect width="${width}" height="${height}" fill="${paper}"/>
+  <path d="${card}" fill="${blockBg}"${border ? ` stroke="${border}" stroke-width="${1.5 * s}"` : ''}/>
   <line x1="${margin}" y1="${perfoY}" x2="${width - margin}" y2="${perfoY}"
-    stroke="${perfo}" stroke-width="${sw}" stroke-dasharray="${dash} ${dash}"/>
-  <circle cx="0" cy="${perfoY}" r="${notchR}" fill="${dark ? 'rgba(0,0,0,0.35)' : 'rgba(28,25,23,0.18)'}"/>
-  <circle cx="${width}" cy="${perfoY}" r="${notchR}" fill="${dark ? 'rgba(0,0,0,0.35)' : 'rgba(28,25,23,0.18)'}"/>
+    stroke="${perfo}" stroke-width="${1.5 * s}" stroke-dasharray="${dash} ${dash}"/>
+  <circle cx="0" cy="${perfoY}" r="${notchR}" fill="${paper}"/>
+  <circle cx="${width}" cy="${perfoY}" r="${notchR}" fill="${paper}"/>
+  ${textSvg}
   ${voidedSvg}
 </svg>`;
 
@@ -1027,16 +982,24 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     );
   } else if (autoEventStrip) {
     const eventStripOpts = {
-      headerBg: (cfg.bgColor as string) || color,
+      paper:    input.primaryColor || '#FDFDFB',
+      blockBg:  (cfg.bgColor as string) || color,
+      ink:      (cfg.strip_title_color as string) || '#FFFFFF',
       perfo:    (cfg.perfoColor as string) || 'rgba(255,255,255,0.3)',
       accent:   (cfg.strip_accent as string) || undefined,
-      dark:     cfg.strip_dark !== false,
+      border:   (cfg.strip_border as string) || undefined,
+      light:    !!(cfg.strip_light),
+      title:    (cfg.strip_title as string) || undefined,
+      subtitle: (cfg.strip_subtitle as string) || undefined,
+      orgName:  (cfg.strip_org as string) || undefined,
       isVoided: !!(cfg.voided),
     };
-    // eventTicket « strip style » : 375×98 pt (≠ 123 des storeCards)
+    // eventTicket « strip style » : 375×98 pt (≠ 123 des storeCards) —
+    // le @3x est fourni : le texte cuit dans l'image doit rester net.
     imagePromises.push(
       generateEventStrip({ ...eventStripOpts, width: 375, height: 98 }),
       generateEventStrip({ ...eventStripOpts, width: 750, height: 196 }),
+      generateEventStrip({ ...eventStripOpts, width: 1125, height: 294 }),
     );
   } else if (autoStampStrip) {
     const stampOpts = {
@@ -1074,6 +1037,7 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
   if (results.length > 6) {
     files['strip.png']    = results[6];
     files['strip@2x.png'] = results[7];
+    if (results.length > 8) files['strip@3x.png'] = results[8];
   }
 
   // ── 2. manifest.json — SHA-1 hash of every file ────────────────────────────

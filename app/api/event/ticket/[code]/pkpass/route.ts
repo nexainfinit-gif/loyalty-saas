@@ -64,11 +64,17 @@ export async function GET(
   const [firstName, ...rest] = (ticket.buyer_name ?? '').trim().split(/\s+/);
   const isVoided = ticket.status === 'checked_in';
 
-  // Design « billet tonal » : UNE seule couleur de fond (thème) pour tout le
-  // pass — le strip a le même fond, aucune rupture visuelle (réf. e-tickets
-  // Dribbble). L'encre et l'accent suivent le thème.
+  // Design « talon web » : pass sur PAPIER (#FDFDFB), carte d'en-tête sombre
+  // aux couleurs du thème cuite dans le strip (titre compris — le
+  // foregroundColor global d'Apple interdit titre clair + champs sombres).
   const inkColor    = T.headerInk ?? '#FFFFFF';
   const accentColor = T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2);
+
+  // Sous-titre du strip (même format que le talon web)
+  const shortDate = d.toLocaleDateString('fr-BE', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: tz,
+  });
+  const stripSubtitle = `${shortDate} à ${eventTime}${event.location ? ` — ${event.location}` : ''}`;
 
   const input: PassBuildInput = {
     passId:       walletPass?.id ?? ticket.id,
@@ -90,19 +96,25 @@ export async function GET(
       expiration_date:   new Date(d.getTime() + 24 * 3600 * 1000).toISOString(),
       // Les billets du même événement s'empilent dans Wallet
       grouping_id:       ticket.event_id,
-      // Tonal : strip et pass partagent le même fond thème
+      // Carte d'en-tête du strip (thème) + son contenu typographique
       bgColor:           T.headerBg,
-      perfoColor:        T.headerInk ? 'rgba(28,25,23,0.3)' : 'rgba(255,255,255,0.3)',
+      perfoColor:        T.headerInk ? 'rgba(28,25,23,0.25)' : 'rgba(255,255,255,0.25)',
+      strip_title:       event.title,
+      strip_subtitle:    stripSubtitle,
+      strip_org:         restaurant.name,
+      strip_title_color: inkColor,
       strip_accent:      accentColor,
-      strip_dark:        !T.headerInk,
-      foregroundColor:   inkColor,
-      labelColor:        accentColor,
+      strip_border:      T.headerInk ? T.border : '',
+      strip_light:       !!T.headerInk,
+      // Corps du pass = papier : encre sombre, labels gris pierre (web)
+      foregroundColor:   '#1C1917',
+      labelColor:        '#78716C',
       barcodeAltText:    ticket.code,
       showLogoText:      true,
       logoText:          restaurant.name,
     },
-    // backgroundColor du pass = fond du thème (continu avec le strip)
-    primaryColor:   T.headerBg,
+    // backgroundColor du pass = papier du talon web
+    primaryColor:   '#FDFDFB',
     customerId:     ticket.id,
     firstName:      firstName ?? '',
     lastName:       rest.join(' '),
