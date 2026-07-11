@@ -246,9 +246,12 @@ function buildPassJson(
     // sombre sur carte sombre. primaryFields reste donc vide, et le corps
     // (sur papier) ne garde qu'une rangée sobre, comme le billet web.
     base.eventTicket = {
+      // Vue empilée : iOS n'affiche QUE logoText + headerFields — la date
+      // compacte native (fuseau + langue du téléphone) identifie le billet
+      // dans la pile, pas juste une heure orpheline.
       headerFields: startIso ? [{
-        key: 'time', label: 'HEURE', value: startIso,
-        dateStyle: 'PKDateStyleNone', timeStyle: 'PKDateStyleShort',
+        key: 'when', label: 'LE', value: startIso,
+        dateStyle: 'PKDateStyleShort', timeStyle: 'PKDateStyleShort',
       }] : [],
       primaryFields: [],
       secondaryFields: [
@@ -595,6 +598,32 @@ async function generateProgressStrip(opts: {
 }
 
 /**
+ * Monogramme organisateur — plaque dessinée aux couleurs du thème (initiale
+ * sur fond carte) utilisée comme logo.png et icon.png des pass ÉVÉNEMENT.
+ * Un upload de logo (souvent une photo sur tuile blanche) casse le haut du
+ * pass : ici le défaut est élégant, jamais subi. Le nom vit dans logoText.
+ */
+async function generateMonogram(opts: {
+  size:    number;
+  bg:      string;
+  ink:     string;
+  border?: string;
+  letter:  string;
+  /** true = plaque arrondie (logo) ; false = plein cadre (icon, iOS masque lui-même) */
+  rounded?: boolean;
+}): Promise<Buffer> {
+  const { size, bg, ink, border, letter, rounded = true } = opts;
+  const r  = rounded ? Math.round(size * 0.24) : 0;
+  const fs = Math.round(size * 0.5);
+  const inset = border ? 1 : 0;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <rect x="${inset}" y="${inset}" width="${size - inset * 2}" height="${size - inset * 2}" rx="${r}" fill="${bg}"${border ? ` stroke="${border}" stroke-width="1.5"` : ''}/>
+  <text x="${size / 2}" y="${size * 0.54}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${ink}">${letter.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>
+</svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
+/**
  * Strip pour les pass ÉVÉNEMENT — réplique de l'en-tête du billet web :
  * une CARTE sombre (couleur du thème, coins hauts arrondis) posée sur le
  * papier du pass, portant tout l'en-tête typographique (label ✦ REBITES
@@ -612,16 +641,15 @@ async function generateEventStrip(opts: {
   blockBg:  string;    // carte en-tête (thème)
   ink:      string;    // encre posée sur la carte (headerInk ?? blanc)
   perfo:    string;
-  accent?:  string;    // label ✦ REBITES EVENTS + organisateur
+  accent?:  string;    // label ✦ REBITES EVENTS
   border?:  string;    // contour de la carte (thèmes à en-tête clair)
   light?:   boolean;   // carte claire (musée…) → pastille rouge plus dense
   title?:    string;
   subtitle?: string;   // "JEU. 16 JUIL. 2026 À 08:51 — LIEU"
-  orgName?:  string;
   isVoided?: boolean;
 }): Promise<Buffer> {
   const { width, height, paper, blockBg, ink, perfo, accent, border,
-          light = false, title, subtitle, orgName, isVoided } = opts;
+          light = false, title, subtitle, isVoided } = opts;
   const s = width / 375; // géométrie pensée @1x (375×98 pt)
   const escSvg = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -636,22 +664,24 @@ async function generateEventStrip(opts: {
 
   let textSvg = '';
 
-  // ✦ REBITES EVENTS — petit, accent, letterspacé (comme le talon web)
+  // ✦ REBITES EVENTS — petit, accent, letterspacé (comme le talon web).
+  // L'organisateur n'apparaît PLUS ici : il vit dans logoText (bandeau Apple),
+  // le premium ne se répète pas — la carte respire sur trois lignes.
   const labelFs = 8 * s;
-  textSvg += `<text x="${margin}" y="${topM + 18 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${labelFs}" fill="${accentColor}" letter-spacing="${0.3 * labelFs}">✦ REBITES EVENTS</text>`;
+  textSvg += `<text x="${margin}" y="${topM + 19 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${labelFs}" fill="${accentColor}" letter-spacing="${0.3 * labelFs}">✦ REBITES EVENTS</text>`;
 
   // Titre — gras, auto-ajusté sur une ligne, « … » si trop long
   if (title?.trim()) {
     let text = title.trim();
     const maxW = width - margin * 2;
-    let fs = 23 * s;
+    let fs = 24 * s;
     const fitW = (t: string, size: number) => t.length * size * 0.64;
     if (fitW(text, fs) > maxW) fs = Math.max(13 * s, maxW / (text.length * 0.64));
     if (fitW(text, fs) > maxW) {
       const maxChars = Math.floor(maxW / (fs * 0.64)) - 1;
       text = text.slice(0, Math.max(4, maxChars)) + '…';
     }
-    textSvg += `<text x="${margin}" y="${topM + 43 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs.toFixed(1)}" fill="${ink}">${escSvg(text)}</text>`;
+    textSvg += `<text x="${margin}" y="${topM + 47 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs.toFixed(1)}" fill="${ink}">${escSvg(text)}</text>`;
   }
 
   // Date + heure + lieu — uppercase, atténué
@@ -660,13 +690,7 @@ async function generateEventStrip(opts: {
     const subFs = 8 * s;
     const maxChars = Math.floor((width - margin * 2) / (subFs * 0.72));
     if (text.length > maxChars) text = text.slice(0, maxChars - 1) + '…';
-    textSvg += `<text x="${margin}" y="${topM + 62 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-size="${subFs}" fill="${ink}" opacity="0.62" letter-spacing="${0.12 * subFs}">${escSvg(text)}</text>`;
-  }
-
-  // Organisateur — accent, gras
-  if (orgName?.trim()) {
-    const orgFs = 8 * s;
-    textSvg += `<text x="${margin}" y="${topM + 77 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${orgFs}" fill="${accentColor}" letter-spacing="${0.12 * orgFs}">${escSvg(orgName.trim().toUpperCase())}</text>`;
+    textSvg += `<text x="${margin}" y="${topM + 70 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-size="${subFs}" fill="${ink}" opacity="0.62" letter-spacing="${0.12 * subFs}">${escSvg(text)}</text>`;
   }
 
   // Pastille « ✕ UTILISÉ » — outline sobre en haut à droite (langage du web)
@@ -950,15 +974,33 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
   const stampRound     = cfg.stampRound !== false;
 
   // ── 1. Generate all pass files ─────────────────────────────────────────────
+  // Pass ÉVÉNEMENT : logo + icônes = monogramme dessiné aux couleurs du thème
+  // (jamais l'upload du logo — souvent une photo qui casse le haut du pass).
+  const isEvent = input.passKind === 'event';
+  const monogram = {
+    bg:     (cfg.bgColor as string) || color,
+    ink:    (cfg.strip_title_color as string) || '#FFFFFF',
+    border: (cfg.strip_border as string) || undefined,
+    letter: (input.restaurantName.trim().match(/\p{L}|\p{N}/u)?.[0] ?? '✦').toUpperCase(),
+  };
+
   const imagePromises: Promise<Buffer>[] = [
     Promise.resolve(buildPassJson(input, passTypeId, teamId)),
-    // Icône de notification configurable à part : image et fond dédiés
-    // (cfg.iconImageUrl / cfg.iconBgColor), repli logo + couleur de la carte.
-    fetchIconOrSolid(iconImageUrl, 29, iconBg),   // icon.png    (required — affichée dans les notifs)
-    fetchIconOrSolid(iconImageUrl, 58, iconBg),   // icon@2x.png (required)
-    fetchIconOrSolid(iconImageUrl, 87, iconBg),   // icon@3x.png (recommended)
-    fetchOrSolid(logoImageUrl, 160,  50, color),  // logo.png
-    fetchOrSolid(logoImageUrl, 320, 100, color),  // logo@2x.png
+    // Icône de notification : monogramme (event) ou image configurée (fidélité,
+    // cfg.iconImageUrl / cfg.iconBgColor, repli logo + couleur de la carte).
+    ...(isEvent ? [
+      generateMonogram({ ...monogram, size: 29, rounded: false }),  // icon.png
+      generateMonogram({ ...monogram, size: 58, rounded: false }),  // icon@2x.png
+      generateMonogram({ ...monogram, size: 87, rounded: false }),  // icon@3x.png
+      generateMonogram({ ...monogram, size: 50 }),                  // logo.png (plaque)
+      generateMonogram({ ...monogram, size: 100 }),                 // logo@2x.png
+    ] : [
+      fetchIconOrSolid(iconImageUrl, 29, iconBg),   // icon.png    (required — affichée dans les notifs)
+      fetchIconOrSolid(iconImageUrl, 58, iconBg),   // icon@2x.png (required)
+      fetchIconOrSolid(iconImageUrl, 87, iconBg),   // icon@3x.png (recommended)
+      fetchOrSolid(logoImageUrl, 160,  50, color),  // logo.png
+      fetchOrSolid(logoImageUrl, 320, 100, color),  // logo@2x.png
+    ]),
   ];
 
   // Strip image — custom banner OR auto-generated stamp grid
@@ -991,7 +1033,6 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
       light:    !!(cfg.strip_light),
       title:    (cfg.strip_title as string) || undefined,
       subtitle: (cfg.strip_subtitle as string) || undefined,
-      orgName:  (cfg.strip_org as string) || undefined,
       isVoided: !!(cfg.voided),
     };
     // eventTicket « strip style » : 375×98 pt (≠ 123 des storeCards) —

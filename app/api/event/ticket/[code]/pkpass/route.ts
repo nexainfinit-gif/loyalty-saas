@@ -101,7 +101,6 @@ export async function GET(
       perfoColor:        T.headerInk ? 'rgba(28,25,23,0.25)' : 'rgba(255,255,255,0.25)',
       strip_title:       event.title,
       strip_subtitle:    stripSubtitle,
-      strip_org:         restaurant.name,
       strip_title_color: inkColor,
       strip_accent:      accentColor,
       strip_border:      T.headerInk ? T.border : '',
