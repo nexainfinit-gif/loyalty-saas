@@ -30,7 +30,7 @@ function EventDetailContent() {
   const [buyerName, setBuyerName] = useState('')
   const [buyerEmail, setBuyerEmail] = useState('')
   const [joinLoyalty, setJoinLoyalty] = useState(false)
-  const [marketingOptIn, setMarketingOptIn] = useState(false)
+  const [marketingOptIn, setMarketingOptIn] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [codes, setCodes] = useState<string[] | null>(null)
