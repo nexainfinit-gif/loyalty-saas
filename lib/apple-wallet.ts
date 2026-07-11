@@ -227,37 +227,43 @@ function buildPassJson(
     const eventLocation = String(cfg.event_location ?? '');
     const ticketCode    = String(cfg.ticket_code ?? '');
     const tierLabel     = String(cfg.tier_label ?? '');
+    const startIso      = String(cfg.start_iso ?? '');
     const holderName    = `${input.firstName} ${input.lastName}`.trim();
+    const isVoided      = !!cfg.voided;
 
     base.description = `Billet – ${eventName}`;
     // relevantDate : iOS propose le billet sur l'écran verrouillé à l'heure H.
     if (cfg.relevant_date) base.relevantDate = String(cfg.relevant_date);
+    // Archivage auto du billet une fois l'événement passé.
+    if (cfg.expiration_date) base.expirationDate = String(cfg.expiration_date);
+    // Plusieurs billets du même événement s'empilent dans Wallet.
+    if (cfg.grouping_id) base.groupingIdentifier = `evt-${cfg.grouping_id}`;
+    if (isVoided) base.voided = true;
+    base.suppressStripShine = true;
 
-    // Quand le strip porte déjà le titre, la date et l'org (strip_title +
-    // strip_subtitle + strip_org), on vide les champs redondants pour que
-    // le pass reste aussi épuré que le talon web.
-    const stripCarriesInfo = !!cfg.strip_title;
-
-    if (cfg.voided) base.voided = true;
-
+    // Le titre reste un CHAMP Wallet (pas cuit dans le strip) : Apple le pose
+    // sur le strip en police SF native, adaptative, jamais recadrée. Les
+    // dates passent en ISO + dateStyle/timeStyle : Wallet les rend dans la
+    // langue et le fuseau du téléphone.
     base.eventTicket = {
-      headerFields: eventTime ? [{ key: 'time', label: 'HEURE', value: eventTime }] : [],
-      primaryFields: stripCarriesInfo ? [] : [{ key: 'event', label: 'ÉVÉNEMENT', value: eventName }],
-      // Une seule rangée sous le strip (réf. e-ticket : ATTENDEE | VIP)
-      secondaryFields: stripCarriesInfo ? [
-        ...(holderName ? [{ key: 'holder', label: 'TITULAIRE', value: holderName }] : []),
-        ...(tierLabel ? [{ key: 'tier', label: 'CATÉGORIE', value: tierLabel, textAlignment: 'PKTextAlignmentRight' }] : []),
-      ] : [
-        ...(eventDate ? [{ key: 'date', label: 'DATE', value: eventDate }] : []),
-        ...(eventLocation ? [{ key: 'location', label: 'LIEU', value: eventLocation }] : []),
+      headerFields: startIso ? [{
+        key: 'time', label: 'HEURE', value: startIso,
+        dateStyle: 'PKDateStyleNone', timeStyle: 'PKDateStyleShort',
+      }] : [],
+      primaryFields: [{ key: 'event', label: '✦ REBITES EVENTS', value: eventName }],
+      secondaryFields: [
+        ...(startIso ? [{ key: 'date', label: 'DATE', value: startIso, dateStyle: 'PKDateStyleMedium', timeStyle: 'PKDateStyleShort' }] : []),
+        ...(eventLocation ? [{ key: 'location', label: 'LIEU', value: eventLocation, textAlignment: 'PKTextAlignmentRight' }] : []),
       ],
-      auxiliaryFields: stripCarriesInfo ? [] : [
+      auxiliaryFields: [
         ...(holderName ? [{ key: 'holder', label: 'TITULAIRE', value: holderName }] : []),
         ...(tierLabel ? [{ key: 'tier', label: 'CATÉGORIE', value: tierLabel }] : []),
+        // Le STATUT change au check-in → notification lockscreen (changeMessage)
+        { key: 'status', label: 'STATUT', value: isVoided ? 'Déjà utilisé' : 'Valide', changeMessage: 'Billet : %@' },
       ],
       backFields: [
         ...(ticketCode ? [{ key: 'code', label: 'Code du billet', value: ticketCode }] : []),
-        ...(eventDate ? [{ key: 'date', label: 'Date', value: eventDate }] : []),
+        ...(eventDate ? [{ key: 'date', label: 'Date', value: `${eventDate}${eventTime ? ` à ${eventTime}` : ''}` }] : []),
         ...(eventLocation ? [{ key: 'location', label: 'Lieu', value: eventLocation }] : []),
         { key: 'org',   label: 'Organisateur', value: input.restaurantName },
         { key: 'terms', label: 'Conditions',   value: 'Billet valable une seule fois. Présentez le QR à l\'entrée.' },
@@ -591,81 +597,51 @@ async function generateProgressStrip(opts: {
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
+/** Éclaircit/assombrit un hex (#rrggbb) vers le blanc (amt > 0) ou le noir. */
+function mixHex(hex: string, amt: number): string {
+  const c = hex.replace('#', '').padEnd(6, '0');
+  const target = amt >= 0 ? 255 : 0;
+  const t = Math.abs(amt);
+  const mix = (v: number) => Math.round(v + (target - v) * t);
+  const r = mix(parseInt(c.slice(0, 2), 16) || 0);
+  const g = mix(parseInt(c.slice(2, 4), 16) || 0);
+  const b = mix(parseInt(c.slice(4, 6), 16) || 0);
+  return `rgb(${r},${g},${b})`;
+}
+
 /**
- * Strip pour les pass ÉVÉNEMENT — design « billet tonal » (une seule couleur,
- * zones en nuances — réf. e-tickets Dribbble / Ticketmaster) : le strip a le
- * MÊME fond que le pass (aucune rupture visuelle), il porte toute la
- * hiérarchie typographique du talon web : label ✦ REBITES EVENTS, grand
- * titre, date/heure/lieu, organisateur, puis une perforation discrète.
- * Tout le texte est rendu DANS l'image (DejaVu embarquée) : c'est le seul
- * moyen de maîtriser la mise en page — les champs natifs d'Apple sont
- * réduits au minimum.
+ * Strip pour les pass ÉVÉNEMENT — matière SEULE, aucun texte : Apple pose
+ * lui-même le champ primaire (label ✦ REBITES EVENTS + titre) sur le strip
+ * en police SF native, et peut recadrer l'image. Le strip fournit donc :
+ * même fond que le pass (aucune couture), un très léger dégradé + halo
+ * d'accent pour la profondeur, la perforation pointillée du talon, et le
+ * tampon « UTILISÉ » quand le billet est scanné (seule zone de dessin libre).
  */
 async function generateEventStrip(opts: {
   width:    number;
   height:   number;
   headerBg: string;
   perfo:    string;
-  title?:      string;
-  titleColor?: string;
-  subtitle?:   string;   // "JEU. 16 JUIL. 2026 À 08:51 — LIEU"
-  orgName?:    string;   // organisateur
-  orgColor?:   string;   // accent
-  isVoided?:   boolean;  // tampon "UTILISÉ"
+  accent?:   string;   // halo discret (couleur d'accent du thème)
+  dark?:     boolean;
+  isVoided?: boolean;  // tampon "UTILISÉ"
 }): Promise<Buffer> {
-  const { width, height, headerBg, perfo, title, titleColor = '#FFFFFF',
-          subtitle, orgName, orgColor, isVoided } = opts;
-  const escSvg = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const { width, height, headerBg, perfo, accent, dark = true, isVoided } = opts;
 
   const margin = Math.round(width * 0.07);
-  const maxW   = width - margin * 2;
-  const accent = orgColor || titleColor;
-
-  let textSvg = '';
-
-  // Label « ✦ REBITES EVENTS » (petit, accent, letterspacé)
-  const labelFs = Math.max(6, Math.round(height * 0.085));
-  textSvg += `<text x="${margin}" y="${Math.round(height * 0.14)}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${labelFs}" fill="${accent}" letter-spacing="0.3em">✦ REBITES EVENTS</text>`;
-
-  // Titre — le héros du strip (gras, gros, auto-ajusté sur une ligne)
-  if (title?.trim()) {
-    let text = title.trim();
-    let fs = Math.round(height * 0.30);
-    const fitW = (s: string, size: number) => s.length * size * 0.66;
-    if (fitW(text, fs) > maxW) fs = Math.max(Math.round(height * 0.16), Math.floor(maxW / (text.length * 0.66)));
-    if (fitW(text, fs) > maxW) {
-      const maxChars = Math.floor(maxW / (fs * 0.66)) - 1;
-      text = text.slice(0, Math.max(4, maxChars)) + '…';
-    }
-    textSvg += `<text x="${margin}" y="${Math.round(height * 0.40)}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${titleColor}">${escSvg(text)}</text>`;
-  }
-
-  // Date + heure + lieu (uppercase, atténué)
-  if (subtitle?.trim()) {
-    let text = subtitle.trim().toUpperCase();
-    const subFs = Math.max(6, Math.round(height * 0.088));
-    const maxChars = Math.floor(maxW / (subFs * 0.7));
-    if (text.length > maxChars) text = text.slice(0, maxChars - 1) + '…';
-    textSvg += `<text x="${margin}" y="${Math.round(height * 0.62)}" dominant-baseline="central" font-family="DejaVu Sans" font-size="${subFs}" fill="${titleColor}" opacity="0.6" letter-spacing="0.12em">${escSvg(text)}</text>`;
-  }
-
-  // Organisateur (accent, gras)
-  if (orgName?.trim()) {
-    const orgFs = Math.max(6, Math.round(height * 0.088));
-    textSvg += `<text x="${margin}" y="${Math.round(height * 0.79)}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${orgFs}" fill="${accent}" letter-spacing="0.12em">${escSvg(orgName.trim().toUpperCase())}</text>`;
-  }
-
-  // Perforation en bas du strip — évoque le talon sans rupture de fond
   const perfoY = Math.round(height * 0.93);
-  const dash = Math.round(width / 94);
+  const dash   = Math.round(width / 94);
   const notchR = Math.round(height * 0.07);
 
-  // Tampon « UTILISÉ » (billet déjà scanné) — posé côté droit, incliné
+  // Dégradé tonal très discret (haut légèrement éclairci/assombri)
+  const gradTop = mixHex(headerBg, dark ? 0.05 : -0.03);
+
+  // Tampon « UTILISÉ » — côté droit, incliné, ne gêne pas le titre (à gauche)
   let voidedSvg = '';
   if (isVoided) {
     const stampFs = Math.round(height * 0.19);
-    const cx = Math.round(width * 0.72);
-    const cy = Math.round(height * 0.38);
+    const cx = Math.round(width * 0.74);
+    const cy = Math.round(height * 0.34);
     voidedSvg = `<g transform="rotate(-12, ${cx}, ${cy})">
       <rect x="${cx - stampFs * 2.7}" y="${cy - stampFs * 0.78}" width="${stampFs * 5.4}" height="${stampFs * 1.56}" rx="${Math.round(stampFs * 0.18)}" fill="rgba(220,38,38,0.14)" stroke="rgba(239,68,68,0.9)" stroke-width="${Math.max(2, Math.round(height * 0.018))}"/>
       <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${stampFs}" fill="rgba(239,68,68,0.95)" letter-spacing="0.2em">UTILISE</text>
@@ -673,12 +649,22 @@ async function generateEventStrip(opts: {
   }
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-  <rect width="${width}" height="${height}" fill="${headerBg}"/>
+  <defs>
+    <linearGradient id="tone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${gradTop}"/>
+      <stop offset="1" stop-color="${headerBg}"/>
+    </linearGradient>
+    ${accent ? `<radialGradient id="halo" cx="0.88" cy="0.05" r="1">
+      <stop offset="0" stop-color="${accent}" stop-opacity="${dark ? 0.12 : 0.08}"/>
+      <stop offset="1" stop-color="${accent}" stop-opacity="0"/>
+    </radialGradient>` : ''}
+  </defs>
+  <rect width="${width}" height="${height}" fill="url(#tone)"/>
+  ${accent ? `<rect width="${width}" height="${height}" fill="url(#halo)"/>` : ''}
   <line x1="${margin}" y1="${perfoY}" x2="${width - margin}" y2="${perfoY}"
     stroke="${perfo}" stroke-width="2" stroke-dasharray="${dash} ${dash}"/>
   <circle cx="0" cy="${perfoY}" r="${notchR}" fill="rgba(0,0,0,0.28)"/>
   <circle cx="${width}" cy="${perfoY}" r="${notchR}" fill="rgba(0,0,0,0.28)"/>
-  ${textSvg}
   ${voidedSvg}
 </svg>`;
 
@@ -964,14 +950,11 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     );
   } else if (autoEventStrip) {
     const eventStripOpts = {
-      headerBg:   (cfg.bgColor as string) || color,
-      perfo:      (cfg.perfoColor as string) || 'rgba(255,255,255,0.3)',
-      title:      (cfg.strip_title as string) || undefined,
-      titleColor: (cfg.strip_title_color as string) || fgHex,
-      subtitle:   (cfg.strip_subtitle as string) || undefined,
-      orgName:    (cfg.strip_org as string) || undefined,
-      orgColor:   (cfg.strip_org_color as string) || undefined,
-      isVoided:   !!(cfg.voided),
+      headerBg: (cfg.bgColor as string) || color,
+      perfo:    (cfg.perfoColor as string) || 'rgba(255,255,255,0.3)',
+      accent:   (cfg.strip_accent as string) || undefined,
+      dark:     cfg.strip_dark !== false,
+      isVoided: !!(cfg.voided),
     };
     // eventTicket « strip style » : 375×98 pt (≠ 123 des storeCards)
     imagePromises.push(

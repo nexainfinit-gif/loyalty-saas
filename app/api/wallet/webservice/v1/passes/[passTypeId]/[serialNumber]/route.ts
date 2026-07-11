@@ -237,9 +237,6 @@ async function serveEventPass(
   const tz = 'Europe/Brussels';
   const eventDate = d.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz });
   const eventTime = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit', timeZone: tz });
-  const shortDate = d.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: tz });
-  const stripSubtitle = `${shortDate} à ${eventTime}${event.location ? ` — ${event.location}` : ''}`;
-
   const [firstName, ...rest] = (ticket.buyer_name ?? '').trim().split(/\s+/);
   const isVoided = ticket.status === 'checked_in';
   const inkColor    = T.headerInk ?? '#FFFFFF';
@@ -258,19 +255,20 @@ async function serveEventPass(
       tier_label:        ticket.tier_name
         ? ((ticket.seats ?? 1) > 1 ? `${ticket.tier_name} · ${ticket.seats} places` : ticket.tier_name)
         : '',
-      strip_title:       event.title,
-      strip_subtitle:    stripSubtitle,
-      strip_org:         restaurant.name,
-      strip_org_color:   accentColor,
-      strip_title_color: inkColor,
+      start_iso:         d.toISOString(),
       voided:            isVoided,
       relevant_date:     d.toISOString(),
+      expiration_date:   new Date(d.getTime() + 24 * 3600 * 1000).toISOString(),
+      grouping_id:       ticket.event_id,
       bgColor:           T.headerBg,
       perfoColor:        T.headerInk ? 'rgba(28,25,23,0.3)' : 'rgba(255,255,255,0.3)',
+      strip_accent:      accentColor,
+      strip_dark:        !T.headerInk,
       foregroundColor:   inkColor,
       labelColor:        accentColor,
       barcodeAltText:    ticket.code,
-      showLogoText:      false,
+      showLogoText:      true,
+      logoText:          restaurant.name,
     },
     primaryColor:        T.headerBg,
     customerId:          ticket.id,
