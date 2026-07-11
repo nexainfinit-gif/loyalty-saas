@@ -597,32 +597,84 @@ async function generateProgressStrip(opts: {
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
-/** Éclaircit/assombrit un hex (#rrggbb) vers le blanc (amt > 0) ou le noir. */
-function mixHex(hex: string, amt: number): string {
-  const c = hex.replace('#', '').padEnd(6, '0');
-  const target = amt >= 0 ? 255 : 0;
-  const t = Math.abs(amt);
-  const mix = (v: number) => Math.round(v + (target - v) * t);
-  const r = mix(parseInt(c.slice(0, 2), 16) || 0);
-  const g = mix(parseInt(c.slice(2, 4), 16) || 0);
-  const b = mix(parseInt(c.slice(4, 6), 16) || 0);
-  return `rgb(${r},${g},${b})`;
+/** PRNG déterministe (mulberry32) — jitter reproductible, jamais Math.random(). */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Étoile à 4 branches ✦ (ornement fantôme du strip). */
+function starPath(cx: number, cy: number, R: number): string {
+  const d = R * 0.16;
+  return `M ${cx} ${cy - R} Q ${cx + d} ${cy - d} ${cx + R} ${cy} Q ${cx + d} ${cy + d} ${cx} ${cy + R} Q ${cx - d} ${cy + d} ${cx - R} ${cy} Q ${cx - d} ${cy - d} ${cx} ${cy - R} Z`;
+}
+
+/**
+ * Rectangle arrondi au périmètre irrégulier (contour de tampon encreur) :
+ * échantillonne le périmètre puis décale chaque point d'un jitter seedé.
+ * Centré sur (0,0) — à poser dans un groupe translaté/tourné.
+ */
+function jitteredRoundedRect(
+  w: number, h: number, r: number,
+  seed: number, amp: number, step: number,
+): string {
+  const rnd = mulberry32(seed);
+  const hw = w / 2, hh = h / 2;
+  const straightW = w - 2 * r, straightH = h - 2 * r, arc = (Math.PI / 2) * r;
+  const total = 2 * straightW + 2 * straightH + 4 * arc;
+  // Point du périmètre à la distance d (sens horaire depuis le haut-gauche)
+  const pointAt = (dist: number): [number, number] => {
+    let d = dist % total;
+    if (d < straightW) return [-hw + r + d, -hh];
+    d -= straightW;
+    if (d < arc) { const a = -Math.PI / 2 + d / r; return [hw - r + r * Math.cos(a), -hh + r + r * Math.sin(a)]; }
+    d -= arc;
+    if (d < straightH) return [hw, -hh + r + d];
+    d -= straightH;
+    if (d < arc) { const a = d / r; return [hw - r + r * Math.cos(a), hh - r + r * Math.sin(a)]; }
+    d -= arc;
+    if (d < straightW) return [hw - r - d, hh];
+    d -= straightW;
+    if (d < arc) { const a = Math.PI / 2 + d / r; return [-hw + r + r * Math.cos(a), hh - r + r * Math.sin(a)]; }
+    d -= arc;
+    if (d < straightH) return [-hw, hh - r - d];
+    d -= straightH;
+    const a = Math.PI + d / r;
+    return [-hw + r + r * Math.cos(a), -hh + r + r * Math.sin(a)];
+  };
+  const n = Math.max(24, Math.round(total / step));
+  let path = '';
+  for (let i = 0; i < n; i++) {
+    const [x, y] = pointAt((i / n) * total);
+    const jx = x + (rnd() * 2 - 1) * amp;
+    const jy = y + (rnd() * 2 - 1) * amp;
+    path += `${i === 0 ? 'M' : 'L'} ${jx.toFixed(1)} ${jy.toFixed(1)} `;
+  }
+  return path + 'Z';
 }
 
 /**
  * Strip pour les pass ÉVÉNEMENT — matière SEULE, aucun texte : Apple pose
  * lui-même le champ primaire (label ✦ REBITES EVENTS + titre) sur le strip
- * en police SF native, et peut recadrer l'image. Le strip fournit donc :
- * même fond que le pass (aucune couture), un très léger dégradé + halo
- * d'accent pour la profondeur, la perforation pointillée du talon, et le
- * tampon « UTILISÉ » quand le billet est scanné (seule zone de dessin libre).
+ * en police SF native, et peut recadrer l'image. Le strip fournit :
+ * même fond que le pass (aucune couture — les bords restent headerBg pur),
+ * un modelé très doux (lueur centrale), micro-grain + guillochures quasi
+ * subliminales (motif sécurité billet), un ✦ fantôme en trait fin côté
+ * droit, la perforation pointillée du talon, et — billet scanné — un vrai
+ * tampon encreur « UTILISÉ » : double contour jitteré, encre érodée par
+ * masque de turbulence, léger flou, incliné côté droit.
  */
 async function generateEventStrip(opts: {
   width:    number;
   height:   number;
   headerBg: string;
   perfo:    string;
-  accent?:   string;   // halo discret (couleur d'accent du thème)
+  accent?:   string;   // ✦ fantôme (couleur d'accent du thème)
   dark?:     boolean;
   isVoided?: boolean;  // tampon "UTILISÉ"
 }): Promise<Buffer> {
@@ -632,39 +684,64 @@ async function generateEventStrip(opts: {
   const perfoY = Math.round(height * 0.93);
   const dash   = Math.round(width / 94);
   const notchR = Math.round(height * 0.07);
+  const sw     = Math.max(2, Math.round(height * 0.012));
 
-  // Dégradé tonal très discret (haut légèrement éclairci/assombri)
-  const gradTop = mixHex(headerBg, dark ? 0.05 : -0.03);
+  const inkTone = dark ? '#FFFFFF' : '#1C1917';
+  const guilStep = height * 0.075; // pas des guillochures diagonales
 
   // Tampon « UTILISÉ » — côté droit, incliné, ne gêne pas le titre (à gauche)
   let voidedSvg = '';
   if (isVoided) {
-    const stampFs = Math.round(height * 0.19);
-    const cx = Math.round(width * 0.74);
-    const cy = Math.round(height * 0.34);
-    voidedSvg = `<g transform="rotate(-12, ${cx}, ${cy})">
-      <rect x="${cx - stampFs * 2.7}" y="${cy - stampFs * 0.78}" width="${stampFs * 5.4}" height="${stampFs * 1.56}" rx="${Math.round(stampFs * 0.18)}" fill="rgba(220,38,38,0.14)" stroke="rgba(239,68,68,0.9)" stroke-width="${Math.max(2, Math.round(height * 0.018))}"/>
-      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${stampFs}" fill="rgba(239,68,68,0.95)" letter-spacing="0.2em">UTILISE</text>
-    </g>`;
+    const fs = Math.round(height * 0.19);
+    const cx = width * 0.725, cy = height * 0.43;
+    const stampW = fs * 6.9, stampH = fs * 1.85;
+    const outer = jitteredRoundedRect(stampW, stampH, fs * 0.32, 41, height * 0.009, height * 0.042);
+    const inner = jitteredRoundedRect(stampW - fs * 0.50, stampH - fs * 0.50, fs * 0.20, 87, height * 0.007, height * 0.05);
+    // Masque + flou déclarés dans <defs> ; le groupe externe (non transformé)
+    // porte le masque — userSpaceOnUse s'évalue APRÈS le transform sinon.
+    voidedSvg = `
+  <g mask="url(#inkMask)" opacity="0.88" filter="url(#inkSoft)">
+  <g transform="translate(${cx.toFixed(0)}, ${cy.toFixed(0)}) rotate(-11)">
+    <path d="${outer}" fill="none" stroke="#D92D20" stroke-width="${(fs * 0.10).toFixed(1)}" stroke-linejoin="round"/>
+    <path d="${inner}" fill="none" stroke="#D92D20" stroke-width="${(fs * 0.045).toFixed(1)}" stroke-linejoin="round"/>
+    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="#D92D20" letter-spacing="${(fs * 0.10).toFixed(1)}">UTILISÉ</text>
+  </g>
+  </g>`;
   }
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <defs>
-    <linearGradient id="tone" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${gradTop}"/>
-      <stop offset="1" stop-color="${headerBg}"/>
-    </linearGradient>
-    ${accent ? `<radialGradient id="halo" cx="0.88" cy="0.05" r="1">
-      <stop offset="0" stop-color="${accent}" stop-opacity="${dark ? 0.12 : 0.08}"/>
-      <stop offset="1" stop-color="${accent}" stop-opacity="0"/>
-    </radialGradient>` : ''}
+    <radialGradient id="lift" cx="0.5" cy="0.42" r="0.85">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="${dark ? 0.045 : 0.35}"/>
+      <stop offset="0.75" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="guil" width="${guilStep}" height="${guilStep}" patternUnits="userSpaceOnUse" patternTransform="rotate(-32)">
+      <rect width="1" height="${guilStep}" fill="${inkTone}"/>
+    </pattern>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 ${dark ? 1 : 0}  0 0 0 0 ${dark ? 1 : 0}  0 0 0 0 ${dark ? 1 : 0}  0.5 0.5 0.5 0 -0.35"/>
+    </filter>
+    <filter id="inkRough" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="3" seed="17" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.9 0 0 0 -0.32"/>
+    </filter>
+    <filter id="inkSoft"><feGaussianBlur stdDeviation="${(height * 0.0028).toFixed(2)}"/></filter>
+    <mask id="inkMask" maskUnits="userSpaceOnUse" x="0" y="0" width="${width}" height="${height}">
+      <rect x="0" y="0" width="${width}" height="${height}" fill="white"/>
+      <rect x="0" y="0" width="${width}" height="${height}" filter="url(#inkRough)"/>
+    </mask>
   </defs>
-  <rect width="${width}" height="${height}" fill="url(#tone)"/>
-  ${accent ? `<rect width="${width}" height="${height}" fill="url(#halo)"/>` : ''}
+  <rect width="${width}" height="${height}" fill="${headerBg}"/>
+  <rect width="${width}" height="${height}" fill="url(#lift)"/>
+  <rect width="${width}" height="${height}" fill="url(#guil)" opacity="${dark ? 0.018 : 0.035}"/>
+  <rect width="${width}" height="${height}" filter="url(#grain)" opacity="${dark ? 0.05 : 0.06}"/>
+  ${accent ? `<path d="${starPath(width * 0.855, height * 0.40, height * 0.30)}" fill="none" stroke="${accent}" stroke-width="${Math.max(1.5, height * 0.011)}" opacity="${isVoided ? 0.05 : 0.13}"/>` : ''}
   <line x1="${margin}" y1="${perfoY}" x2="${width - margin}" y2="${perfoY}"
-    stroke="${perfo}" stroke-width="2" stroke-dasharray="${dash} ${dash}"/>
-  <circle cx="0" cy="${perfoY}" r="${notchR}" fill="rgba(0,0,0,0.28)"/>
-  <circle cx="${width}" cy="${perfoY}" r="${notchR}" fill="rgba(0,0,0,0.28)"/>
+    stroke="${perfo}" stroke-width="${sw}" stroke-dasharray="${dash} ${dash}"/>
+  <circle cx="0" cy="${perfoY}" r="${notchR}" fill="${dark ? 'rgba(0,0,0,0.35)' : 'rgba(28,25,23,0.18)'}"/>
+  <circle cx="${width}" cy="${perfoY}" r="${notchR}" fill="${dark ? 'rgba(0,0,0,0.35)' : 'rgba(28,25,23,0.18)'}"/>
   ${voidedSvg}
 </svg>`;
 
