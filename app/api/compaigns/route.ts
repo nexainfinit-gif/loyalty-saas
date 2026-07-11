@@ -15,8 +15,17 @@ export async function POST(req: Request) {
   if (!guard.restaurantId) {
     return Response.json({ error: 'Restaurant introuvable' }, { status: 404 })
   }
-  const featureGate = requireFeature(guard, 'campaigns_email', 'Campagnes email')
-  if (featureGate) return featureGate
+
+  const body = await req.json()
+  const { name, type, subject, bodyText, segment, scheduled_at, eventId } = body
+
+  // Les ANNONCES D'ÉVÉNEMENT font partie du produit billetterie (plan
+  // gratuit + commission) : pas de gate campaigns_email — mais les quotas
+  // (campagnes/mois + emails/mois) s'appliquent comme à tout le monde.
+  if (!eventId) {
+    const featureGate = requireFeature(guard, 'campaigns_email', 'Campagnes email')
+    if (featureGate) return featureGate
+  }
 
   // ── Plan limit: maxCampaignsPerMonth ──
   const { allowed, limit, current } = await checkPlanLimit(guard.restaurantId, guard.plan, 'campaigns')
@@ -29,8 +38,9 @@ export async function POST(req: Request) {
     .eq('id', guard.restaurantId).single()
   if (!restaurant) return Response.json({ error: 'Restaurant introuvable' }, { status: 404 })
 
-  const body = await req.json()
-  const { name, type, subject, bodyText, segment, scheduled_at } = body
+  if (eventId) {
+    return sendEventAnnouncement({ guard, restaurant, eventId, subject, bodyText, name })
+  }
 
   if (!name || !subject || !bodyText || !segment) {
     return Response.json({ error: 'Champs manquants' }, { status: 400 })
@@ -249,6 +259,242 @@ export async function GET(req: Request) {
     .range(from, to)
 
   return Response.json({ campaigns: campaigns ?? [], total: count ?? 0, page, limit })
+}
+
+/* ── Annonce d'événement (Rebites Events) ─────────────────────────────────
+ * Audience = clients fidélité consentants (consent_marketing) ∪ acheteurs
+ * de billets ayant coché l'opt-in à l'achat (052), dédupliqués par email.
+ * Chaque destinataire a SON lien de désabonnement (qr_token pour les
+ * clients, code billet pour les acheteurs). Envoi immédiat uniquement. */
+async function sendEventAnnouncement({ guard, restaurant, eventId, subject, bodyText, name }: {
+  guard: { restaurantId: string | null; plan: string | null; userId: string }
+  restaurant: { id: string; name: string; primary_color: string; slug: string }
+  eventId: unknown
+  subject: unknown
+  bodyText: unknown
+  name: unknown
+}) {
+  if (typeof eventId !== 'string' || !/^[0-9a-f-]{36}$/i.test(eventId)) {
+    return Response.json({ error: 'Événement invalide.' }, { status: 400 })
+  }
+  if (typeof subject !== 'string' || !subject.trim() || subject.length > 200) {
+    return Response.json({ error: 'Objet requis (max 200 caractères).' }, { status: 400 })
+  }
+  if (typeof bodyText !== 'string' || !bodyText.trim() || bodyText.length > 5000) {
+    return Response.json({ error: 'Message requis (max 5000 caractères).' }, { status: 400 })
+  }
+
+  const { data: event } = await supabaseAdmin
+    .from('events')
+    .select('id, title, slug, starts_at, location, price, status')
+    .eq('id', eventId)
+    .eq('restaurant_id', restaurant.id)
+    .maybeSingle()
+  if (!event || event.status !== 'published') {
+    return Response.json({ error: 'Événement introuvable ou non publié.' }, { status: 404 })
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
+  // ── Audience ──
+  const [{ data: allCustomers }, { data: buyerRows }] = await Promise.all([
+    supabaseAdmin
+      .from('customers')
+      .select('first_name, email, consent_marketing, qr_token')
+      .eq('restaurant_id', restaurant.id),
+    supabaseAdmin
+      .from('event_tickets')
+      .select('buyer_email, buyer_name, code')
+      .eq('restaurant_id', restaurant.id)
+      .eq('marketing_opt_in', true)
+      .in('status', ['valid', 'checked_in']),
+  ])
+
+  const recipients: { email: string; firstName: string; unsubscribeUrl: string | null }[] = []
+  const seen = new Set<string>()
+  for (const c of allCustomers ?? []) {
+    if (!c.consent_marketing || !c.email) continue
+    const em = c.email.toLowerCase()
+    if (seen.has(em)) continue
+    seen.add(em)
+    recipients.push({
+      email: c.email,
+      firstName: c.first_name ?? '',
+      unsubscribeUrl: c.qr_token ? `${appUrl}/api/unsubscribe?token=${c.qr_token}` : null,
+    })
+  }
+  for (const b of buyerRows ?? []) {
+    const em = (b.buyer_email ?? '').toLowerCase()
+    if (!em || seen.has(em)) continue
+    seen.add(em)
+    recipients.push({
+      email: em,
+      firstName: (b.buyer_name ?? '').trim().split(/\s+/)[0] ?? '',
+      unsubscribeUrl: `${appUrl}/api/event/unsubscribe?code=${b.code}`,
+    })
+  }
+
+  if (recipients.length === 0) {
+    return Response.json({ error: 'Aucun destinataire : personne n\'a encore accepté de recevoir vos annonces.' }, { status: 400 })
+  }
+
+  // ── Quota emails du mois ──
+  const emailQuota = await checkEmailQuota(restaurant.id, guard.plan, recipients.length)
+  if (!emailQuota.allowed) {
+    return Response.json(
+      {
+        ...planLimitError('emails', emailQuota.current, emailQuota.limit),
+        error: `Quota d'emails atteint (${emailQuota.current} envoyés ce mois-ci, cette annonce en ajouterait ${recipients.length}, quota : ${emailQuota.limit}).`,
+      },
+      { status: 403 },
+    )
+  }
+
+  const { data: campaign, error: campErr } = await supabaseAdmin
+    .from('campaigns').insert({
+      restaurant_id: restaurant.id,
+      name: typeof name === 'string' && name ? name.slice(0, 100) : `Annonce — ${event.title}`.slice(0, 100),
+      type: 'event',
+      subject,
+      body: bodyText,
+      content: bodyText,
+      segment: 'event_audience',
+      segment_type: 'event_audience',
+      status: 'sending',
+      recipients_count: recipients.length,
+    }).select().single()
+  if (campErr || !campaign) {
+    logger.error({ ctx: 'campaigns', rid: restaurant.id, msg: 'event campaign insert failed', err: campErr?.message })
+    return Response.json({ error: 'Erreur création campagne' }, { status: 500 })
+  }
+
+  const eventUrl = `${appUrl}/fr/event/${restaurant.slug}/${event.slug}`
+  const when = new Date(event.starts_at).toLocaleString('fr-BE', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels',
+  })
+
+  const allEmails = recipients.map(r => ({
+    from: `${restaurant.name} <noreply@rebites.be>`,
+    to: r.email,
+    subject: subject.replace(/\{\{prenom\}\}/gi, r.firstName).replace(/\{\{restaurant\}\}/gi, restaurant.name),
+    html: buildEventAnnouncementHtml({
+      firstName: r.firstName,
+      body: bodyText.replace(/\{\{prenom\}\}/gi, r.firstName).replace(/\{\{restaurant\}\}/gi, restaurant.name),
+      businessName: restaurant.name,
+      primaryColor: restaurant.primary_color,
+      eventTitle: event.title,
+      when,
+      location: event.location,
+      price: Number(event.price),
+      eventUrl,
+      unsubscribeUrl: r.unsubscribeUrl,
+    }),
+  }))
+
+  // Envoi par batch (Resend batch API — max 100 emails par appel)
+  const BATCH_SIZE = 100
+  let sentCount = 0
+  let failCount = 0
+  for (let i = 0; i < allEmails.length; i += BATCH_SIZE) {
+    const batch = allEmails.slice(i, i + BATCH_SIZE)
+    try {
+      if (batch.length === 1) {
+        await resend.emails.send(batch[0])
+        sentCount += 1
+      } else {
+        const { data, error: batchErr } = await resend.batch.send(batch)
+        if (batchErr) {
+          logger.error({ ctx: 'campaigns', rid: restaurant.id, msg: `Event batch ${i / BATCH_SIZE} failed`, err: batchErr })
+          failCount += batch.length
+        } else {
+          sentCount += data?.data?.length ?? batch.length
+        }
+      }
+    } catch (err) {
+      logger.error({ ctx: 'campaigns', rid: restaurant.id, msg: `Event batch ${i / BATCH_SIZE} error`, err })
+      failCount += batch.length
+    }
+  }
+
+  await supabaseAdmin.from('campaigns').update({
+    status: failCount === recipients.length ? 'failed' : 'sent',
+    sent_at: new Date().toISOString(),
+    recipients_count: sentCount,
+  }).eq('id', campaign.id)
+
+  auditLog({
+    restaurantId: restaurant.id,
+    actorId: guard.userId,
+    action: 'campaign_send',
+    targetType: 'campaign',
+    targetId: campaign.id,
+    metadata: { name: campaign.name, segment: 'event_audience', eventId: event.id, sent: sentCount, failed: failCount, total: recipients.length },
+  })
+
+  return Response.json({ success: true, campaign_id: campaign.id, sent: sentCount, failed: failCount, total: recipients.length })
+}
+
+function buildEventAnnouncementHtml({ firstName, body, businessName, primaryColor, eventTitle, when, location, price, eventUrl, unsubscribeUrl }: {
+  firstName: string
+  body: string
+  businessName: string
+  primaryColor: string
+  eventTitle: string
+  when: string
+  location: string | null
+  price: number
+  eventUrl: string
+  unsubscribeUrl: string | null
+}) {
+  const color = safeCssColor(primaryColor)
+  const safeBiz = esc(businessName)
+  const safeTitle = esc(eventTitle)
+  const bodyHtml = esc(body).replace(/\n/g, '<br/>')
+  const hello = firstName ? `Bonjour <strong>${esc(firstName)}</strong> 👋` : 'Bonjour 👋'
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F8F9FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8F9FA;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+
+        <!-- Header sombre façon talon de billet -->
+        <tr><td style="background:#0C0C0E;border-radius:16px 16px 0 0;padding:32px;text-align:center;">
+          <p style="color:${color};margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;">✦ ${safeBiz}</p>
+          <h1 style="color:white;margin:0;font-size:26px;font-weight:800;">${safeTitle}</h1>
+          <p style="color:rgba(255,255,255,0.65);margin:10px 0 0;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;">
+            ${esc(when)}${location ? ` — ${esc(location)}` : ''}
+          </p>
+        </td></tr>
+
+        <!-- Message de l'organisateur -->
+        <tr><td style="background:white;padding:32px;">
+          <p style="font-size:16px;color:#374151;line-height:1.6;margin:0 0 16px;">${hello}</p>
+          <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 24px;">${bodyHtml}</p>
+          <div style="text-align:center;margin:28px 0 8px;">
+            <a href="${eventUrl}" style="display:inline-block;background:${color};color:white;text-decoration:none;padding:0.9rem 2rem;border-radius:12px;font-weight:700;font-size:15px;">
+              ${price > 0 ? `Réserver — ${price} €` : 'Réserver ma place'} →
+            </a>
+          </div>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#F9FAFB;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;border-top:1px solid #F3F4F6;">
+          <p style="margin:0;font-size:12px;color:#9CA3AF;">
+            Vous recevez cet email car vous avez accepté de recevoir les événements de ${safeBiz}.<br/>
+            ${unsubscribeUrl ? `<a href="${unsubscribeUrl}" style="color:#9CA3AF;text-decoration:underline;">Se désinscrire</a> &nbsp;·&nbsp; ` : ''}Propulsé par <strong>Rebites Events</strong>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
 }
 
 function esc(s: string): string {

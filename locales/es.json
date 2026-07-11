@@ -1967,7 +1967,17 @@
     "transferInfo": "La entrada {code} de {name} quedará invalidada y se enviará una nueva entrada (nuevo QR) por email al destinatario.",
     "transferName": "Nombre del destinatario",
     "transferEmail": "Email del destinatario",
-    "transferSend": "Enviar la entrada"
+    "transferSend": "Enviar la entrada",
+    "announce": "Anunciar",
+    "announceTitle": "Anunciar el evento por email",
+    "announceInfo": "Enviado a tus clientes de fidelidad con consentimiento y a los compradores que aceptaron recibir tus eventos. Cada email incluye un enlace para darse de baja.",
+    "announceSubject": "Asunto",
+    "announceBody": "Mensaje",
+    "announceVars": "Variables: {{prenom}}, {{restaurant}}",
+    "announceSend": "Enviar el anuncio",
+    "announceSentTitle": "Anuncio enviado",
+    "announceSentDesc": "Tu anuncio se envió a {count} destinatario(s).",
+    "announceBodyDefault": "Hola {{prenom}},\n\nNos complace anunciar nuestro próximo evento: {title}.\n\n¡Las plazas son limitadas — reserva la tuya!"
   },
   "event": {
     "verifying": "Verificando el pago…",
@@ -2003,7 +2013,8 @@
     "dateLabel": "Fecha",
     "locationLabel": "Lugar",
     "priceLabel": "Precio",
-    "backToList": "Todos los eventos"
+    "backToList": "Todos los eventos",
+    "marketingOptIn": "Recibir los próximos eventos de {business} por email"
   },
   "checkin": {
     "title": "Check-in",

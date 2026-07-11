@@ -1971,7 +1971,17 @@
     "transferInfo": "Il biglietto {code} di {name} sarà invalidato e un nuovo biglietto (nuovo QR) sarà inviato via email al destinatario.",
     "transferName": "Nome del destinatario",
     "transferEmail": "Email del destinatario",
-    "transferSend": "Invia il biglietto"
+    "transferSend": "Invia il biglietto",
+    "announce": "Annuncia",
+    "announceTitle": "Annuncia l'evento via email",
+    "announceInfo": "Inviato ai clienti fedeltà consenzienti e agli acquirenti che hanno accettato di ricevere i tuoi eventi. Ogni email include un link di disiscrizione.",
+    "announceSubject": "Oggetto",
+    "announceBody": "Messaggio",
+    "announceVars": "Variabili: {{prenom}}, {{restaurant}}",
+    "announceSend": "Invia l'annuncio",
+    "announceSentTitle": "Annuncio inviato",
+    "announceSentDesc": "Il tuo annuncio è stato inviato a {count} destinatario/i.",
+    "announceBodyDefault": "Ciao {{prenom}},\n\nSiamo lieti di annunciare il nostro prossimo evento: {title}.\n\nI posti sono limitati — prenota subito il tuo!"
   },
   "event": {
     "verifying": "Verifica del pagamento…",
@@ -2007,7 +2017,8 @@
     "dateLabel": "Data",
     "locationLabel": "Luogo",
     "priceLabel": "Prezzo",
-    "backToList": "Tutti gli eventi"
+    "backToList": "Tutti gli eventi",
+    "marketingOptIn": "Ricevere i prossimi eventi di {business} via email"
   },
   "checkin": {
     "title": "Check-in",

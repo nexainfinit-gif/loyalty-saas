@@ -1971,7 +1971,17 @@
     "transferInfo": "Het ticket {code} van {name} wordt ongeldig en een nieuw ticket (nieuwe QR) wordt per e-mail naar de ontvanger gestuurd.",
     "transferName": "Naam ontvanger",
     "transferEmail": "E-mail ontvanger",
-    "transferSend": "Ticket versturen"
+    "transferSend": "Ticket versturen",
+    "announce": "Aankondigen",
+    "announceTitle": "Evenement per e-mail aankondigen",
+    "announceInfo": "Verzonden naar je loyaliteitsklanten met toestemming en naar kopers die je evenementen willen ontvangen. Elke e-mail bevat een uitschrijflink.",
+    "announceSubject": "Onderwerp",
+    "announceBody": "Bericht",
+    "announceVars": "Variabelen: {{prenom}}, {{restaurant}}",
+    "announceSend": "Aankondiging versturen",
+    "announceSentTitle": "Aankondiging verzonden",
+    "announceSentDesc": "Je aankondiging is naar {count} ontvanger(s) gestuurd.",
+    "announceBodyDefault": "Hallo {{prenom}},\n\nMet plezier kondigen we ons volgende evenement aan: {title}.\n\nDe plaatsen zijn beperkt — reserveer snel!"
   },
   "event": {
     "verifying": "Betaling controleren…",
@@ -2007,7 +2017,8 @@
     "dateLabel": "Datum",
     "locationLabel": "Locatie",
     "priceLabel": "Prijs",
-    "backToList": "Alle evenementen"
+    "backToList": "Alle evenementen",
+    "marketingOptIn": "De volgende evenementen van {business} per e-mail ontvangen"
   },
   "checkin": {
     "title": "Check-in",

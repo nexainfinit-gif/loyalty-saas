@@ -30,6 +30,7 @@ function EventDetailContent() {
   const [buyerName, setBuyerName] = useState('')
   const [buyerEmail, setBuyerEmail] = useState('')
   const [joinLoyalty, setJoinLoyalty] = useState(false)
+  const [marketingOptIn, setMarketingOptIn] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [codes, setCodes] = useState<string[] | null>(null)
@@ -59,7 +60,7 @@ function EventDetailContent() {
       const res = await fetch(`/api/event/${slug}/buy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: ev.id, ...(tierId ? { tierId } : {}), quantity, buyerName, buyerEmail, joinLoyalty }),
+        body: JSON.stringify({ eventId: ev.id, ...(tierId ? { tierId } : {}), quantity, buyerName, buyerEmail, joinLoyalty, marketingOptIn }),
       })
       const j = await res.json()
       if (!res.ok) { setError(j.error || t('common.error')); return }
@@ -267,6 +268,12 @@ function EventDetailContent() {
                   {t('event.joinLoyalty', { business: business.name })}
                 </label>
               )}
+              {/* Opt-in RGPD : jamais coché par défaut */}
+              <label className="flex items-start gap-2 text-xs" style={{ color: C.muted }}>
+                <input type="checkbox" checked={marketingOptIn} onChange={e => setMarketingOptIn(e.target.checked)}
+                  className="mt-0.5" style={{ accentColor: C.accent }} />
+                {t('event.marketingOptIn', { business: business.name })}
+              </label>
               {error && (
                 <p className="ev-mono text-xs px-3 py-2" style={{ color: C.accent2, border: `2px solid ${C.accent2}`, borderRadius: C.radius }}>{error}</p>
               )}

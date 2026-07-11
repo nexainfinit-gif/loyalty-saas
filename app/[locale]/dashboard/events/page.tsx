@@ -78,6 +78,11 @@ export default function EventsPage() {
   const [transferTk, setTransferTk] = useState<{ ev: Ev; tk: Ticket } | null>(null)
   const [transferForm, setTransferForm] = useState({ name: '', email: '' })
   const [transferBusy, setTransferBusy] = useState(false)
+  // Annonce par email : événement + objet/message + résultat d'envoi
+  const [announceEv, setAnnounceEv] = useState<Ev | null>(null)
+  const [announceForm, setAnnounceForm] = useState({ subject: '', body: '' })
+  const [announceBusy, setAnnounceBusy] = useState(false)
+  const [announceSent, setAnnounceSent] = useState<number | null>(null)
   const [copied, setCopied] = useState(false)
 
   // Tarifs (catégories de billets) dépliés
@@ -253,6 +258,34 @@ export default function EventsPage() {
     setOpenTiers(null)
   }
 
+  function openAnnounce(ev: Ev) {
+    const when = new Date(ev.starts_at).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
+    setAnnounceSent(null)
+    setAnnounceForm({
+      subject: `${ev.title} — ${when}`,
+      body: t('events.announceBodyDefault', { title: ev.title }),
+    })
+    setAnnounceEv(ev)
+  }
+
+  async function submitAnnounce(e: React.FormEvent) {
+    e.preventDefault()
+    if (!announceEv) return
+    setAnnounceBusy(true)
+    const res = await api<{ sent: number; total: number }>('/api/compaigns', {
+      method: 'POST',
+      body: JSON.stringify({
+        eventId: announceEv.id,
+        name: `Annonce — ${announceEv.title}`,
+        subject: announceForm.subject,
+        bodyText: announceForm.body,
+      }),
+    })
+    setAnnounceBusy(false)
+    if (res.error) { setError(res.error); setAnnounceEv(null); return }
+    setAnnounceSent(res.data?.sent ?? 0)
+  }
+
   async function submitTransfer(e: React.FormEvent) {
     e.preventDefault()
     if (!transferTk) return
@@ -403,6 +436,12 @@ export default function EventsPage() {
                   <button onClick={() => setStatus(ev, 'published')}
                     className="px-3 py-1.5 text-xs font-semibold bg-success-50 text-success-700 rounded-xl hover:bg-success-100 transition-colors">
                     {t('events.publish')}
+                  </button>
+                )}
+                {ev.status === 'published' && new Date(ev.starts_at) > new Date() && (
+                  <button onClick={() => openAnnounce(ev)}
+                    className="px-3 py-1.5 text-xs font-semibold bg-primary-50 text-primary-600 rounded-xl hover:bg-primary-100 transition-colors">
+                    📣 {t('events.announce')}
                   </button>
                 )}
                 {ev.status === 'published' && (
@@ -564,6 +603,57 @@ export default function EventsPage() {
           </div>
         ))}
       </div>
+
+      {/* Annonce d'événement par email */}
+      {announceEv && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setAnnounceEv(null)}>
+          <form onSubmit={submitAnnounce} onClick={e => e.stopPropagation()}
+            className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4 my-8">
+            {announceSent !== null ? (
+              <>
+                <h2 className="text-base font-bold text-gray-900">✅ {t('events.announceSentTitle')}</h2>
+                <p className="text-sm text-gray-600">{t('events.announceSentDesc', { count: announceSent })}</p>
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => setAnnounceEv(null)}
+                    className="px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-colors">
+                    {t('common.close')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">📣 {t('events.announceTitle')}</h2>
+                  <p className="text-xs text-gray-500 mt-1">{t('events.announceInfo')}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t('events.announceSubject')}</label>
+                  <input required value={announceForm.subject} maxLength={200}
+                    onChange={e => setAnnounceForm(f => ({ ...f, subject: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t('events.announceBody')}</label>
+                  <textarea required value={announceForm.body} maxLength={5000} rows={5}
+                    onChange={e => setAnnounceForm(f => ({ ...f, body: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20 resize-none" />
+                  <p className="text-[11px] text-gray-400 mt-1">{t('events.announceVars')}</p>
+                </div>
+                <div className="flex gap-2 justify-end pt-1">
+                  <button type="button" onClick={() => setAnnounceEv(null)}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors">
+                    {t('common.cancel')}
+                  </button>
+                  <button type="submit" disabled={announceBusy}
+                    className="px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50">
+                    {announceBusy ? '…' : t('events.announceSend')}
+                  </button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+      )}
 
       {/* Transfert de billet */}
       {transferTk && (

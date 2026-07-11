@@ -22,6 +22,8 @@ const schema = z.object({
   buyerName:   z.string().trim().min(1).max(100),
   buyerEmail:  z.string().trim().email().max(255),
   joinLoyalty: z.boolean().optional(),
+  /** Opt-in marketing (052) : recevoir les prochains événements par email. */
+  marketingOptIn: z.boolean().optional(),
 });
 
 /**
@@ -46,7 +48,7 @@ export async function POST(
   catch { return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 }); }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Champs invalides.' }, { status: 400 });
-  const { eventId, tierId, buyerName, buyerEmail, joinLoyalty } = parsed.data;
+  const { eventId, tierId, buyerName, buyerEmail, joinLoyalty, marketingOptIn } = parsed.data;
 
   const quantity = validateQuantity(parsed.data.quantity);
   if (quantity === null) {
@@ -160,6 +162,7 @@ export async function POST(
     tier_id: tier?.id ?? null,
     tier_name: tier?.name ?? null,
     seats: seatsPerUnit,
+    marketing_opt_in: marketingOptIn === true,
   }));
   const { data: tickets, error: insertErr } = await supabaseAdmin
     .from('event_tickets')

@@ -1989,7 +1989,17 @@
     "transferInfo": "{name}'s ticket {code} will be invalidated and a new ticket (new QR) will be emailed to the recipient.",
     "transferName": "Recipient name",
     "transferEmail": "Recipient email",
-    "transferSend": "Send ticket"
+    "transferSend": "Send ticket",
+    "announce": "Announce",
+    "announceTitle": "Announce the event by email",
+    "announceInfo": "Sent to your consenting loyalty customers and to buyers who opted in to receive your events. Every email includes an unsubscribe link.",
+    "announceSubject": "Subject",
+    "announceBody": "Message",
+    "announceVars": "Variables: {{prenom}}, {{restaurant}}",
+    "announceSend": "Send announcement",
+    "announceSentTitle": "Announcement sent",
+    "announceSentDesc": "Your announcement went out to {count} recipient(s).",
+    "announceBodyDefault": "Hi {{prenom}},\n\nWe're thrilled to announce our next event: {title}.\n\nSeats are limited — book yours now!"
   },
   "event": {
     "verifying": "Verifying payment…",
@@ -2025,7 +2035,8 @@
     "dateLabel": "Date",
     "locationLabel": "Venue",
     "priceLabel": "Price",
-    "backToList": "All events"
+    "backToList": "All events",
+    "marketingOptIn": "Receive {business}'s upcoming events by email"
   },
   "checkin": {
     "title": "Check-in",
