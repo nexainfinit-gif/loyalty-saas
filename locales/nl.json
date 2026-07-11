@@ -2003,7 +2003,11 @@
     "addToWallet": "Toevoegen aan Apple Wallet",
     "fromPrice": "vanaf € {price}",
     "tableOf": "Tafel · {seats} pers.",
-    "seats": "plaatsen"
+    "seats": "plaatsen",
+    "dateLabel": "Datum",
+    "locationLabel": "Locatie",
+    "priceLabel": "Prijs",
+    "backToList": "Alle evenementen"
   },
   "checkin": {
     "title": "Check-in",

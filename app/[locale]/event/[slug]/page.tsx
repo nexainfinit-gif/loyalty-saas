@@ -1,170 +1,31 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
-import { resolveEventTheme, type EventTheme } from '@/lib/event-themes'
+import { resolveEventTheme } from '@/lib/event-themes'
+import { PageStyles, TopBand, NeutralLoader, type PubEvent, type PubBusiness } from './shared'
 
 /**
- * Page publique billetterie — /[locale]/event/[slug].
- * Le thème appartient à L'ÉVÉNEMENT (nuit / corporate / musée) : la coquille
- * de page suit le prochain événement, et chaque carte porte son propre
- * habillage (tokens dans lib/event-themes.ts).
+ * Billetterie d'un organisateur — /[locale]/event/[slug].
+ * INDEX à thème unique (celui du prochain événement) : les cartes sont
+ * uniformes et renvoient chacune vers la page de l'événement
+ * ([eventSlug]) qui, elle, porte SON thème plein cadre. Deux thèmes ne
+ * cohabitent jamais sur une même page (décision 2026-07-11).
+ * Le retour Stripe (confirmation d'achat) atterrit toujours ici.
  */
-interface PubTier {
-  id: string
-  name: string
-  description: string | null
-  price: number
-  kind: string
-  seatsPerUnit: number
-  remaining: number | null
-}
-
-interface PubEvent {
-  id: string
-  title: string
-  slug: string
-  description: string | null
-  location: string | null
-  starts_at: string
-  price: number
-  remaining: number | null
-  offer_loyalty: boolean
-  theme?: string
-  tiers: PubTier[]
-}
-
-/** Classes CSS d'un thème, suffixées par sa clé (plusieurs thèmes peuvent
- *  cohabiter sur la même page — un par carte d'événement). */
-function themeCss(T: EventTheme): string {
-  const k = T.key
-  return `
-    .ev-display-${k} {
-      font-family: ${T.display};
-      font-weight: ${T.displayWeight};
-      ${T.displayItalic ? 'font-style: italic;' : ''}
-      ${T.displayUppercase ? 'text-transform: uppercase;' : ''}
-      ${T.displayTracking ? `letter-spacing: ${T.displayTracking};` : ''}
-    }
-    .ev-card-${k} {
-      background: ${T.surface}; border: ${T.dark ? '2px' : '1px'} solid ${T.border};
-      ${T.variant === 'catalog' ? `border-top: 5px solid ${T.ink};` : ''}
-      border-radius: ${T.radius};
-      box-shadow: ${T.shadow};
-      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-    }
-    .ev-card-${k}:hover {
-      ${T.dark ? `transform: translate(-2px, -2px); border-color: ${T.accent};` : 'transform: translateY(-2px);'}
-      box-shadow: ${T.shadowHover};
-    }
-    .ev-btn-${k} {
-      background: ${T.accent}; color: ${T.accentInk};
-      border: ${T.dark ? `2px solid ${T.accent}` : '1px solid transparent'};
-      border-radius: ${T.radius};
-      ${T.dark ? 'box-shadow: 5px 5px 0 #000;' : ''}
-      transition: all 0.15s ease;
-    }
-    .ev-btn-${k}:hover:not(:disabled) {
-      ${T.dark
-        ? `transform: translate(-2px, -2px); box-shadow: 7px 7px 0 ${T.accent2};`
-        : `filter: brightness(1.12); box-shadow: ${T.shadowHover};`}
-    }
-    .ev-btn-${k}:active:not(:disabled) { ${T.dark ? 'transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000;' : 'transform: translateY(1px);'} }
-    .ev-input-${k} {
-      background: ${T.dark ? T.bg : T.surface};
-      border: ${T.dark ? '2px' : '1px'} solid ${T.dark ? '#2e2e38' : T.border};
-      color: ${T.ink}; border-radius: ${T.radius};
-    }
-    .ev-input-${k}:focus { outline: none; border-color: ${T.accent}; ${T.dark ? 'box-shadow: 4px 4px 0 rgba(200,255,46,0.25);' : `box-shadow: 0 0 0 3px ${T.accent}22;`} }
-    .ev-input-${k}::placeholder { color: ${T.faint}; }
-    /* Police des labels propre au thème (mono technique ou sans produit) */
-    .ev-card-${k} .ev-mono { font-family: ${T.labelFamily}; }
-  `
-}
-
-/** Styles de la page : coquille (thème principal) + classes de chaque thème utilisé. */
-function PageStyles({ shell, used }: { shell: EventTheme; used: EventTheme[] }) {
-  const imports = [...new Set(used.map(u => u.fontImport))].map(u => `@import url('${u}');`).join('\n')
-  return (
-    <style>{`
-      ${imports}
-      body { background: ${shell.bg}; }
-      .ev-mono { font-family: ${shell.labelFamily}; }
-      .ev-bg { background: ${shell.bg}; position: relative; overflow-x: hidden; }
-      ${shell.grain ? `
-      .ev-bg::before {
-        content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-        opacity: 0.05;
-      }` : ''}
-      ${shell.vibe ? `
-      .ev-vibe {
-        position: fixed; width: 60vmax; height: 60vmax; border-radius: 50%;
-        filter: blur(90px); opacity: 0.32; z-index: 0; pointer-events: none;
-        background: ${shell.vibe};
-        animation: ev-drift 22s ease-in-out infinite alternate;
-        top: -20vmax; right: -20vmax;
-      }
-      @keyframes ev-drift {
-        0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
-        100% { transform: translate(-16vmax, 24vmax) rotate(50deg) scale(1.18); }
-      }` : '.ev-vibe { display: none; }'}
-      @keyframes ev-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-      .ev-marquee-track { animation: ev-marquee 22s linear infinite; }
-      @keyframes ev-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-      .ev-up { animation: ev-up 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-      .ev-stub-code {
-        background: ${shell.dark ? '#F4F4F6' : shell.headerBg};
-        color: ${shell.dark ? '#0B0B10' : '#FFFFFF'};
-        border-radius: ${shell.radius};
-        ${shell.dark ? `border: 2px solid #F4F4F6; box-shadow: 5px 5px 0 ${shell.accent2};` : `box-shadow: ${shell.shadow};`}
-        transition: all 0.15s ease; display: block;
-      }
-      .ev-stub-code:hover { ${shell.dark ? `transform: translate(-2px, -2px); box-shadow: 7px 7px 0 ${shell.accent};` : `box-shadow: ${shell.shadowHover}; transform: translateY(-2px);`} }
-      ${used.map(themeCss).join('\n')}
-    `}</style>
-  )
-}
-
-/** Bandeau marquee (nuit) ou filet éditorial (thèmes clairs). */
-function TopBand({ T }: { T: EventTheme }) {
-  if (T.band === 'none') return null
-  if (!T.marquee) {
-    return <div className="relative z-10 h-1.5" style={{ background: `linear-gradient(90deg, ${T.accent}, ${T.accent2})` }} />
-  }
-  const chunk = Array.from({ length: 10 }, (_, i) => (
-    <span key={i} className="ev-mono text-[11px] font-bold tracking-[0.25em] uppercase mx-4" style={{ color: T.accentInk }}>
-      Rebites Events <span className="mx-2">✦</span>
-    </span>
-  ))
-  return (
-    <div className="relative z-10 overflow-hidden py-1.5 border-b-2 border-black" style={{ background: T.accent }}>
-      <div className="ev-marquee-track flex whitespace-nowrap w-max">{chunk}{chunk}</div>
-    </div>
-  )
-}
-
 function EventContent() {
   const { t, locale } = useTranslation()
   const params = useParams()
   const slug = params.slug as string
   const sp = useSearchParams()
 
-  const [business, setBusiness] = useState<{ name: string; city: string | null; primaryColor: string | null; logoUrl: string | null } | null>(null)
+  const [business, setBusiness] = useState<PubBusiness | null>(null)
   const [events, setEvents] = useState<PubEvent[]>([])
   const [themeKey, setThemeKey] = useState<string>('nuit')
   const [unavailable, setUnavailable] = useState(false)
   const [loading, setLoading] = useState(true)
-
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [tierId, setTierId] = useState<string | null>(null)
-  const [quantity, setQuantity] = useState(1)
-  const [buyerName, setBuyerName] = useState('')
-  const [buyerEmail, setBuyerEmail] = useState('')
-  const [joinLoyalty, setJoinLoyalty] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
 
   const purchaseId = sp.get('purchase')
   const sessionId = sp.get('session')
@@ -198,33 +59,12 @@ function EventContent() {
       .catch(() => setConfirmState('failed'))
   }, [purchaseId, sessionId])
 
-  async function submit(e: React.FormEvent, ev: PubEvent) {
-    e.preventDefault()
-    setSubmitting(true)
-    setError('')
-    try {
-      const res = await fetch(`/api/event/${slug}/buy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: ev.id, ...(tierId ? { tierId } : {}), quantity, buyerName, buyerEmail, joinLoyalty }),
-      })
-      const j = await res.json()
-      if (!res.ok) { setError(j.error || t('common.error')); return }
-      if (j.free) { setCodes(j.codes); return }
-      window.location.href = j.paymentUrl
-    } catch {
-      setError(t('common.networkErrorRetry'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   const T = resolveEventTheme(themeKey)
-  const usedThemes = [...new Map([T, ...events.map(e => resolveEventTheme(e.theme))].map(x => [x.key, x])).values()]
+  const isCatalog = T.variant === 'catalog'
 
   const Shell = ({ children }: { children: React.ReactNode }) => (
     <div className="ev-bg min-h-screen">
-      <PageStyles shell={T} used={usedThemes} />
+      <PageStyles shell={T} />
       <div className="ev-vibe" />
       <TopBand T={T} />
       <div className="relative z-10">{children}</div>
@@ -233,14 +73,7 @@ function EventContent() {
 
   // Chargement : loader NEUTRE (sans thème) pour ne jamais laisser
   // apparaître le thème « nuit » par défaut avant le thème réel.
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
-        <style>{`@keyframes ev-neutral-spin{to{transform:rotate(360deg)}}`}</style>
-        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid #ececec', borderTopColor: '#111', animation: 'ev-neutral-spin 0.7s linear infinite' }} />
-      </div>
-    )
-  }
+  if (loading) return <NeutralLoader />
 
   // Vérification du paiement : le thème est désormais connu (fetch résolu).
   if (confirmState === 'verifying') {
@@ -330,46 +163,34 @@ function EventContent() {
 
         <div className="space-y-6">
           {events.map((ev, idx) => {
-            // Chaque événement porte SON thème (concert ≠ séminaire ≠ expo).
-            const C = resolveEventTheme(ev.theme)
             const soldOut = ev.remaining !== null && ev.remaining <= 0
-            const isOpen = openId === ev.id
             const d = new Date(ev.starts_at)
             const day = d.toLocaleDateString(locale, { day: '2-digit' })
             const month = d.toLocaleDateString(locale, { month: 'short' }).replace('.', '')
             const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
-            const accent = business.primaryColor && business.primaryColor !== '#ffffff' ? business.primaryColor : C.accent2
-            const isCatalog = C.variant === 'catalog'
             const longDate = d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
-            // Catégories de billets : le prix vient du tarif choisi.
             const hasTiers = ev.tiers.length > 0
-            const selectedTier = hasTiers ? (ev.tiers.find(tr => tr.id === tierId) ?? null) : null
-            const unitPrice = selectedTier ? selectedTier.price : ev.price
             const minPrice = hasTiers ? Math.min(...ev.tiers.map(tr => tr.price)) : ev.price
             const anyPaid = hasTiers ? ev.tiers.some(tr => tr.price > 0) : ev.price > 0
             const priceBadge = hasTiers
               ? (minPrice > 0 ? t('event.fromPrice', { price: minPrice }) : t('event.free').toUpperCase())
               : (ev.price > 0 ? `${ev.price} €` : t('event.free').toUpperCase())
             const badgeFilled = hasTiers ? minPrice > 0 : ev.price > 0
-            // Quantité max en UNITÉS (tables VIP : places restantes / places par table)
-            const unitCap = selectedTier
-              ? (selectedTier.remaining ?? (ev.remaining != null ? Math.floor(ev.remaining / selectedTier.seatsPerUnit) : null))
-              : ev.remaining
+            const href = `/${locale}/event/${slug}/${ev.slug}`
+
             return (
-              <article key={ev.id} className={`ev-card-${C.key} ev-up overflow-hidden`} style={{ animationDelay: `${0.08 + idx * 0.07}s` }}>
+              <article key={ev.id} className={`ev-card-${T.key} ev-up overflow-hidden`} style={{ animationDelay: `${0.08 + idx * 0.07}s` }}>
                 <div className={isCatalog ? '' : 'flex flex-col sm:flex-row'}>
-                  {/* Bloc date — bandeau horizontal sur mobile (le rail gauche
-                      écrasait le formulaire d'achat sur 375 px), talon gauche
-                      dès sm (variante affiche uniquement) */}
+                  {/* Bloc date — bandeau horizontal sur mobile, talon gauche dès sm */}
                   {!isCatalog && (
                   <div
                     className="flex flex-row sm:flex-col items-baseline sm:items-center sm:justify-center gap-2 sm:gap-0 px-5 py-3 sm:px-4 sm:py-5 border-b sm:border-b-0 sm:border-r border-dashed sm:min-w-[86px]"
-                    style={{ borderColor: C.border }}
+                    style={{ borderColor: T.border }}
                   >
-                    <span className={`ev-display-${C.key} text-2xl sm:text-3xl leading-none`} style={{ color: C.accent }}>{day}</span>
-                    <span className="ev-mono text-[11px] uppercase tracking-[0.2em] sm:mt-1" style={{ color: C.muted }}>{month}</span>
-                    <span className="ev-mono text-[11px] ml-auto sm:ml-0 sm:mt-2" style={{ color: C.faint }}>{time}</span>
+                    <span className={`ev-display-${T.key} text-2xl sm:text-3xl leading-none`} style={{ color: T.accent }}>{day}</span>
+                    <span className="ev-mono text-[11px] uppercase tracking-[0.2em] sm:mt-1" style={{ color: T.muted }}>{month}</span>
+                    <span className="ev-mono text-[11px] ml-auto sm:ml-0 sm:mt-2" style={{ color: T.faint }}>{time}</span>
                   </div>
                   )}
 
@@ -377,14 +198,14 @@ function EventContent() {
                     {/* Variante « cartel » : № numéroté façon catalogue d'exposition */}
                     {isCatalog && (
                       <div className="flex items-baseline justify-between gap-3 mb-2">
-                        <span className="ev-mono text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: C.accent }}>
+                        <span className="ev-mono text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: T.accent }}>
                           № {String(idx + 1).padStart(2, '0')}
                         </span>
                         <span
                           className="ev-mono flex-shrink-0 text-xs font-bold px-2.5 py-1"
                           style={badgeFilled
-                            ? { color: C.accentInk, background: C.accent, borderRadius: C.radius }
-                            : { color: C.accent, border: `1.5px solid ${C.accent}`, borderRadius: C.radius }}
+                            ? { color: T.accentInk, background: T.accent, borderRadius: T.radius }
+                            : { color: T.accent, border: `1.5px solid ${T.accent}`, borderRadius: T.radius }}
                         >
                           {priceBadge}
                         </span>
@@ -393,8 +214,8 @@ function EventContent() {
 
                     <div className={isCatalog ? '' : 'flex items-start justify-between gap-3'}>
                       <h2
-                        className={`ev-display-${C.key} ${isCatalog ? 'text-3xl sm:text-4xl' : 'text-xl'} leading-tight break-words`}
-                        style={{ color: C.ink }}
+                        className={`ev-display-${T.key} ${isCatalog ? 'text-3xl sm:text-4xl' : 'text-xl'} leading-tight break-words`}
+                        style={{ color: T.ink }}
                       >
                         {ev.title}
                       </h2>
@@ -402,156 +223,47 @@ function EventContent() {
                       <span
                         className="ev-mono flex-shrink-0 text-xs font-bold px-2.5 py-1"
                         style={badgeFilled
-                          ? { color: C.accentInk, background: C.accent, borderRadius: C.radius }
-                          : { color: C.accent, border: `1.5px solid ${C.accent}`, borderRadius: C.radius }}
+                          ? { color: T.accentInk, background: T.accent, borderRadius: T.radius }
+                          : { color: T.accent, border: `1.5px solid ${T.accent}`, borderRadius: T.radius }}
                       >
                         {priceBadge}
                       </span>
                       )}
                     </div>
 
-                    {/* Ligne date/lieu : petites capitales entre filets (cartel) */}
                     {isCatalog ? (
                       <p className="ev-mono text-[11px] uppercase tracking-[0.22em] mt-3 py-2 border-t border-b"
-                        style={{ color: C.muted, borderColor: C.border }}>
+                        style={{ color: T.muted, borderColor: T.border }}>
                         {longDate} · {time}{ev.location ? ` · ${ev.location}` : ''}
                       </p>
                     ) : ev.location && (
-                      <p className="ev-mono text-[11px] uppercase tracking-[0.15em] mt-1.5" style={{ color: C.faint }}>📍 {ev.location}</p>
+                      <p className="ev-mono text-[11px] uppercase tracking-[0.15em] mt-1.5" style={{ color: T.faint }}>📍 {ev.location}</p>
                     )}
                     {ev.description && (
-                      <p className="text-sm mt-2 whitespace-pre-line leading-relaxed" style={{ color: C.muted }}>{ev.description}</p>
+                      <p className="text-sm mt-2 whitespace-pre-line leading-relaxed line-clamp-2" style={{ color: T.muted }}>{ev.description}</p>
                     )}
                     {ev.remaining !== null && !soldOut && ev.remaining <= 5 && (
-                      <p className="ev-mono text-[11px] font-bold uppercase tracking-[0.15em] mt-2" style={{ color: isCatalog ? C.accent : C.accent2 }}>
+                      <p className="ev-mono text-[11px] font-bold uppercase tracking-[0.15em] mt-2" style={{ color: isCatalog ? T.accent : T.accent2 }}>
                         ⚡ {t('event.fewLeft', { count: ev.remaining })}
                       </p>
                     )}
 
                     {soldOut ? (
-                      <p className="ev-mono mt-4 text-sm font-bold uppercase tracking-[0.2em] line-through" style={{ color: C.faint }}>
+                      <p className="ev-mono mt-4 text-sm font-bold uppercase tracking-[0.2em] line-through" style={{ color: T.faint }}>
                         {t('event.soldOut')}
                       </p>
-                    ) : !isOpen ? (
-                      <button
-                        onClick={() => {
-                          setOpenId(ev.id); setError(''); setQuantity(1); setJoinLoyalty(false)
-                          // Pré-sélectionne la première catégorie disponible
-                          const firstAvailable = ev.tiers.find(tr => tr.remaining === null || tr.remaining > 0)
-                          setTierId(firstAvailable?.id ?? null)
-                        }}
-                        className={`ev-btn-${C.key} ev-mono mt-4 w-full py-3 text-sm font-bold uppercase tracking-[0.15em]`}
+                    ) : (
+                      <Link
+                        href={href}
+                        className={`ev-btn-${T.key} ev-mono block text-center mt-4 w-full py-3 text-sm font-bold uppercase tracking-[0.15em]`}
                       >
                         {anyPaid ? t('event.buyBtn') : t('event.reserveBtn')} →
-                      </button>
-                    ) : (
-                      <form onSubmit={e => submit(e, ev)} className="mt-4 space-y-3">
-                        {/* Choix de la catégorie de billet */}
-                        {hasTiers && (
-                          <div className="space-y-2">
-                            {ev.tiers.map(tr => {
-                              const trSoldOut = tr.remaining !== null && tr.remaining <= 0
-                              const active = tierId === tr.id
-                              return (
-                                <button
-                                  key={tr.id} type="button" disabled={trSoldOut}
-                                  onClick={() => { setTierId(tr.id); setQuantity(1) }}
-                                  className="w-full text-left px-3 py-2.5 transition-colors disabled:opacity-40"
-                                  style={{
-                                    border: `2px solid ${active ? C.accent : C.border}`,
-                                    borderRadius: C.radius,
-                                    background: active ? `${C.accent}14` : 'transparent',
-                                  }}
-                                >
-                                  <span className="flex items-center justify-between gap-3">
-                                    <span className="min-w-0">
-                                      <span className="block text-sm font-bold" style={{ color: C.ink }}>
-                                        {tr.name}
-                                        {tr.kind === 'vip_table' && (
-                                          <span className="ev-mono text-[10px] font-bold uppercase tracking-[0.15em] ml-2 px-1.5 py-0.5"
-                                            style={{ color: C.accentInk, background: C.accent, borderRadius: C.radius }}>
-                                            {t('event.tableOf', { seats: tr.seatsPerUnit })}
-                                          </span>
-                                        )}
-                                      </span>
-                                      {tr.description && (
-                                        <span className="block text-xs mt-0.5" style={{ color: C.muted }}>{tr.description}</span>
-                                      )}
-                                      {trSoldOut ? (
-                                        <span className="ev-mono block text-[10px] uppercase tracking-[0.15em] mt-0.5 line-through" style={{ color: C.faint }}>
-                                          {t('event.soldOut')}
-                                        </span>
-                                      ) : tr.remaining !== null && tr.remaining <= 5 && (
-                                        <span className="ev-mono block text-[10px] uppercase tracking-[0.15em] mt-0.5" style={{ color: C.accent2 }}>
-                                          ⚡ {t('event.fewLeft', { count: tr.remaining })}
-                                        </span>
-                                      )}
-                                    </span>
-                                    <span className="ev-mono flex-shrink-0 text-sm font-bold" style={{ color: active ? C.accent : C.ink }}>
-                                      {tr.price > 0 ? `${tr.price} €` : t('event.free').toUpperCase()}
-                                    </span>
-                                  </span>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        )}
-                        {/* Quantité : wrap + cibles 40 px sur mobile (les
-                            pastilles débordaient de l'écran en 375 px) */}
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                          <label className="ev-mono text-[11px] uppercase tracking-[0.15em]" style={{ color: C.muted }}>{t('event.quantity')}</label>
-                          <div className="flex flex-wrap gap-1.5">
-                            {[1, 2, 3, 4, 5, 6]
-                              .filter(n => unitCap === null || n <= unitCap)
-                              .map(n => (
-                                <button
-                                  key={n} type="button"
-                                  onClick={() => setQuantity(n)}
-                                  className="ev-mono w-10 h-10 sm:w-8 sm:h-8 text-sm sm:text-xs font-bold transition-colors"
-                                  style={quantity === n
-                                    ? { background: C.accent, color: C.accentInk, border: `2px solid ${C.accent}`, borderRadius: C.radius }
-                                    : { color: C.muted, border: `2px solid ${C.border}`, borderRadius: C.radius }}
-                                >
-                                  {n}
-                                </button>
-                              ))}
-                          </div>
-                        </div>
-                        {/* text-base : sous 16 px, iOS Safari zoome de force
-                            sur le champ au focus — jamais moins sur mobile */}
-                        <input required value={buyerName} onChange={e => setBuyerName(e.target.value)} maxLength={100}
-                          autoComplete="name"
-                          placeholder={t('event.buyerName')} className={`ev-input-${C.key} w-full px-3 py-3 text-base sm:text-sm`} />
-                        <input required type="email" value={buyerEmail} onChange={e => setBuyerEmail(e.target.value)} maxLength={255}
-                          autoComplete="email" inputMode="email"
-                          placeholder={t('event.buyerEmail')} className={`ev-input-${C.key} w-full px-3 py-3 text-base sm:text-sm`} />
-                        {ev.offer_loyalty && (
-                          <label className="flex items-start gap-2 text-xs" style={{ color: C.muted }}>
-                            <input type="checkbox" checked={joinLoyalty} onChange={e => setJoinLoyalty(e.target.checked)}
-                              className="mt-0.5" style={{ accentColor: C.accent }} />
-                            {t('event.joinLoyalty', { business: business.name })}
-                          </label>
-                        )}
-                        {error && (
-                          <p className="ev-mono text-xs px-3 py-2" style={{ color: C.accent2, border: `2px solid ${C.accent2}`, borderRadius: C.radius }}>{error}</p>
-                        )}
-                        <button
-                          type="submit" disabled={submitting}
-                          className={`ev-btn-${C.key} ev-mono w-full py-3.5 text-sm font-bold uppercase tracking-[0.15em] disabled:opacity-50`}
-                        >
-                          {submitting ? '…' : unitPrice > 0
-                            ? t('event.payBtn', { amount: (unitPrice * quantity).toFixed(2).replace(/\.00$/, '') })
-                            : t('event.confirmFreeBtn')}
-                        </button>
-                        {unitPrice > 0 && (
-                          <p className="ev-mono text-[10px] uppercase tracking-[0.2em] text-center" style={{ color: C.faint }}>{t('event.securePayment')}</p>
-                        )}
-                      </form>
+                      </Link>
                     )}
                   </div>
                 </div>
                 {/* liseré organisateur */}
-                <div className="h-1" style={{ background: accent }} />
+                <div className="h-1" style={{ background: business.primaryColor && business.primaryColor !== '#ffffff' ? business.primaryColor : T.accent2 }} />
               </article>
             )
           })}

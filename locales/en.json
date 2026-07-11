@@ -2021,7 +2021,11 @@
     "addToWallet": "Add to Apple Wallet",
     "fromPrice": "from €{price}",
     "tableOf": "Table · {seats} seats",
-    "seats": "seats"
+    "seats": "seats",
+    "dateLabel": "Date",
+    "locationLabel": "Venue",
+    "priceLabel": "Price",
+    "backToList": "All events"
   },
   "checkin": {
     "title": "Check-in",

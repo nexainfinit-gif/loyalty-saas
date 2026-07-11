@@ -2003,7 +2003,11 @@
     "addToWallet": "Aggiungi ad Apple Wallet",
     "fromPrice": "da {price} €",
     "tableOf": "Tavolo · {seats} posti",
-    "seats": "posti"
+    "seats": "posti",
+    "dateLabel": "Data",
+    "locationLabel": "Luogo",
+    "priceLabel": "Prezzo",
+    "backToList": "Tutti gli eventi"
   },
   "checkin": {
     "title": "Check-in",

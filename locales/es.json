@@ -1999,7 +1999,11 @@
     "addToWallet": "Añadir a Apple Wallet",
     "fromPrice": "desde {price} €",
     "tableOf": "Mesa · {seats} pers.",
-    "seats": "plazas"
+    "seats": "plazas",
+    "dateLabel": "Fecha",
+    "locationLabel": "Lugar",
+    "priceLabel": "Precio",
+    "backToList": "Todos los eventos"
   },
   "checkin": {
     "title": "Check-in",
