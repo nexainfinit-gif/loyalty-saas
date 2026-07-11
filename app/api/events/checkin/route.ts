@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/server-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { auditLog } from '@/lib/audit';
+import { pushPassUpdate } from '@/lib/apns';
 import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
@@ -132,6 +133,16 @@ export async function POST(request: Request) {
     targetId: ticket.id,
     metadata: { code: ticket.code, eventId: ticket.event_id, ip: getClientIp(request) },
   });
+
+  // Push APNS : le billet dans le Wallet se met à jour (voided + UTILISÉ).
+  // Fire-and-forget — ne bloque pas la réponse au portier.
+  supabaseAdmin
+    .from('wallet_passes')
+    .select('id')
+    .eq('event_ticket_id', ticket.id)
+    .eq('status', 'active')
+    .maybeSingle()
+    .then(({ data: wp }) => { if (wp) pushPassUpdate(wp.id); });
 
   return NextResponse.json({
     result: 'ok',

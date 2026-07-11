@@ -979,7 +979,7 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
       headerBg:   (cfg.bgColor as string) || color,
       perfo:      (cfg.perfoColor as string) || 'rgba(255,255,255,0.3)',
       title:      (cfg.strip_title as string) || undefined,
-      titleColor: fgHex,
+      titleColor: (cfg.strip_title_color as string) || fgHex,
       subtitle:   (cfg.strip_subtitle as string) || undefined,
       orgName:    (cfg.strip_org as string) || undefined,
       orgColor:   (cfg.strip_org_color as string) || undefined,

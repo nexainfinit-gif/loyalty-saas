@@ -1,6 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { buildPkpass, pkpassResponse } from '@/lib/apple-wallet';
 import type { PassBuildInput } from '@/lib/apple-wallet';
@@ -9,17 +10,15 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { pkpassCache } from '@/lib/pkpass-cache';
 import { logger } from '@/lib/logger';
 
-// La génération pkpass est coûteuse (Sharp + JSZip + signature)
 const limiter = rateLimit({ prefix: 'event-pkpass', limit: 10, windowMs: 60_000 });
 
 /*
  * GET /api/event/ticket/[code]/pkpass — billet Apple Wallet (eventTicket).
  *
- * Chemin DÉLIBÉRÉMENT séparé de wallet_passes/customers : un acheteur de
- * billet n'est pas un client fidélité. Le pass est STATIQUE (pas de
- * webServiceURL/authenticationToken — rien à pousser sur un billet), le code
- * du billet fait office de secret ET de contenu du QR (même valeur que la
- * page web → prêt pour le check-in scanner T2).
+ * Pass DYNAMIQUE : une ligne wallet_passes est créée (ou récupérée) au
+ * premier téléchargement. webServiceURL + authenticationToken permettent
+ * à Apple Wallet de recevoir des push APNS — au check-in le pass se met
+ * à jour tout seul (voided + tampon UTILISÉ).
  */
 export async function GET(
   request: Request,
@@ -52,26 +51,31 @@ export async function GET(
     return NextResponse.json({ error: 'Billet introuvable.' }, { status: 404 });
   }
 
-  // Habillage du pass = thème de l'événement (cohérent avec la page billet)
+  // ── wallet_passes : créer ou récupérer le row pour ce billet ────────────
+  const serialNumber = `evt-${ticket.id}`;
+  let walletPass = await getOrCreateWalletPass(ticket, serialNumber);
+
   const T = resolveEventTheme(event.theme);
   const d = new Date(event.starts_at);
-  // Fuseau FIGÉ : le serveur (Vercel) est en UTC — sans timeZone l'heure
-  // du billet était fausse.
-  const eventDate = d.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Brussels' });
-  const eventTime = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' });
+  const tz = 'Europe/Brussels';
+  const eventDate = d.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz });
+  const eventTime = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit', timeZone: tz });
 
-  const [firstName, ...rest] = (ticket.buyer_name ?? '').trim().split(/\s+/);
-
-  // Sous-titre compact (même format que le talon web)
   const shortDate = d.toLocaleDateString('fr-BE', {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-    timeZone: 'Europe/Brussels',
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: tz,
   });
   const stripSubtitle = `${shortDate} à ${eventTime}${event.location ? ` — ${event.location}` : ''}`;
 
+  const [firstName, ...rest] = (ticket.buyer_name ?? '').trim().split(/\s+/);
+  const isVoided = ticket.status === 'checked_in';
+
+  // Body = papier blanc (comme le talon web) ; strip = en-tête thème sombre.
+  // foregroundColor + labelColor adaptés au fond clair du body.
+  const accentColor = T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2);
+
   const input: PassBuildInput = {
-    passId:       ticket.id,
-    serialNumber: `evt-${ticket.id}`,
+    passId:       walletPass?.id ?? ticket.id,
+    serialNumber,
     passKind:     'event',
     configJson: {
       event_name:      event.title,
@@ -82,20 +86,25 @@ export async function GET(
       tier_label:      ticket.tier_name
         ? ((ticket.seats ?? 1) > 1 ? `${ticket.tier_name} · ${ticket.seats} places` : ticket.tier_name)
         : '',
-      strip_title:     event.title,
-      strip_subtitle:  stripSubtitle,
-      strip_org:       restaurant.name,
-      strip_org_color: T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2),
-      voided:          ticket.status === 'checked_in',
-      relevant_date:   d.toISOString(),
-      foregroundColor: T.headerInk ?? '#FFFFFF',
-      labelColor:      T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2),
-      perfoColor:      T.headerInk ? 'rgba(28,25,23,0.3)' : 'rgba(255,255,255,0.3)',
-      barcodeAltText:  ticket.code,
-      showLogoText:    true,
-      logoText:        restaurant.name,
+      strip_title:       event.title,
+      strip_subtitle:    stripSubtitle,
+      strip_org:         restaurant.name,
+      strip_org_color:   accentColor,
+      strip_title_color: T.headerInk ?? '#FFFFFF',
+      voided:            isVoided,
+      relevant_date:     d.toISOString(),
+      // Couleurs strip (en-tête sombre)
+      bgColor:           T.headerBg,
+      perfoColor:        T.headerInk ? 'rgba(28,25,23,0.3)' : 'rgba(255,255,255,0.3)',
+      // Couleurs body (fond papier clair)
+      foregroundColor:   '#1C1917',
+      labelColor:        accentColor,
+      barcodeAltText:    ticket.code,
+      showLogoText:      true,
+      logoText:          restaurant.name,
     },
-    primaryColor:   T.headerBg,
+    // backgroundColor = papier (body du pass)
+    primaryColor:   '#FDFDFB',
     customerId:     ticket.id,
     firstName:      firstName ?? '',
     lastName:       rest.join(' '),
@@ -104,12 +113,11 @@ export async function GET(
     qrToken:        ticket.code,
     restaurantName: restaurant.name,
     logoUrl:        restaurant.logo_url,
-    // Pass statique : pas de webservice/push pour un billet
-    authenticationToken: null,
+    authenticationToken: walletPass?.authentication_token ?? null,
   };
 
   try {
-    const cacheKey = `evt:${ticket.id}:${ticket.status}`;
+    const cacheKey = `evt:${ticket.id}:${ticket.status}:${walletPass?.pass_version ?? 0}`;
     let buffer = pkpassCache.get(cacheKey);
     if (!buffer) {
       buffer = await buildPkpass(input);
@@ -125,4 +133,72 @@ export async function GET(
     logger.error({ ctx: 'event-pkpass', rid: ticket.restaurant_id, msg: 'build failed', err: message });
     return NextResponse.json({ error: 'Erreur lors de la génération du billet.' }, { status: 500 });
   }
+}
+
+/* ── Helper : get-or-create wallet_passes row pour push dynamique ─────── */
+
+async function getOrCreateWalletPass(
+  ticket: { id: string; restaurant_id: string },
+  serialNumber: string,
+): Promise<{ id: string; authentication_token: string; pass_version: number } | null> {
+  // Existing row?
+  const { data: existing } = await supabaseAdmin
+    .from('wallet_passes')
+    .select('id, authentication_token, pass_version')
+    .eq('event_ticket_id', ticket.id)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (existing) return existing;
+
+  // Create — needs a template_id (FK NOT NULL in the table). Use the
+  // restaurant's default published template if one exists, otherwise
+  // skip dynamic registration (pass stays functional without push).
+  const { data: tmpl } = await supabaseAdmin
+    .from('wallet_pass_templates')
+    .select('id')
+    .eq('restaurant_id', ticket.restaurant_id)
+    .eq('status', 'published')
+    .eq('is_default', true)
+    .maybeSingle();
+  if (!tmpl) {
+    logger.info({ ctx: 'event-pkpass', msg: 'no template — pass will be static', rid: ticket.restaurant_id });
+    return null;
+  }
+
+  const passId    = randomUUID();
+  const shortCode = passId.replace(/-/g, '').slice(0, 8).toUpperCase();
+  const authToken = randomUUID().replace(/-/g, '');
+
+  const { data: row, error } = await supabaseAdmin
+    .from('wallet_passes')
+    .insert({
+      id:                   passId,
+      short_code:           shortCode,
+      restaurant_id:        ticket.restaurant_id,
+      event_ticket_id:      ticket.id,
+      template_id:          tmpl.id,
+      platform:             'apple',
+      status:               'active',
+      pass_kind:            'event',
+      serial_number:        serialNumber,
+      authentication_token: authToken,
+    })
+    .select('id, authentication_token, pass_version')
+    .single();
+
+  if (error) {
+    if (error.code === '23505') {
+      // Race: another request just created it — fetch and return
+      const { data: raced } = await supabaseAdmin
+        .from('wallet_passes')
+        .select('id, authentication_token, pass_version')
+        .eq('event_ticket_id', ticket.id)
+        .eq('status', 'active')
+        .maybeSingle();
+      return raced ?? null;
+    }
+    logger.error({ ctx: 'event-pkpass', msg: 'wallet_passes insert failed', err: error.message });
+    return null;
+  }
+  return row;
 }
