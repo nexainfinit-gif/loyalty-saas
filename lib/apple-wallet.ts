@@ -243,15 +243,17 @@ function buildPassJson(
     base.eventTicket = {
       headerFields: eventTime ? [{ key: 'time', label: 'HEURE', value: eventTime }] : [],
       primaryFields: stripCarriesInfo ? [] : [{ key: 'event', label: 'ÉVÉNEMENT', value: eventName }],
+      // Une seule rangée sous le strip (réf. e-ticket : ATTENDEE | VIP)
       secondaryFields: stripCarriesInfo ? [
-        ...(tierLabel ? [{ key: 'tier', label: 'CATÉGORIE', value: tierLabel }] : []),
+        ...(holderName ? [{ key: 'holder', label: 'TITULAIRE', value: holderName }] : []),
+        ...(tierLabel ? [{ key: 'tier', label: 'CATÉGORIE', value: tierLabel, textAlignment: 'PKTextAlignmentRight' }] : []),
       ] : [
         ...(eventDate ? [{ key: 'date', label: 'DATE', value: eventDate }] : []),
         ...(eventLocation ? [{ key: 'location', label: 'LIEU', value: eventLocation }] : []),
       ],
-      auxiliaryFields: [
+      auxiliaryFields: stripCarriesInfo ? [] : [
         ...(holderName ? [{ key: 'holder', label: 'TITULAIRE', value: holderName }] : []),
-        ...(!stripCarriesInfo && tierLabel ? [{ key: 'tier', label: 'CATÉGORIE', value: tierLabel }] : []),
+        ...(tierLabel ? [{ key: 'tier', label: 'CATÉGORIE', value: tierLabel }] : []),
       ],
       backFields: [
         ...(ticketCode ? [{ key: 'code', label: 'Code du billet', value: ticketCode }] : []),
@@ -590,11 +592,14 @@ async function generateProgressStrip(opts: {
 }
 
 /**
- * Strip « talon de billet » pour les pass ÉVÉNEMENT — mini-réplique de
- * l'en-tête de la page billet web : label Rebites Events, titre, date/heure
- * + lieu, nom de l'organisateur, perforation, bande papier + code-barres.
- * Tout le texte est rendu DANS l'image (DejaVu embarquée) pour maîtriser
- * la mise en page — les champs Apple sont réduits au strict minimum.
+ * Strip pour les pass ÉVÉNEMENT — design « billet tonal » (une seule couleur,
+ * zones en nuances — réf. e-tickets Dribbble / Ticketmaster) : le strip a le
+ * MÊME fond que le pass (aucune rupture visuelle), il porte toute la
+ * hiérarchie typographique du talon web : label ✦ REBITES EVENTS, grand
+ * titre, date/heure/lieu, organisateur, puis une perforation discrète.
+ * Tout le texte est rendu DANS l'image (DejaVu embarquée) : c'est le seul
+ * moyen de maîtriser la mise en page — les champs natifs d'Apple sont
+ * réduits au minimum.
  */
 async function generateEventStrip(opts: {
   width:    number;
@@ -610,87 +615,70 @@ async function generateEventStrip(opts: {
 }): Promise<Buffer> {
   const { width, height, headerBg, perfo, title, titleColor = '#FFFFFF',
           subtitle, orgName, orgColor, isVoided } = opts;
-  const paper = '#F7F5F0';
-  const ink   = '#1C1917';
   const escSvg = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const splitY = Math.round(height * 0.66);
-  const notchR = Math.round(height * 0.10);
   const margin = Math.round(width * 0.07);
   const maxW   = width - margin * 2;
+  const accent = orgColor || titleColor;
 
   let textSvg = '';
 
-  // Label "REBITES EVENTS" (petit, accent, en haut)
-  const labelFs = Math.max(5, Math.round(splitY * 0.11));
-  textSvg += `<text x="${margin}" y="${Math.round(splitY * 0.15)}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${labelFs}" fill="${orgColor || titleColor}" letter-spacing="0.25em">REBITES EVENTS</text>`;
+  // Label « ✦ REBITES EVENTS » (petit, accent, letterspacé)
+  const labelFs = Math.max(6, Math.round(height * 0.085));
+  textSvg += `<text x="${margin}" y="${Math.round(height * 0.14)}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${labelFs}" fill="${accent}" letter-spacing="0.3em">✦ REBITES EVENTS</text>`;
 
-  // Titre (gras, taille auto-ajustée)
+  // Titre — le héros du strip (gras, gros, auto-ajusté sur une ligne)
   if (title?.trim()) {
     let text = title.trim();
-    let fs = Math.round(splitY * 0.38);
+    let fs = Math.round(height * 0.30);
     const fitW = (s: string, size: number) => s.length * size * 0.66;
-    if (fitW(text, fs) > maxW) fs = Math.max(Math.round(splitY * 0.22), Math.floor(maxW / (text.length * 0.66)));
+    if (fitW(text, fs) > maxW) fs = Math.max(Math.round(height * 0.16), Math.floor(maxW / (text.length * 0.66)));
     if (fitW(text, fs) > maxW) {
       const maxChars = Math.floor(maxW / (fs * 0.66)) - 1;
       text = text.slice(0, Math.max(4, maxChars)) + '…';
     }
-    textSvg += `<text x="${margin}" y="${Math.round(splitY * 0.42)}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${titleColor}">${escSvg(text)}</text>`;
+    textSvg += `<text x="${margin}" y="${Math.round(height * 0.40)}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${titleColor}">${escSvg(text)}</text>`;
   }
 
-  // Sous-titre (date + heure + lieu, petit, semi-transparent)
+  // Date + heure + lieu (uppercase, atténué)
   if (subtitle?.trim()) {
     let text = subtitle.trim().toUpperCase();
-    const subFs = Math.max(5, Math.round(splitY * 0.11));
-    const maxChars = Math.floor(maxW / (subFs * 0.62));
+    const subFs = Math.max(6, Math.round(height * 0.088));
+    const maxChars = Math.floor(maxW / (subFs * 0.7));
     if (text.length > maxChars) text = text.slice(0, maxChars - 1) + '…';
-    textSvg += `<text x="${margin}" y="${Math.round(splitY * 0.66)}" dominant-baseline="central" font-family="DejaVu Sans" font-size="${subFs}" fill="${titleColor}" opacity="0.65" letter-spacing="0.1em">${escSvg(text)}</text>`;
+    textSvg += `<text x="${margin}" y="${Math.round(height * 0.62)}" dominant-baseline="central" font-family="DejaVu Sans" font-size="${subFs}" fill="${titleColor}" opacity="0.6" letter-spacing="0.12em">${escSvg(text)}</text>`;
   }
 
-  // Organisateur (petit, accent)
+  // Organisateur (accent, gras)
   if (orgName?.trim()) {
-    const orgFs = Math.max(5, Math.round(splitY * 0.11));
-    textSvg += `<text x="${margin}" y="${Math.round(splitY * 0.84)}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${orgFs}" fill="${orgColor || titleColor}" letter-spacing="0.1em">${escSvg(orgName.trim().toUpperCase())}</text>`;
+    const orgFs = Math.max(6, Math.round(height * 0.088));
+    textSvg += `<text x="${margin}" y="${Math.round(height * 0.79)}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${orgFs}" fill="${accent}" letter-spacing="0.12em">${escSvg(orgName.trim().toUpperCase())}</text>`;
   }
 
-  // Code-barres décoratif (zone papier)
-  const pattern = [2, 1, 3, 1, 2, 2, 1, 3, 2, 1, 1, 3, 1, 2, 3, 1, 2, 1];
-  const barTop = splitY + Math.round((height - splitY) * 0.28);
-  const barH   = Math.round((height - splitY) * 0.46);
-  const unit   = Math.max(1, Math.round(width / 340));
-  let bars = '';
-  let x = Math.round(width * 0.08);
-  const xEnd = Math.round(width * 0.92);
-  let i = 0;
-  while (x < xEnd) {
-    const w = pattern[i % pattern.length] * unit;
-    bars += `<rect x="${x}" y="${barTop}" width="${w}" height="${barH}" fill="${ink}"/>`;
-    x += w + pattern[(i + 7) % pattern.length] * unit;
-    i++;
-  }
+  // Perforation en bas du strip — évoque le talon sans rupture de fond
+  const perfoY = Math.round(height * 0.93);
+  const dash = Math.round(width / 94);
+  const notchR = Math.round(height * 0.07);
 
-  // Tampon "UTILISÉ" (billet déjà scanné)
+  // Tampon « UTILISÉ » (billet déjà scanné) — posé côté droit, incliné
   let voidedSvg = '';
   if (isVoided) {
-    const stampFs = Math.round(height * 0.20);
-    const cx = Math.round(width / 2);
-    const cy = Math.round(height * 0.42);
-    voidedSvg = `<g transform="rotate(-16, ${cx}, ${cy})">
-      <rect x="${cx - stampFs * 2.6}" y="${cy - stampFs * 0.72}" width="${stampFs * 5.2}" height="${stampFs * 1.44}" rx="4" fill="none" stroke="rgba(220,38,38,0.75)" stroke-width="3"/>
-      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${stampFs}" fill="rgba(220,38,38,0.75)" letter-spacing="0.18em">UTILISE</text>
+    const stampFs = Math.round(height * 0.19);
+    const cx = Math.round(width * 0.72);
+    const cy = Math.round(height * 0.38);
+    voidedSvg = `<g transform="rotate(-12, ${cx}, ${cy})">
+      <rect x="${cx - stampFs * 2.7}" y="${cy - stampFs * 0.78}" width="${stampFs * 5.4}" height="${stampFs * 1.56}" rx="${Math.round(stampFs * 0.18)}" fill="rgba(220,38,38,0.14)" stroke="rgba(239,68,68,0.9)" stroke-width="${Math.max(2, Math.round(height * 0.018))}"/>
+      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${stampFs}" fill="rgba(239,68,68,0.95)" letter-spacing="0.2em">UTILISE</text>
     </g>`;
   }
 
-  const dash = Math.round(width / 94);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
   <rect width="${width}" height="${height}" fill="${headerBg}"/>
-  <rect y="${splitY}" width="${width}" height="${height - splitY}" fill="${paper}"/>
-  <line x1="${notchR + dash}" y1="${splitY}" x2="${width - notchR - dash}" y2="${splitY}"
+  <line x1="${margin}" y1="${perfoY}" x2="${width - margin}" y2="${perfoY}"
     stroke="${perfo}" stroke-width="2" stroke-dasharray="${dash} ${dash}"/>
-  ${bars}
+  <circle cx="0" cy="${perfoY}" r="${notchR}" fill="rgba(0,0,0,0.28)"/>
+  <circle cx="${width}" cy="${perfoY}" r="${notchR}" fill="rgba(0,0,0,0.28)"/>
   ${textSvg}
-  <circle cx="0" cy="${splitY}" r="${notchR}" fill="${headerBg}"/>
-  <circle cx="${width}" cy="${splitY}" r="${notchR}" fill="${headerBg}"/>
   ${voidedSvg}
 </svg>`;
 

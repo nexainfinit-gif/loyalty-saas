@@ -242,6 +242,7 @@ async function serveEventPass(
 
   const [firstName, ...rest] = (ticket.buyer_name ?? '').trim().split(/\s+/);
   const isVoided = ticket.status === 'checked_in';
+  const inkColor    = T.headerInk ?? '#FFFFFF';
   const accentColor = T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2);
 
   const input: PassBuildInput = {
@@ -261,18 +262,17 @@ async function serveEventPass(
       strip_subtitle:    stripSubtitle,
       strip_org:         restaurant.name,
       strip_org_color:   accentColor,
-      strip_title_color: T.headerInk ?? '#FFFFFF',
+      strip_title_color: inkColor,
       voided:            isVoided,
       relevant_date:     d.toISOString(),
       bgColor:           T.headerBg,
       perfoColor:        T.headerInk ? 'rgba(28,25,23,0.3)' : 'rgba(255,255,255,0.3)',
-      foregroundColor:   '#1C1917',
+      foregroundColor:   inkColor,
       labelColor:        accentColor,
       barcodeAltText:    ticket.code,
-      showLogoText:      true,
-      logoText:          restaurant.name,
+      showLogoText:      false,
     },
-    primaryColor:        '#FDFDFB',
+    primaryColor:        T.headerBg,
     customerId:          ticket.id,
     firstName:           firstName ?? '',
     lastName:            rest.join(' '),

@@ -69,8 +69,10 @@ export async function GET(
   const [firstName, ...rest] = (ticket.buyer_name ?? '').trim().split(/\s+/);
   const isVoided = ticket.status === 'checked_in';
 
-  // Body = papier blanc (comme le talon web) ; strip = en-tête thème sombre.
-  // foregroundColor + labelColor adaptés au fond clair du body.
+  // Design « billet tonal » : UNE seule couleur de fond (thème) pour tout le
+  // pass — le strip a le même fond, aucune rupture visuelle (réf. e-tickets
+  // Dribbble). L'encre et l'accent suivent le thème.
+  const inkColor    = T.headerInk ?? '#FFFFFF';
   const accentColor = T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2);
 
   const input: PassBuildInput = {
@@ -90,21 +92,20 @@ export async function GET(
       strip_subtitle:    stripSubtitle,
       strip_org:         restaurant.name,
       strip_org_color:   accentColor,
-      strip_title_color: T.headerInk ?? '#FFFFFF',
+      strip_title_color: inkColor,
       voided:            isVoided,
       relevant_date:     d.toISOString(),
-      // Couleurs strip (en-tête sombre)
+      // Tonal : strip et pass partagent le même fond thème
       bgColor:           T.headerBg,
       perfoColor:        T.headerInk ? 'rgba(28,25,23,0.3)' : 'rgba(255,255,255,0.3)',
-      // Couleurs body (fond papier clair)
-      foregroundColor:   '#1C1917',
+      foregroundColor:   inkColor,
       labelColor:        accentColor,
       barcodeAltText:    ticket.code,
-      showLogoText:      true,
-      logoText:          restaurant.name,
+      // L'organisateur est déjà dans le strip — pas de doublon en haut
+      showLogoText:      false,
     },
-    // backgroundColor = papier (body du pass)
-    primaryColor:   '#FDFDFB',
+    // backgroundColor du pass = fond du thème (continu avec le strip)
+    primaryColor:   T.headerBg,
     customerId:     ticket.id,
     firstName:      firstName ?? '',
     lastName:       rest.join(' '),
