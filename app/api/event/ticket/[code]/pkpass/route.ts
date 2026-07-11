@@ -62,6 +62,13 @@ export async function GET(
 
   const [firstName, ...rest] = (ticket.buyer_name ?? '').trim().split(/\s+/);
 
+  // Sous-titre compact (même format que le talon web)
+  const shortDate = d.toLocaleDateString('fr-BE', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+    timeZone: 'Europe/Brussels',
+  });
+  const stripSubtitle = `${shortDate} à ${eventTime}${event.location ? ` — ${event.location}` : ''}`;
+
   const input: PassBuildInput = {
     passId:       ticket.id,
     serialNumber: `evt-${ticket.id}`,
@@ -76,10 +83,11 @@ export async function GET(
         ? ((ticket.seats ?? 1) > 1 ? `${ticket.tier_name} · ${ticket.seats} places` : ticket.tier_name)
         : '',
       strip_title:     event.title,
+      strip_subtitle:  stripSubtitle,
+      strip_org:       restaurant.name,
+      strip_org_color: T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2),
+      voided:          ticket.status === 'checked_in',
       relevant_date:   d.toISOString(),
-      // Couleurs alignées sur la page billet web : fond = en-tête du talon,
-      // encre = headerInk, étiquettes = le même accent que « ✦ Rebites
-      // Events » sur le talon, perforation adaptée aux en-têtes clairs.
       foregroundColor: T.headerInk ?? '#FFFFFF',
       labelColor:      T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2),
       perfoColor:      T.headerInk ? 'rgba(28,25,23,0.3)' : 'rgba(255,255,255,0.3)',
