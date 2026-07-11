@@ -51,7 +51,10 @@ export async function POST(request: Request) {
     .eq('code', code)
     .eq('restaurant_id', guard.restaurantId)
     .maybeSingle();
-  if (!ticket || ticket.status === 'pending_payment' || ticket.status === 'cancelled') {
+  // Seuls valid (à admettre) et checked_in (déjà passé) intéressent la porte.
+  // pending_payment, cancelled, refunded, transferred (051) et tout statut
+  // futur inconnu = invalide — jamais « déjà utilisé » par accident.
+  if (!ticket || (ticket.status !== 'valid' && ticket.status !== 'checked_in')) {
     return NextResponse.json({ result: 'invalid' });
   }
 

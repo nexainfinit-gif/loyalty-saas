@@ -158,6 +158,16 @@ describe('POST /api/events/checkin', () => {
     expect(json.result).toBe('invalid');
   });
 
+  it('billet remboursé / transféré / statut inconnu → invalid, jamais « already » (051)', async () => {
+    for (const status of ['refunded', 'transferred', 'statut_futur_inconnu']) {
+      seedDb([{ ...TICKET_VALID, status }]);
+      const json = await (await checkin('EV-AAAA-2222')).json();
+      expect(json.result).toBe('invalid');
+      // Le billet n'a pas été consommé ni requalifié
+      expect(dbHolder.db.rows('event_tickets').find(r => r.id === 'tk-001')?.status).toBe(status);
+    }
+  });
+
   it('ISOLATION : un billet de l\'établissement B est invalid pour A', async () => {
     const json = await (await checkin('EV-BBBB-3333')).json();
     expect(json.result).toBe('invalid');
