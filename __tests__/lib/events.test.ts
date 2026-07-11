@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   generateTicketCode, platformFeeCents, validateEventPriceCents,
-  validateQuantity, eventSlug,
+  validateQuantity, eventSlug, eventTicketPresentation,
 } from '@/lib/events';
 
 describe('generateTicketCode', () => {
@@ -66,5 +66,56 @@ describe('eventSlug', () => {
   });
   it('tronque à 60 caractères', () => {
     expect(eventSlug('a'.repeat(100)).length).toBeLessThanOrEqual(60);
+  });
+});
+
+describe('eventTicketPresentation', () => {
+  const future = new Date('2026-08-01T20:00:00Z');
+  const now = new Date('2026-07-11T12:00:00Z');
+
+  it('billet valide, événement à venir : aucun badge, pass actif', () => {
+    const p = eventTicketPresentation({ ticketStatus: 'valid', eventStatus: 'published', startsAt: future, now });
+    expect(p).toEqual({ badge: null, badgeMuted: false, statusLabel: 'Valide', voided: false });
+  });
+
+  it('billet scanné : UTILISÉ, void, notification « Déjà utilisé »', () => {
+    const p = eventTicketPresentation({ ticketStatus: 'checked_in', eventStatus: 'published', startsAt: future, now });
+    expect(p).toEqual({ badge: 'UTILISÉ', badgeMuted: false, statusLabel: 'Déjà utilisé', voided: true });
+  });
+
+  it("événement annulé : ANNULÉ prime sur tout, même un billet déjà scanné", () => {
+    for (const ticketStatus of ['valid', 'checked_in']) {
+      const p = eventTicketPresentation({ ticketStatus, eventStatus: 'cancelled', startsAt: future, now });
+      expect(p).toEqual({ badge: 'ANNULÉ', badgeMuted: false, statusLabel: 'Événement annulé', voided: true });
+    }
+  });
+
+  it('billet annulé/remboursé : REMBOURSÉ, void', () => {
+    for (const ticketStatus of ['cancelled', 'refunded']) {
+      const p = eventTicketPresentation({ ticketStatus, eventStatus: 'published', startsAt: future, now });
+      expect(p).toEqual({ badge: 'REMBOURSÉ', badgeMuted: false, statusLabel: 'Remboursé', voided: true });
+    }
+  });
+
+  it('billet transféré : badge neutre, void', () => {
+    const p = eventTicketPresentation({ ticketStatus: 'transferred', eventStatus: 'published', startsAt: future, now });
+    expect(p).toEqual({ badge: 'TRANSFÉRÉ', badgeMuted: true, statusLabel: 'Transféré', voided: true });
+  });
+
+  it('événement passé depuis plus de 24 h : EXPIRÉ neutre, pas void', () => {
+    const p = eventTicketPresentation({ ticketStatus: 'valid', eventStatus: 'published', startsAt: '2026-07-09T18:00:00Z', now });
+    expect(p).toEqual({ badge: 'EXPIRÉ', badgeMuted: true, statusLabel: 'Expiré', voided: false });
+  });
+
+  it("le jour même (moins de 24 h après le début) : encore valide", () => {
+    const p = eventTicketPresentation({ ticketStatus: 'valid', eventStatus: 'published', startsAt: '2026-07-11T02:00:00Z', now });
+    expect(p.badge).toBeNull();
+    expect(p.voided).toBe(false);
+  });
+
+  it('statut inconnu : jamais admissible par défaut', () => {
+    const p = eventTicketPresentation({ ticketStatus: 'weird_future_status', eventStatus: 'published', startsAt: future, now });
+    expect(p.voided).toBe(true);
+    expect(p.statusLabel).toBe('Non valide');
   });
 });

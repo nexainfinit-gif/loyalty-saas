@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { buildPkpass, pkpassResponse } from '@/lib/apple-wallet';
 import { isBookingEligible } from '@/lib/booking-eligibility';
 import { resolveEventTheme } from '@/lib/event-themes';
+import { eventTicketPresentation } from '@/lib/events';
 import type { PassBuildInput } from '@/lib/apple-wallet';
 import { logger } from '@/lib/logger';
 
@@ -225,7 +226,7 @@ async function serveEventPass(
 
   const { data: event } = await supabaseAdmin
     .from('events')
-    .select('title, location, starts_at, theme')
+    .select('title, location, starts_at, theme, status')
     .eq('id', ticket.event_id)
     .single();
   if (!event) {
@@ -238,13 +239,20 @@ async function serveEventPass(
   const eventDate = d.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz });
   const eventTime = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit', timeZone: tz });
   const [firstName, ...rest] = (ticket.buyer_name ?? '').trim().split(/\s+/);
-  const isVoided = ticket.status === 'checked_in';
+  // État métier → présentation (badge, voided, STATUT) — même source que la
+  // route de téléchargement : les deux rendus ne peuvent pas diverger.
+  const pres = eventTicketPresentation({
+    ticketStatus: ticket.status,
+    eventStatus:  event.status,
+    startsAt:     event.starts_at,
+  });
   const inkColor    = T.headerInk ?? '#FFFFFF';
   const accentColor = T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2);
+  const venue = event.location || restaurant.name;
   const shortDate = d.toLocaleDateString('fr-BE', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: tz,
   });
-  const stripSubtitle = `${shortDate} à ${eventTime}${event.location ? ` — ${event.location}` : ''}`;
+  const stripSubtitle = `${shortDate} à ${eventTime}${venue ? ` — ${venue}` : ''}`;
 
   const input: PassBuildInput = {
     passId:       pass.id,
@@ -254,13 +262,16 @@ async function serveEventPass(
       event_name:        event.title,
       event_date:        eventDate,
       event_time:        eventTime,
-      event_location:    event.location ?? '',
+      event_location:    venue,
       ticket_code:       ticket.code,
       tier_label:        ticket.tier_name
         ? ((ticket.seats ?? 1) > 1 ? `${ticket.tier_name} · ${ticket.seats} places` : ticket.tier_name)
         : '',
       start_iso:         d.toISOString(),
-      voided:            isVoided,
+      voided:            pres.voided,
+      badge:             pres.badge,
+      badge_muted:       pres.badgeMuted,
+      status_label:      pres.statusLabel,
       relevant_date:     d.toISOString(),
       expiration_date:   new Date(d.getTime() + 24 * 3600 * 1000).toISOString(),
       grouping_id:       ticket.event_id,
@@ -276,7 +287,7 @@ async function serveEventPass(
       labelColor:        '#78716C',
       barcodeAltText:    ticket.code,
       showLogoText:      true,
-      logoText:          restaurant.name,
+      logoText:          'Rebites Events',
     },
     primaryColor:        '#FDFDFB',
     customerId:          ticket.id,

@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { buildPkpass, pkpassResponse } from '@/lib/apple-wallet';
 import type { PassBuildInput } from '@/lib/apple-wallet';
 import { resolveEventTheme } from '@/lib/event-themes';
+import { eventTicketPresentation } from '@/lib/events';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { pkpassCache } from '@/lib/pkpass-cache';
 import { logger } from '@/lib/logger';
@@ -39,12 +40,15 @@ export async function GET(
     .select('id, code, buyer_name, status, event_id, restaurant_id, tier_name, seats')
     .eq('code', code)
     .maybeSingle();
-  if (!ticket || (ticket.status !== 'valid' && ticket.status !== 'checked_in')) {
+  // Les billets annulés/remboursés restent servis : le porteur doit VOIR
+  // l'état sur son pass (voided + badge), pas un 404. Seuls les paiements
+  // jamais aboutis restent invisibles.
+  if (!ticket || ticket.status === 'pending_payment') {
     return NextResponse.json({ error: 'Billet introuvable.' }, { status: 404 });
   }
 
   const [{ data: event }, { data: restaurant }] = await Promise.all([
-    supabaseAdmin.from('events').select('title, location, starts_at, theme').eq('id', ticket.event_id).single(),
+    supabaseAdmin.from('events').select('title, location, starts_at, theme, status').eq('id', ticket.event_id).single(),
     supabaseAdmin.from('restaurants').select('name, primary_color, logo_url').eq('id', ticket.restaurant_id).single(),
   ]);
   if (!event || !restaurant) {
@@ -62,7 +66,13 @@ export async function GET(
   const eventTime = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit', timeZone: tz });
 
   const [firstName, ...rest] = (ticket.buyer_name ?? '').trim().split(/\s+/);
-  const isVoided = ticket.status === 'checked_in';
+
+  // État métier → présentation (badge, voided, libellé STATUT) — une source.
+  const pres = eventTicketPresentation({
+    ticketStatus: ticket.status,
+    eventStatus:  event.status,
+    startsAt:     event.starts_at,
+  });
 
   // Design « talon web » : pass sur PAPIER (#FDFDFB), carte d'en-tête sombre
   // aux couleurs du thème cuite dans le strip (titre compris — le
@@ -70,11 +80,14 @@ export async function GET(
   const inkColor    = T.headerInk ?? '#FFFFFF';
   const accentColor = T.headerInk ? T.accent : (T.dark ? T.accent : T.accent2);
 
+  // Lieu : repli sur le nom de l'organisateur (il accueille souvent chez lui)
+  const venue = event.location || restaurant.name;
+
   // Sous-titre du strip (même format que le talon web)
   const shortDate = d.toLocaleDateString('fr-BE', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: tz,
   });
-  const stripSubtitle = `${shortDate} à ${eventTime}${event.location ? ` — ${event.location}` : ''}`;
+  const stripSubtitle = `${shortDate} à ${eventTime}${venue ? ` — ${venue}` : ''}`;
 
   const input: PassBuildInput = {
     passId:       walletPass?.id ?? ticket.id,
@@ -84,13 +97,16 @@ export async function GET(
       event_name:      event.title,
       event_date:      eventDate,
       event_time:      eventTime,
-      event_location:  event.location ?? '',
+      event_location:  venue,
       ticket_code:     ticket.code,
       tier_label:      ticket.tier_name
         ? ((ticket.seats ?? 1) > 1 ? `${ticket.tier_name} · ${ticket.seats} places` : ticket.tier_name)
         : '',
       start_iso:         d.toISOString(),
-      voided:            isVoided,
+      voided:            pres.voided,
+      badge:             pres.badge,
+      badge_muted:       pres.badgeMuted,
+      status_label:      pres.statusLabel,
       relevant_date:     d.toISOString(),
       // Le billet s'archive tout seul le lendemain de l'événement
       expiration_date:   new Date(d.getTime() + 24 * 3600 * 1000).toISOString(),
@@ -109,8 +125,10 @@ export async function GET(
       foregroundColor:   '#1C1917',
       labelColor:        '#78716C',
       barcodeAltText:    ticket.code,
+      // Marque du haut = Rebites (monogramme ✦ + logoText). L'organisateur
+      // vit dans le lieu et les back fields — plus en identité principale.
       showLogoText:      true,
-      logoText:          restaurant.name,
+      logoText:          'Rebites Events',
     },
     // backgroundColor du pass = papier du talon web
     primaryColor:   '#FDFDFB',
@@ -126,7 +144,9 @@ export async function GET(
   };
 
   try {
-    const cacheKey = `evt:${ticket.id}:${ticket.status}:${walletPass?.pass_version ?? 0}`;
+    // La présentation dépend aussi du statut de l'événement et de la date
+    // (EXPIRÉ) — le badge dans la clé couvre les deux.
+    const cacheKey = `evt:${ticket.id}:${ticket.status}:${pres.badge ?? 'ok'}:${walletPass?.pass_version ?? 0}`;
     let buffer = pkpassCache.get(cacheKey);
     if (!buffer) {
       buffer = await buildPkpass(input);

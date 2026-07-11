@@ -42,6 +42,57 @@ export function validateQuantity(qty: unknown): number | null {
   return n;
 }
 
+/** Présentation d'un billet sur le pass Apple Wallet — mappe l'état métier
+ *  (statut billet + statut événement + date) vers ce que le pass affiche.
+ *  Pur et testé : le rendu (strip, champs, voided) découle d'UNE source.
+ *  `refunded`/`transferred` sont déjà mappés pour le jour où le schéma les
+ *  portera — inconnus = traités comme invalides (pass void, badge neutre). */
+export interface TicketPresentation {
+  /** Badge cuit dans le strip — null : aucun (billet valide, le silence est le statut). */
+  badge: 'UTILISÉ' | 'ANNULÉ' | 'EXPIRÉ' | 'REMBOURSÉ' | 'TRANSFÉRÉ' | null;
+  /** Badge neutre (gris) plutôt qu'alerte (rouge). */
+  badgeMuted: boolean;
+  /** Valeur du champ natif STATUT (VoiceOver + vues système). */
+  statusLabel: string;
+  /** pass.json voided — iOS grise le pass et le QR. */
+  voided: boolean;
+}
+
+export function eventTicketPresentation(opts: {
+  ticketStatus: string;
+  eventStatus?: string | null;
+  startsAt: string | Date;
+  now?: Date;
+}): TicketPresentation {
+  const { ticketStatus, eventStatus, startsAt } = opts;
+  const now = opts.now ?? new Date();
+
+  // L'annulation de l'événement prime sur tout : plus aucun billet n'admet.
+  if (eventStatus === 'cancelled') {
+    return { badge: 'ANNULÉ', badgeMuted: false, statusLabel: 'Événement annulé', voided: true };
+  }
+  if (ticketStatus === 'checked_in') {
+    return { badge: 'UTILISÉ', badgeMuted: false, statusLabel: 'Déjà utilisé', voided: true };
+  }
+  if (ticketStatus === 'cancelled' || ticketStatus === 'refunded') {
+    return { badge: 'REMBOURSÉ', badgeMuted: false, statusLabel: 'Remboursé', voided: true };
+  }
+  if (ticketStatus === 'transferred') {
+    return { badge: 'TRANSFÉRÉ', badgeMuted: true, statusLabel: 'Transféré', voided: true };
+  }
+  if (ticketStatus !== 'valid') {
+    // Statut inconnu : ne jamais présenter un billet admissible par défaut.
+    return { badge: null, badgeMuted: true, statusLabel: 'Non valide', voided: true };
+  }
+  // Valide mais événement passé (> J+1) : rendu neutre, pass archivé par
+  // expirationDate de toute façon — cohérent si le porteur re-télécharge.
+  const expired = now.getTime() > new Date(startsAt).getTime() + 24 * 3600 * 1000;
+  if (expired) {
+    return { badge: 'EXPIRÉ', badgeMuted: true, statusLabel: 'Expiré', voided: false };
+  }
+  return { badge: null, badgeMuted: false, statusLabel: 'Valide', voided: false };
+}
+
 /** Slug d'événement depuis son titre (même règle que l'onboarding). */
 export function eventSlug(title: string): string {
   return title

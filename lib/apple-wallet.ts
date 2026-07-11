@@ -96,6 +96,8 @@ function buildPassJson(
     message:         input.qrToken,
     format:          barcodeFormat,
     messageEncoding: 'iso-8859-1',
+    // altText : le code s'affiche sous le QR — saisie manuelle à la porte
+    ...(barcodeAltText ? { altText: barcodeAltText } : {}),
   };
 
   const base: Record<string, unknown> = {
@@ -257,16 +259,21 @@ function buildPassJson(
       secondaryFields: [
         ...(holderName ? [{ key: 'holder', label: 'TITULAIRE', value: holderName }] : []),
         ...(tierLabel ? [{ key: 'tier', label: 'CATÉGORIE', value: tierLabel, textAlignment: 'PKTextAlignmentCenter' }] : []),
-        // Le STATUT change au check-in → notification lockscreen (changeMessage)
-        { key: 'status', label: 'STATUT', value: isVoided ? 'Déjà utilisé' : 'Valide', changeMessage: 'Billet : %@', textAlignment: 'PKTextAlignmentRight' },
+        // Le STATUT (source : eventTicketPresentation) est natif — VoiceOver
+        // et vues système le lisent même sans l'image. Son changement au
+        // check-in déclenche la notification lockscreen (changeMessage).
+        { key: 'status', label: 'STATUT', value: String(cfg.status_label ?? (isVoided ? 'Déjà utilisé' : 'Valide')), changeMessage: 'Billet : %@', textAlignment: 'PKTextAlignmentRight' },
       ],
-      auxiliaryFields: [],
+      // N° de billet visible sans retourner le pass : saisie manuelle au
+      // scanner et échanges support (le QR peut être illisible à la porte).
+      auxiliaryFields: ticketCode ? [{ key: 'ticketNo', label: 'N° DE BILLET', value: ticketCode }] : [],
       backFields: [
         ...(ticketCode ? [{ key: 'code', label: 'Code du billet', value: ticketCode }] : []),
         ...(eventDate ? [{ key: 'date', label: 'Date', value: `${eventDate}${eventTime ? ` à ${eventTime}` : ''}` }] : []),
         ...(eventLocation ? [{ key: 'location', label: 'Lieu', value: eventLocation }] : []),
         { key: 'org',   label: 'Organisateur', value: input.restaurantName },
         { key: 'terms', label: 'Conditions',   value: 'Billet valable une seule fois. Présentez le QR à l\'entrée.' },
+        { key: 'help',  label: 'Assistance',   value: 'Un souci avec ce billet ? Contactez l\'organisateur ou support@rebites.be' },
         ...cfgBackFields,
       ],
     };
@@ -641,47 +648,62 @@ async function generateEventStrip(opts: {
   blockBg:  string;    // carte en-tête (thème)
   ink:      string;    // encre posée sur la carte (headerInk ?? blanc)
   perfo:    string;
-  accent?:  string;    // label ✦ REBITES EVENTS
   border?:  string;    // contour de la carte (thèmes à en-tête clair)
   light?:   boolean;   // carte claire (musée…) → pastille rouge plus dense
   title?:    string;
   subtitle?: string;   // "JEU. 16 JUIL. 2026 À 08:51 — LIEU"
-  isVoided?: boolean;
+  /** Badge d'état cuit dans la carte (UTILISÉ, ANNULÉ, EXPIRÉ…) — null : aucun. */
+  badge?:      string | null;
+  /** Badge neutre (gris) plutôt qu'alerte (rouge) — EXPIRÉ, TRANSFÉRÉ. */
+  badgeMuted?: boolean;
 }): Promise<Buffer> {
-  const { width, height, paper, blockBg, ink, perfo, accent, border,
-          light = false, title, subtitle, isVoided } = opts;
+  const { width, height, paper, blockBg, ink, perfo, border,
+          light = false, title, subtitle, badge, badgeMuted = false } = opts;
   const s = width / 375; // géométrie pensée @1x (375×98 pt)
   const escSvg = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const margin = 16 * s;
   const topM   = 6 * s;              // liseré de papier au-dessus de la carte
   const rx     = 12 * s;             // coins hauts arrondis de la carte
-  const accentColor = accent || ink;
 
   // Carte : pleine largeur, coins hauts arrondis, fond continu jusqu'en bas
   // du strip (la transition vers le papier se fait à la frontière du strip).
   const card = `M 0 ${height} L 0 ${topM + rx} Q 0 ${topM} ${rx} ${topM} L ${width - rx} ${topM} Q ${width} ${topM} ${width} ${topM + rx} L ${width} ${height} Z`;
 
+  // Badge d'état — pastille outline alignée sur la ligne du titre, à droite.
+  // Le titre lui cède la place (maxW réduit) : jamais de collision.
+  let badgeSvg = '';
+  let badgeW = 0;
+  if (badge?.trim()) {
+    const fs = 9 * s;
+    const label = badgeMuted ? badge.trim() : `✕ ${badge.trim()}`;
+    const colr = badgeMuted ? '#8E8E93' : (light ? '#DC2626' : '#F87171');
+    const pillW = label.length * fs * 0.72 + 20 * s;
+    const pillH = 22 * s;
+    const pillX = width - margin - pillW;
+    const pillY = topM + 27 * s; // centrée sur la ligne du titre (y 38)
+    badgeW = pillW + 12 * s;
+    badgeSvg = `
+  <rect x="${pillX.toFixed(1)}" y="${pillY.toFixed(1)}" width="${pillW.toFixed(1)}" height="${pillH}" rx="${pillH / 2}" fill="none" stroke="${colr}" stroke-width="${1.8 * s}"/>
+  <text x="${(pillX + pillW / 2).toFixed(1)}" y="${(pillY + pillH / 2 + 0.5 * s).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${colr}" letter-spacing="${0.15 * fs}">${escSvg(label)}</text>`;
+  }
+
   let textSvg = '';
 
-  // ✦ REBITES EVENTS — petit, accent, letterspacé (comme le talon web).
-  // L'organisateur n'apparaît PLUS ici : il vit dans logoText (bandeau Apple),
-  // le premium ne se répète pas — la carte respire sur trois lignes.
-  const labelFs = 8 * s;
-  textSvg += `<text x="${margin}" y="${topM + 19 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${labelFs}" fill="${accentColor}" letter-spacing="${0.3 * labelFs}">✦ REBITES EVENTS</text>`;
-
-  // Titre — gras, auto-ajusté sur une ligne, « … » si trop long
+  // Titre — LE héros de la carte (la marque Rebites vit dans le bandeau
+  // Apple : monogramme ✦ + logoText, jamais dupliquée ici). Auto-ajusté
+  // sur une ligne, « … » si trop long, cède la place au badge.
   if (title?.trim()) {
     let text = title.trim();
-    const maxW = width - margin * 2;
-    let fs = 24 * s;
+    const maxW = width - margin * 2 - badgeW;
+    let fs = 28 * s;
     const fitW = (t: string, size: number) => t.length * size * 0.64;
     if (fitW(text, fs) > maxW) fs = Math.max(13 * s, maxW / (text.length * 0.64));
     if (fitW(text, fs) > maxW) {
       const maxChars = Math.floor(maxW / (fs * 0.64)) - 1;
       text = text.slice(0, Math.max(4, maxChars)) + '…';
     }
-    textSvg += `<text x="${margin}" y="${topM + 47 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs.toFixed(1)}" fill="${ink}">${escSvg(text)}</text>`;
+    textSvg += `<text x="${margin}" y="${topM + 38 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs.toFixed(1)}" fill="${ink}">${escSvg(text)}</text>`;
   }
 
   // Date + heure + lieu — uppercase, atténué
@@ -690,22 +712,7 @@ async function generateEventStrip(opts: {
     const subFs = 8 * s;
     const maxChars = Math.floor((width - margin * 2) / (subFs * 0.72));
     if (text.length > maxChars) text = text.slice(0, maxChars - 1) + '…';
-    textSvg += `<text x="${margin}" y="${topM + 70 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-size="${subFs}" fill="${ink}" opacity="0.62" letter-spacing="${0.12 * subFs}">${escSvg(text)}</text>`;
-  }
-
-  // Pastille « ✕ UTILISÉ » — outline sobre en haut à droite (langage du web)
-  let voidedSvg = '';
-  if (isVoided) {
-    const fs = 9 * s;
-    const label = '✕ UTILISÉ';
-    const red = light ? '#DC2626' : '#F87171';
-    const pillW = label.length * fs * 0.72 + 20 * s;
-    const pillH = 22 * s;
-    const pillX = width - margin - pillW;
-    const pillY = topM + 12 * s;
-    voidedSvg = `
-  <rect x="${pillX.toFixed(1)}" y="${pillY.toFixed(1)}" width="${pillW.toFixed(1)}" height="${pillH}" rx="${pillH / 2}" fill="none" stroke="${red}" stroke-width="${1.8 * s}"/>
-  <text x="${(pillX + pillW / 2).toFixed(1)}" y="${(pillY + pillH / 2 + 0.5 * s).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${red}" letter-spacing="${0.15 * fs}">${label}</text>`;
+    textSvg += `<text x="${margin}" y="${topM + 66 * s}" dominant-baseline="central" font-family="DejaVu Sans" font-size="${subFs}" fill="${ink}" opacity="0.62" letter-spacing="${0.12 * subFs}">${escSvg(text)}</text>`;
   }
 
   // Perforation + encoches (découpe vers le papier)
@@ -721,7 +728,7 @@ async function generateEventStrip(opts: {
   <circle cx="0" cy="${perfoY}" r="${notchR}" fill="${paper}"/>
   <circle cx="${width}" cy="${perfoY}" r="${notchR}" fill="${paper}"/>
   ${textSvg}
-  ${voidedSvg}
+  ${badgeSvg}
 </svg>`;
 
   return sharp(Buffer.from(svg)).png().toBuffer();
@@ -976,12 +983,15 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
   // ── 1. Generate all pass files ─────────────────────────────────────────────
   // Pass ÉVÉNEMENT : logo + icônes = monogramme dessiné aux couleurs du thème
   // (jamais l'upload du logo — souvent une photo qui casse le haut du pass).
+  // Marque principale en haut = REBITES EVENTS : monogramme ✦ à l'accent du
+  // thème + logoText « Rebites Events » (routes). L'organisateur descend au
+  // rang de lieu/back field — il n'est plus l'identité du haut du pass.
   const isEvent = input.passKind === 'event';
   const monogram = {
     bg:     (cfg.bgColor as string) || color,
-    ink:    (cfg.strip_title_color as string) || '#FFFFFF',
+    ink:    (cfg.strip_accent as string) || (cfg.strip_title_color as string) || '#FFFFFF',
     border: (cfg.strip_border as string) || undefined,
-    letter: (input.restaurantName.trim().match(/\p{L}|\p{N}/u)?.[0] ?? '✦').toUpperCase(),
+    letter: '✦',
   };
 
   const imagePromises: Promise<Buffer>[] = [
@@ -1024,16 +1034,16 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     );
   } else if (autoEventStrip) {
     const eventStripOpts = {
-      paper:    input.primaryColor || '#FDFDFB',
-      blockBg:  (cfg.bgColor as string) || color,
-      ink:      (cfg.strip_title_color as string) || '#FFFFFF',
-      perfo:    (cfg.perfoColor as string) || 'rgba(255,255,255,0.3)',
-      accent:   (cfg.strip_accent as string) || undefined,
-      border:   (cfg.strip_border as string) || undefined,
-      light:    !!(cfg.strip_light),
-      title:    (cfg.strip_title as string) || undefined,
-      subtitle: (cfg.strip_subtitle as string) || undefined,
-      isVoided: !!(cfg.voided),
+      paper:      input.primaryColor || '#FDFDFB',
+      blockBg:    (cfg.bgColor as string) || color,
+      ink:        (cfg.strip_title_color as string) || '#FFFFFF',
+      perfo:      (cfg.perfoColor as string) || 'rgba(255,255,255,0.3)',
+      border:     (cfg.strip_border as string) || undefined,
+      light:      !!(cfg.strip_light),
+      title:      (cfg.strip_title as string) || undefined,
+      subtitle:   (cfg.strip_subtitle as string) || undefined,
+      badge:      (cfg.badge as string) || null,
+      badgeMuted: !!(cfg.badge_muted),
     };
     // eventTicket « strip style » : 375×98 pt (≠ 123 des storeCards) —
     // le @3x est fourni : le texte cuit dans l'image doit rester net.

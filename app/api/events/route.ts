@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAuth } from '@/lib/server-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { eventSlug, validateEventPriceCents } from '@/lib/events';
+import { pushPassUpdate } from '@/lib/apns';
 import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
@@ -155,7 +156,36 @@ export async function PATCH(request: Request) {
     .maybeSingle();
   if (error) return NextResponse.json({ error: 'Erreur lors de la mise à jour.' }, { status: 500 });
   if (!event) return NextResponse.json({ error: 'Événement introuvable.' }, { status: 404 });
+
+  // Événement annulé → tous les pass Wallet des billets basculent en ANNULÉ
+  // (voided + badge + notif lockscreen). Fire-and-forget : la réponse au
+  // dashboard ne dépend pas d'APNS.
+  if (fields.status === 'cancelled') {
+    notifyEventPasses(id, guard.restaurantId).catch(err =>
+      logger.warn({ ctx: 'events-update', rid: guard.restaurantId, msg: 'cancel push failed', err: String(err) }),
+    );
+  }
   return NextResponse.json({ event });
+}
+
+/** Push APNS vers tous les pass Wallet des billets d'un événement. */
+async function notifyEventPasses(eventId: string, restaurantId: string) {
+  const { data: tickets } = await supabaseAdmin
+    .from('event_tickets')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('restaurant_id', restaurantId)
+    .in('status', ['valid', 'checked_in']);
+  if (!tickets?.length) return;
+
+  const { data: passes } = await supabaseAdmin
+    .from('wallet_passes')
+    .select('id')
+    .in('event_ticket_id', tickets.map(t => t.id))
+    .eq('status', 'active');
+  for (const p of passes ?? []) {
+    await pushPassUpdate(p.id);
+  }
 }
 
 /** DELETE /api/events?id=… — suppression (interdite si des billets valides existent). */
