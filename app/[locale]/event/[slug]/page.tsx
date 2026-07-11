@@ -306,8 +306,13 @@ function EventContent() {
         {/* Header organisateur */}
         <header className="pt-10 pb-8 ev-up">
           {business.logoUrl && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={business.logoUrl} alt="" className="max-h-16 max-w-[150px] object-contain mb-4" />
+            /* Plaque : le logo (souvent une photo) vit dans une tuile aux
+               couleurs du thème — jamais flottant sur le fond de page. */
+            <div className="w-14 h-14 mb-4 flex items-center justify-center overflow-hidden"
+              style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={business.logoUrl} alt="" className="w-full h-full object-cover" />
+            </div>
           )}
           <h1 className={`ev-display-${T.key} text-4xl sm:text-5xl leading-[1.02] break-words`} style={{ color: T.ink }}>
             {business.name}
@@ -353,13 +358,18 @@ function EventContent() {
               : ev.remaining
             return (
               <article key={ev.id} className={`ev-card-${C.key} ev-up overflow-hidden`} style={{ animationDelay: `${0.08 + idx * 0.07}s` }}>
-                <div className={isCatalog ? '' : 'flex'}>
-                  {/* Bloc date — talon gauche (variante affiche uniquement) */}
+                <div className={isCatalog ? '' : 'flex flex-col sm:flex-row'}>
+                  {/* Bloc date — bandeau horizontal sur mobile (le rail gauche
+                      écrasait le formulaire d'achat sur 375 px), talon gauche
+                      dès sm (variante affiche uniquement) */}
                   {!isCatalog && (
-                  <div className="flex flex-col items-center justify-center px-4 py-5 border-r border-dashed min-w-[86px]" style={{ borderColor: C.border }}>
-                    <span className={`ev-display-${C.key} text-3xl leading-none`} style={{ color: C.accent }}>{day}</span>
-                    <span className="ev-mono text-[11px] uppercase tracking-[0.2em] mt-1" style={{ color: C.muted }}>{month}</span>
-                    <span className="ev-mono text-[11px] mt-2" style={{ color: C.faint }}>{time}</span>
+                  <div
+                    className="flex flex-row sm:flex-col items-baseline sm:items-center sm:justify-center gap-2 sm:gap-0 px-5 py-3 sm:px-4 sm:py-5 border-b sm:border-b-0 sm:border-r border-dashed sm:min-w-[86px]"
+                    style={{ borderColor: C.border }}
+                  >
+                    <span className={`ev-display-${C.key} text-2xl sm:text-3xl leading-none`} style={{ color: C.accent }}>{day}</span>
+                    <span className="ev-mono text-[11px] uppercase tracking-[0.2em] sm:mt-1" style={{ color: C.muted }}>{month}</span>
+                    <span className="ev-mono text-[11px] ml-auto sm:ml-0 sm:mt-2" style={{ color: C.faint }}>{time}</span>
                   </div>
                   )}
 
@@ -486,16 +496,18 @@ function EventContent() {
                             })}
                           </div>
                         )}
-                        <div className="flex items-center gap-3">
+                        {/* Quantité : wrap + cibles 40 px sur mobile (les
+                            pastilles débordaient de l'écran en 375 px) */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                           <label className="ev-mono text-[11px] uppercase tracking-[0.15em]" style={{ color: C.muted }}>{t('event.quantity')}</label>
-                          <div className="flex gap-1.5">
+                          <div className="flex flex-wrap gap-1.5">
                             {[1, 2, 3, 4, 5, 6]
                               .filter(n => unitCap === null || n <= unitCap)
                               .map(n => (
                                 <button
                                   key={n} type="button"
                                   onClick={() => setQuantity(n)}
-                                  className="ev-mono w-8 h-8 text-xs font-bold transition-colors"
+                                  className="ev-mono w-10 h-10 sm:w-8 sm:h-8 text-sm sm:text-xs font-bold transition-colors"
                                   style={quantity === n
                                     ? { background: C.accent, color: C.accentInk, border: `2px solid ${C.accent}`, borderRadius: C.radius }
                                     : { color: C.muted, border: `2px solid ${C.border}`, borderRadius: C.radius }}
@@ -505,10 +517,14 @@ function EventContent() {
                               ))}
                           </div>
                         </div>
+                        {/* text-base : sous 16 px, iOS Safari zoome de force
+                            sur le champ au focus — jamais moins sur mobile */}
                         <input required value={buyerName} onChange={e => setBuyerName(e.target.value)} maxLength={100}
-                          placeholder={t('event.buyerName')} className={`ev-input-${C.key} w-full px-3 py-3 text-sm`} />
+                          autoComplete="name"
+                          placeholder={t('event.buyerName')} className={`ev-input-${C.key} w-full px-3 py-3 text-base sm:text-sm`} />
                         <input required type="email" value={buyerEmail} onChange={e => setBuyerEmail(e.target.value)} maxLength={255}
-                          placeholder={t('event.buyerEmail')} className={`ev-input-${C.key} w-full px-3 py-3 text-sm`} />
+                          autoComplete="email" inputMode="email"
+                          placeholder={t('event.buyerEmail')} className={`ev-input-${C.key} w-full px-3 py-3 text-base sm:text-sm`} />
                         {ev.offer_loyalty && (
                           <label className="flex items-start gap-2 text-xs" style={{ color: C.muted }}>
                             <input type="checkbox" checked={joinLoyalty} onChange={e => setJoinLoyalty(e.target.checked)}

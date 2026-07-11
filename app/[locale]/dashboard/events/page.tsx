@@ -540,14 +540,14 @@ export default function EventsPage() {
                               <>
                                 <button
                                   onClick={() => { setTransferTk({ ev, tk }); setTransferForm({ name: '', email: '' }) }}
-                                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors mr-1.5"
+                                  className="px-3 py-1.5 rounded-lg text-[11px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors mr-1.5"
                                 >
                                   {t('events.transfer')}
                                 </button>
                                 <button
                                   onClick={() => refundTicket(ev, tk)}
                                   disabled={refunding === tk.id}
-                                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                  className="px-3 py-1.5 rounded-lg text-[11px] font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
                                 >
                                   {refunding === tk.id ? '…' : t('events.refund')}
                                 </button>
