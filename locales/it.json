@@ -1964,7 +1964,14 @@
     "refund": "Rimborsa",
     "refunded": "Rimborsato",
     "refundConfirm": "Rimborsare il biglietto di {name} ({amount})? Il biglietto sarà invalidato e il pass Wallet aggiornato.",
-    "freeTicket": "biglietto gratuito"
+    "freeTicket": "biglietto gratuito",
+    "transfer": "Trasferisci",
+    "transferredTicket": "Trasferito",
+    "transferTitle": "Trasferisci il biglietto",
+    "transferInfo": "Il biglietto {code} di {name} sarà invalidato e un nuovo biglietto (nuovo QR) sarà inviato via email al destinatario.",
+    "transferName": "Nome del destinatario",
+    "transferEmail": "Email del destinatario",
+    "transferSend": "Invia il biglietto"
   },
   "event": {
     "verifying": "Verifica del pagamento…",

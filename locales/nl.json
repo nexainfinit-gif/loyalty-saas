@@ -1964,7 +1964,14 @@
     "refund": "Terugbetalen",
     "refunded": "Terugbetaald",
     "refundConfirm": "Ticket van {name} terugbetalen ({amount})? Het ticket wordt ongeldig en de Wallet-pas bijgewerkt.",
-    "freeTicket": "gratis ticket"
+    "freeTicket": "gratis ticket",
+    "transfer": "Overdragen",
+    "transferredTicket": "Overgedragen",
+    "transferTitle": "Ticket overdragen",
+    "transferInfo": "Het ticket {code} van {name} wordt ongeldig en een nieuw ticket (nieuwe QR) wordt per e-mail naar de ontvanger gestuurd.",
+    "transferName": "Naam ontvanger",
+    "transferEmail": "E-mail ontvanger",
+    "transferSend": "Ticket versturen"
   },
   "event": {
     "verifying": "Betaling controleren…",

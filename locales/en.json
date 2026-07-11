@@ -1982,7 +1982,14 @@
     "refund": "Refund",
     "refunded": "Refunded",
     "refundConfirm": "Refund {name}’s ticket ({amount})? The ticket will be invalidated and its Wallet pass updated.",
-    "freeTicket": "free ticket"
+    "freeTicket": "free ticket",
+    "transfer": "Transfer",
+    "transferredTicket": "Transferred",
+    "transferTitle": "Transfer ticket",
+    "transferInfo": "{name}'s ticket {code} will be invalidated and a new ticket (new QR) will be emailed to the recipient.",
+    "transferName": "Recipient name",
+    "transferEmail": "Recipient email",
+    "transferSend": "Send ticket"
   },
   "event": {
     "verifying": "Verifying payment…",

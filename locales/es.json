@@ -1960,7 +1960,14 @@
     "refund": "Reembolsar",
     "refunded": "Reembolsada",
     "refundConfirm": "¿Reembolsar la entrada de {name} ({amount})? La entrada quedará invalidada y su pase de Wallet actualizado.",
-    "freeTicket": "entrada gratuita"
+    "freeTicket": "entrada gratuita",
+    "transfer": "Transferir",
+    "transferredTicket": "Transferida",
+    "transferTitle": "Transferir la entrada",
+    "transferInfo": "La entrada {code} de {name} quedará invalidada y se enviará una nueva entrada (nuevo QR) por email al destinatario.",
+    "transferName": "Nombre del destinatario",
+    "transferEmail": "Email del destinatario",
+    "transferSend": "Enviar la entrada"
   },
   "event": {
     "verifying": "Verificando el pago…",

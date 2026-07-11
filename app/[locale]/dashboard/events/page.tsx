@@ -74,6 +74,10 @@ export default function EventsPage() {
   const [openTickets, setOpenTickets] = useState<string | null>(null)
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [refunding, setRefunding] = useState<string | null>(null)
+  // Modale de transfert : billet source + coordonnées du destinataire
+  const [transferTk, setTransferTk] = useState<{ ev: Ev; tk: Ticket } | null>(null)
+  const [transferForm, setTransferForm] = useState({ name: '', email: '' })
+  const [transferBusy, setTransferBusy] = useState(false)
   const [copied, setCopied] = useState(false)
 
   // Tarifs (catégories de billets) dépliés
@@ -247,6 +251,24 @@ export default function EventsPage() {
     setTickets(res.data?.tickets ?? [])
     setOpenTickets(ev.id)
     setOpenTiers(null)
+  }
+
+  async function submitTransfer(e: React.FormEvent) {
+    e.preventDefault()
+    if (!transferTk) return
+    setTransferBusy(true)
+    const res = await api(`/api/events/${transferTk.ev.id}/tickets/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ ticketId: transferTk.tk.id, buyerName: transferForm.name, buyerEmail: transferForm.email }),
+    })
+    setTransferBusy(false)
+    if (res.error) { setError(res.error); return }
+    const evId = transferTk.ev.id
+    setTransferTk(null)
+    setTransferForm({ name: '', email: '' })
+    const list = await api<{ tickets: Ticket[] }>(`/api/events/${evId}/tickets`)
+    setTickets(list.data?.tickets ?? [])
+    load()
   }
 
   async function refundTicket(ev: Ev, tk: Ticket) {
@@ -510,17 +532,26 @@ export default function EventsPage() {
                           <td className="py-1.5 pr-3">
                             {tk.status === 'checked_in' ? t('events.checkedIn')
                               : tk.status === 'refunded' ? t('events.refunded')
+                              : tk.status === 'transferred' ? t('events.transferredTicket')
                               : t('events.validTicket')}
                           </td>
-                          <td className="py-1.5 text-right">
+                          <td className="py-1.5 text-right whitespace-nowrap">
                             {tk.status === 'valid' && (
-                              <button
-                                onClick={() => refundTicket(ev, tk)}
-                                disabled={refunding === tk.id}
-                                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
-                              >
-                                {refunding === tk.id ? '…' : t('events.refund')}
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => { setTransferTk({ ev, tk }); setTransferForm({ name: '', email: '' }) }}
+                                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors mr-1.5"
+                                >
+                                  {t('events.transfer')}
+                                </button>
+                                <button
+                                  onClick={() => refundTicket(ev, tk)}
+                                  disabled={refunding === tk.id}
+                                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                >
+                                  {refunding === tk.id ? '…' : t('events.refund')}
+                                </button>
+                              </>
                             )}
                           </td>
                         </tr>
@@ -533,6 +564,43 @@ export default function EventsPage() {
           </div>
         ))}
       </div>
+
+      {/* Transfert de billet */}
+      {transferTk && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setTransferTk(null)}>
+          <form onSubmit={submitTransfer} onClick={e => e.stopPropagation()}
+            className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">{t('events.transferTitle')}</h2>
+              <p className="text-xs text-gray-500 mt-1">
+                {t('events.transferInfo', { code: transferTk.tk.code, name: transferTk.tk.buyer_name })}
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t('events.transferName')}</label>
+              <input required value={transferForm.name} maxLength={80} autoFocus
+                onChange={e => setTransferForm(f => ({ ...f, name: e.target.value }))}
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t('events.transferEmail')}</label>
+              <input required type="email" value={transferForm.email} maxLength={255}
+                onChange={e => setTransferForm(f => ({ ...f, email: e.target.value }))}
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600/20" />
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              <button type="button" onClick={() => setTransferTk(null)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors">
+                {t('common.cancel')}
+              </button>
+              <button type="submit" disabled={transferBusy}
+                className="px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50">
+                {transferBusy ? '…' : t('events.transferSend')}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Form modal */}
       {showForm && (
