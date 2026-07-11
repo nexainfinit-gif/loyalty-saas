@@ -235,7 +235,9 @@ function buildPassJson(
 
     base.eventTicket = {
       headerFields: eventTime ? [{ key: 'time', label: 'HEURE', value: eventTime }] : [],
-      primaryFields: [{ key: 'event', label: 'ÉVÉNEMENT', value: eventName }],
+      // Quand le strip auto porte déjà le titre (cfg.strip_title), le champ
+      // primaire est vidé — sinon Apple superpose le titre à la bande papier.
+      primaryFields: cfg.strip_title ? [] : [{ key: 'event', label: 'ÉVÉNEMENT', value: eventName }],
       secondaryFields: [
         ...(eventDate ? [{ key: 'date', label: 'DATE', value: eventDate }] : []),
         ...(eventLocation ? [{ key: 'location', label: 'LIEU', value: eventLocation }] : []),
@@ -590,14 +592,36 @@ async function generateEventStrip(opts: {
   height:   number;
   headerBg: string;   // fond du thème (continu avec le fond du pass)
   perfo:    string;   // couleur des pointillés/encoches
+  /** Titre de l'événement — rendu DANS l'image (DejaVu embarquée) pour
+   *  maîtriser la mise en page : le champ primaryFields d'Apple déborde
+   *  sur la bande papier sinon. */
+  title?:      string;
+  titleColor?: string;
 }): Promise<Buffer> {
-  const { width, height, headerBg, perfo } = opts;
+  const { width, height, headerBg, perfo, title, titleColor = '#FFFFFF' } = opts;
   const paper = '#F7F5F0';
   const ink   = '#1C1917';
+  const escSvg = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // Frontière en-tête / papier (le champ ÉVÉNEMENT rend dans la zone haute)
-  const splitY = Math.round(height * 0.62);
-  const notchR = Math.round(height * 0.11);
+  // Frontière en-tête / papier — le titre vit dans la zone haute
+  const splitY = Math.round(height * 0.66);
+  const notchR = Math.round(height * 0.10);
+
+  // Titre : gras, taille auto-ajustée à la largeur (DejaVu Bold ≈ 0.66 em/car),
+  // tronqué avec … si vraiment trop long. Une seule ligne, jamais de collision.
+  let titleSvg = '';
+  if (title && title.trim()) {
+    let text = title.trim();
+    const maxW = width * 0.86;
+    let fs = Math.round(splitY * 0.52);
+    const fitW = (s: string, size: number) => s.length * size * 0.66;
+    if (fitW(text, fs) > maxW) fs = Math.max(Math.round(splitY * 0.3), Math.floor(maxW / (text.length * 0.66)));
+    if (fitW(text, fs) > maxW) {
+      const maxChars = Math.floor(maxW / (fs * 0.66)) - 1;
+      text = text.slice(0, Math.max(4, maxChars)) + '…';
+    }
+    titleSvg = `<text x="${Math.round(width * 0.07)}" y="${Math.round(splitY * 0.56)}" dominant-baseline="central" font-family="DejaVu Sans" font-weight="bold" font-size="${fs}" fill="${titleColor}">${escSvg(text)}</text>`;
+  }
 
   // Code-barres décoratif déterministe (même famille que le talon web)
   const pattern = [2, 1, 3, 1, 2, 2, 1, 3, 2, 1, 1, 3, 1, 2, 3, 1, 2, 1];
@@ -622,6 +646,7 @@ async function generateEventStrip(opts: {
   <line x1="${notchR + dash}" y1="${splitY}" x2="${width - notchR - dash}" y2="${splitY}"
     stroke="${perfo}" stroke-width="2" stroke-dasharray="${dash} ${dash}"/>
   ${bars}
+  ${titleSvg}
   <circle cx="0" cy="${splitY}" r="${notchR}" fill="${headerBg}"/>
   <circle cx="${width}" cy="${splitY}" r="${notchR}" fill="${headerBg}"/>
 </svg>`;
@@ -908,8 +933,12 @@ export async function buildPkpass(input: PassBuildInput): Promise<Buffer> {
     );
   } else if (autoEventStrip) {
     const eventStripOpts = {
-      headerBg: (cfg.bgColor as string) || color,
-      perfo:    (cfg.perfoColor as string) || 'rgba(255,255,255,0.3)',
+      headerBg:   (cfg.bgColor as string) || color,
+      perfo:      (cfg.perfoColor as string) || 'rgba(255,255,255,0.3)',
+      // Titre rendu DANS le strip (le primaryField d'Apple déborderait
+      // sur la bande papier) — voir buildPassJson qui le retire des champs.
+      title:      (cfg.strip_title as string) || undefined,
+      titleColor: fgHex,
     };
     // eventTicket « strip style » : 375×98 pt (≠ 123 des storeCards)
     imagePromises.push(

@@ -55,8 +55,10 @@ export async function GET(
   // Habillage du pass = thème de l'événement (cohérent avec la page billet)
   const T = resolveEventTheme(event.theme);
   const d = new Date(event.starts_at);
-  const eventDate = d.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
-  const eventTime = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+  // Fuseau FIGÉ : le serveur (Vercel) est en UTC — sans timeZone l'heure
+  // du billet était fausse.
+  const eventDate = d.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Brussels' });
+  const eventTime = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' });
 
   const [firstName, ...rest] = (ticket.buyer_name ?? '').trim().split(/\s+/);
 
@@ -73,6 +75,7 @@ export async function GET(
       tier_label:      ticket.tier_name
         ? ((ticket.seats ?? 1) > 1 ? `${ticket.tier_name} · ${ticket.seats} places` : ticket.tier_name)
         : '',
+      strip_title:     event.title,
       relevant_date:   d.toISOString(),
       // Couleurs alignées sur la page billet web : fond = en-tête du talon,
       // encre = headerInk, étiquettes = le même accent que « ✦ Rebites
