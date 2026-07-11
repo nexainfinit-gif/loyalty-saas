@@ -1978,7 +1978,11 @@
     "tierNamePh": "Ex. Early bird, VIP…",
     "tierCapPh": "Quota",
     "addTier": "Ajouter",
-    "tierVipToggle": "Table VIP (un seul billet pour tout le groupe)"
+    "tierVipToggle": "Table VIP (un seul billet pour tout le groupe)",
+    "refund": "Rembourser",
+    "refunded": "Remboursé",
+    "refundConfirm": "Rembourser le billet de {name} ({amount}) ? Le billet sera invalidé et son pass Wallet mis à jour.",
+    "freeTicket": "billet gratuit"
   },
   "event": {
     "verifying": "Vérification du paiement…",

@@ -1956,7 +1956,11 @@
     "tierNamePh": "Ej. Early bird, VIP…",
     "tierCapPh": "Cupo",
     "addTier": "Añadir",
-    "tierVipToggle": "Mesa VIP (una sola entrada para todo el grupo)"
+    "tierVipToggle": "Mesa VIP (una sola entrada para todo el grupo)",
+    "refund": "Reembolsar",
+    "refunded": "Reembolsada",
+    "refundConfirm": "¿Reembolsar la entrada de {name} ({amount})? La entrada quedará invalidada y su pase de Wallet actualizado.",
+    "freeTicket": "entrada gratuita"
   },
   "event": {
     "verifying": "Verificando el pago…",

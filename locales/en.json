@@ -1978,7 +1978,11 @@
     "tierNamePh": "E.g. Early bird, VIP…",
     "tierCapPh": "Quota",
     "addTier": "Add",
-    "tierVipToggle": "VIP table (one ticket for the whole group)"
+    "tierVipToggle": "VIP table (one ticket for the whole group)",
+    "refund": "Refund",
+    "refunded": "Refunded",
+    "refundConfirm": "Refund {name}’s ticket ({amount})? The ticket will be invalidated and its Wallet pass updated.",
+    "freeTicket": "free ticket"
   },
   "event": {
     "verifying": "Verifying payment…",

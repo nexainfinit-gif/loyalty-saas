@@ -25,12 +25,13 @@ export async function GET(
     .maybeSingle();
   if (!event) return NextResponse.json({ error: 'Événement introuvable.' }, { status: 404 });
 
+  // refunded reste visible : l'organisateur doit voir ce qu'il a remboursé.
   const { data: tickets, error } = await supabaseAdmin
     .from('event_tickets')
     .select('id, code, buyer_name, buyer_email, amount, status, created_at, paid_at, checked_in_at')
     .eq('event_id', id)
     .eq('restaurant_id', guard.restaurantId)
-    .in('status', ['valid', 'checked_in'])
+    .in('status', ['valid', 'checked_in', 'refunded'])
     .order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
 

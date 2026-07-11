@@ -73,6 +73,7 @@ export default function EventsPage() {
   // Participants dépliés
   const [openTickets, setOpenTickets] = useState<string | null>(null)
   const [tickets, setTickets] = useState<Ticket[]>([])
+  const [refunding, setRefunding] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   // Tarifs (catégories de billets) dépliés
@@ -246,6 +247,20 @@ export default function EventsPage() {
     setTickets(res.data?.tickets ?? [])
     setOpenTickets(ev.id)
     setOpenTiers(null)
+  }
+
+  async function refundTicket(ev: Ev, tk: Ticket) {
+    if (!window.confirm(t('events.refundConfirm', { name: tk.buyer_name, amount: tk.amount > 0 ? `${tk.amount} €` : t('events.freeTicket') }))) return
+    setRefunding(tk.id)
+    const res = await api(`/api/events/${ev.id}/tickets/refund`, {
+      method: 'POST', body: JSON.stringify({ ticketId: tk.id }),
+    })
+    setRefunding(null)
+    if (res.error) { setError(res.error); return }
+    // Recharge la liste : le billet passe en « Remboursé »
+    const list = await api<{ tickets: Ticket[] }>(`/api/events/${ev.id}/tickets`)
+    setTickets(list.data?.tickets ?? [])
+    load()
   }
 
   const publicUrl = businessSlug ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/event/${businessSlug}` : null
@@ -482,16 +497,32 @@ export default function EventsPage() {
                         <th className="py-1.5 pr-3 font-medium">{t('events.thName')}</th>
                         <th className="py-1.5 pr-3 font-medium">{t('events.thEmail')}</th>
                         <th className="py-1.5 pr-3 font-medium">{t('events.thCode')}</th>
-                        <th className="py-1.5 font-medium">{t('events.thStatus')}</th>
+                        <th className="py-1.5 pr-3 font-medium">{t('events.thStatus')}</th>
+                        <th className="py-1.5" />
                       </tr>
                     </thead>
                     <tbody>
                       {tickets.map(tk => (
-                        <tr key={tk.id} className="border-t border-gray-50 text-gray-700">
+                        <tr key={tk.id} className={`border-t border-gray-50 ${tk.status === 'refunded' ? 'text-gray-400' : 'text-gray-700'}`}>
                           <td className="py-1.5 pr-3">{tk.buyer_name}</td>
                           <td className="py-1.5 pr-3">{tk.buyer_email}</td>
                           <td className="py-1.5 pr-3 font-mono">{tk.code}</td>
-                          <td className="py-1.5">{tk.status === 'checked_in' ? t('events.checkedIn') : t('events.validTicket')}</td>
+                          <td className="py-1.5 pr-3">
+                            {tk.status === 'checked_in' ? t('events.checkedIn')
+                              : tk.status === 'refunded' ? t('events.refunded')
+                              : t('events.validTicket')}
+                          </td>
+                          <td className="py-1.5 text-right">
+                            {tk.status === 'valid' && (
+                              <button
+                                onClick={() => refundTicket(ev, tk)}
+                                disabled={refunding === tk.id}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+                              >
+                                {refunding === tk.id ? '…' : t('events.refund')}
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

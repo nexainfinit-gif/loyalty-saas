@@ -1960,7 +1960,11 @@
     "tierNamePh": "Bv. Early bird, VIP…",
     "tierCapPh": "Quota",
     "addTier": "Toevoegen",
-    "tierVipToggle": "VIP-tafel (één ticket voor de hele groep)"
+    "tierVipToggle": "VIP-tafel (één ticket voor de hele groep)",
+    "refund": "Terugbetalen",
+    "refunded": "Terugbetaald",
+    "refundConfirm": "Ticket van {name} terugbetalen ({amount})? Het ticket wordt ongeldig en de Wallet-pas bijgewerkt.",
+    "freeTicket": "gratis ticket"
   },
   "event": {
     "verifying": "Betaling controleren…",

@@ -1960,7 +1960,11 @@
     "tierNamePh": "Es. Early bird, VIP…",
     "tierCapPh": "Quota",
     "addTier": "Aggiungi",
-    "tierVipToggle": "Tavolo VIP (un solo biglietto per tutto il gruppo)"
+    "tierVipToggle": "Tavolo VIP (un solo biglietto per tutto il gruppo)",
+    "refund": "Rimborsa",
+    "refunded": "Rimborsato",
+    "refundConfirm": "Rimborsare il biglietto di {name} ({amount})? Il biglietto sarà invalidato e il pass Wallet aggiornato.",
+    "freeTicket": "biglietto gratuito"
   },
   "event": {
     "verifying": "Verifica del pagamento…",
