@@ -203,7 +203,7 @@ export default function RegisterPageV2() {
     <div className="v2-reg" style={accentVars}>
       {/* ── Panneau marque ── */}
       <div className="v2-reg__brand">
-        <div className="v2-reg__logo">
+        <div className={`v2-reg__logo${restaurant?.logo_url ? ' v2-reg__logo--bare' : ''}`}>
           {restaurant?.logo_url
             ? <img src={restaurant.logo_url} alt={restaurant.name} />
             : (restaurant?.name ?? '★').charAt(0).toUpperCase()}

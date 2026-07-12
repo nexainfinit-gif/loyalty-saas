@@ -307,6 +307,9 @@
   font-family: var(--v2-fm); font-weight: 700; font-size: 26px; color: var(--v2-a-600);
 }
 .v2-reg__logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+/* Logo image : nu, sans tuile (la tuile ne sert qu'au monogramme de repli) */
+.v2-reg__logo--bare { width: auto; height: auto; background: transparent; border: 0; box-shadow: none; border-radius: 0; }
+.v2-reg__logo--bare img { max-width: 190px; max-height: 74px; }
 .v2-reg__name { font-size: 33px; font-weight: 720; letter-spacing: -0.028em; line-height: 1.05; margin: 30px 0 0; text-wrap: balance; }
 .v2-reg__tagline { color: var(--v2-muted); font-size: 15px; margin-top: 12px; max-width: 32ch; line-height: 1.55; }
 .v2-reg__benefits { margin-top: auto; padding-top: 40px; display: flex; flex-direction: column; gap: 18px; }
@@ -370,7 +373,8 @@
     padding: 28px 24px 24px; border-right: 0; border-bottom: 1px solid var(--v2-line);
     flex-direction: row; align-items: center; gap: 16px;
   }
-  .v2-reg__logo { width: 52px; height: 52px; font-size: 21px; }
+  .v2-reg__logo:not(.v2-reg__logo--bare) { width: 52px; height: 52px; font-size: 21px; }
+  .v2-reg__logo--bare img { max-height: 46px; }
   .v2-reg__name { font-size: 22px; margin: 0; }
   .v2-reg__tagline, .v2-reg__benefits { display: none; }
   .v2-reg__formwrap { padding: 32px 20px 56px; align-items: flex-start; }
