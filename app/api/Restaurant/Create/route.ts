@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { name, slug, email, city, phone, business_type, primary_color, logo_url, additional, products } = await req.json()
+  const { name, slug, email, city, phone, business_type, primary_color, logo_url, additional, products, affiliateCode } = await req.json()
 
   // Profil produit (T0) : liste blanche, fidélité par défaut (compat).
   const VALID_PRODUCTS = ['loyalty', 'booking', 'ticketing']
@@ -42,6 +42,18 @@ export async function POST(req: Request) {
   // un établissement » du sélecteur), on autorise jusqu'à 10 par compte.
   if (!additional && existingOwner?.length) return Response.json({ error: 'Restaurant déjà créé' }, { status: 409 })
   if ((existingOwner?.length ?? 0) >= 10) return Response.json({ error: "Limite d'établissements atteinte." }, { status: 409 })
+
+  // Résolution affilié (optionnel — lien ?ref=CODE capté à l'onboarding)
+  let affiliateId: string | null = null
+  if (affiliateCode && typeof affiliateCode === 'string') {
+    const { data: aff } = await supabase
+      .from('affiliates')
+      .select('id')
+      .eq('code', affiliateCode.trim().toUpperCase())
+      .eq('status', 'active')
+      .maybeSingle()
+    if (aff) affiliateId = aff.id
+  }
 
   if (!name || !slug) {
     return Response.json({ error: 'Nom et slug requis' }, { status: 400 })
@@ -79,6 +91,7 @@ export async function POST(req: Request) {
       logo_url: logo_url ?? null,
       products: productList,
       ...(ticketingOnly ? { subscription_status: 'active' } : {}),
+      ...(affiliateId ? { affiliate_id: affiliateId } : {}),
     })
     .select()
     .single()

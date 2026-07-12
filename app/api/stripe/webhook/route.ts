@@ -47,6 +47,10 @@ export async function POST(request: Request) {
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
         break;
 
+      case 'invoice.paid':
+        await handleInvoicePaid(event.data.object as Stripe.Invoice);
+        break;
+
       case 'invoice.payment_failed':
         await handlePaymentFailed(event.data.object as Stripe.Invoice);
         break;
@@ -231,6 +235,44 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     .from('restaurants')
     .update({ subscription_status: 'past_due' })
     .eq('id', restaurant.id);
+}
+
+async function handleInvoicePaid(invoice: Stripe.Invoice) {
+  const sub = (invoice as unknown as { subscription: string | { id: string } | null }).subscription;
+  const subscriptionId = typeof sub === 'string' ? sub : sub?.id;
+  if (!subscriptionId) return;
+
+  const amountPaid = (invoice as unknown as { amount_paid: number }).amount_paid;
+  if (!amountPaid || amountPaid <= 0) return;
+
+  const { data: restaurant } = await supabaseAdmin
+    .from('restaurants')
+    .select('id, affiliate_id')
+    .eq('stripe_subscription_id', subscriptionId)
+    .maybeSingle();
+  if (!restaurant?.affiliate_id) return;
+
+  const { data: affiliate } = await supabaseAdmin
+    .from('affiliates')
+    .select('id, commission_rate, status')
+    .eq('id', restaurant.affiliate_id)
+    .single();
+  if (!affiliate || affiliate.status !== 'active') return;
+
+  const commissionAmount = Math.round(amountPaid * Number(affiliate.commission_rate) / 100);
+  if (commissionAmount <= 0) return;
+
+  await supabaseAdmin
+    .from('affiliate_commissions')
+    .upsert({
+      affiliate_id: affiliate.id,
+      restaurant_id: restaurant.id,
+      stripe_invoice_id: invoice.id,
+      invoice_amount: amountPaid,
+      commission_amount: commissionAmount,
+      commission_rate: affiliate.commission_rate,
+      status: 'pending',
+    }, { onConflict: 'stripe_invoice_id,affiliate_id' });
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */

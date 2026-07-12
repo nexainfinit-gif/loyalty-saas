@@ -331,6 +331,7 @@ export default function AdminPage() {
             <a href={`/${locale}/admin/plans`} className="text-xs text-gray-400 hover:text-white transition-colors">{t('admin.plans')}</a>
             <a href={`/${locale}/admin/kpis`} className="text-xs text-gray-400 hover:text-white transition-colors">{t('admin.kpis')}</a>
             <a href={`/${locale}/admin/wallet`} className="text-xs text-gray-400 hover:text-white transition-colors">{t('admin.walletStudio')}</a>
+            <a href={`/${locale}/admin/affiliates`} className="text-xs text-gray-400 hover:text-white transition-colors">Affiliés</a>
             <span className="w-px h-4 bg-gray-700" />
             <button onClick={handleSeedDemo} disabled={seeding} className="text-xs text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50">
               {seeding ? t('demo.seeding') : t('demo.seedBtn')}

@@ -30,6 +30,7 @@ export default function OnboardingPage() {
   // ?new=1 : création d'un établissement SUPPLÉMENTAIRE depuis le sélecteur
   // du dashboard — on saute la redirection « déjà un établissement ».
   const [isAdditional, setIsAdditional] = useState(false);
+  const [affiliateCode, setAffiliateCode] = useState('');
 
   const validateField = (name: string, value: string) => {
     let error = '';
@@ -61,7 +62,10 @@ export default function OnboardingPage() {
         router.push('/dashboard/login');
         return;
       }
-      const wantsAdditional = new URLSearchParams(window.location.search).get('new') === '1';
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref) setAffiliateCode(ref.trim().toUpperCase());
+      const wantsAdditional = params.get('new') === '1';
       if (wantsAdditional) {
         setIsAdditional(true);
         setAuthEmail(session.user.email ?? '');
@@ -130,6 +134,7 @@ export default function OnboardingPage() {
           primary_color,
           products,
           additional: isAdditional,
+          ...(affiliateCode ? { affiliateCode } : {}),
         }),
       });
 
