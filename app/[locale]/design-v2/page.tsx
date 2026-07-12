@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { Button, Badge, Card, CardHeader, Stat } from '@/components/ui-v2';
-import { useDashboardData, type RecentCustomer } from '@/components/ui-v2/useDashboardData';
+import { useDashboardData, type RecentCustomer, type RawBundle } from '@/components/ui-v2/useDashboardData';
 
 /* ─────────────────────────────────────────────────────────────
    Dashboard v2 « Comptoir » — shell à onglets, câblé aux données
@@ -65,7 +65,8 @@ export default function DesignV2Dashboard() {
         <div className="v2-content">
           {tab === 'overview' && <OverviewContent data={state.data} />}
           {tab === 'clients' && <ClientsContent customers={state.data.customers} />}
-          {tab !== 'overview' && tab !== 'clients' && <WipContent tab={tab} />}
+          {tab === 'analytics' && <AnalyticsContent raw={state.data.raw} />}
+          {tab !== 'overview' && tab !== 'clients' && tab !== 'analytics' && <WipContent tab={tab} />}
         </div>
       )}
     </Shell>
@@ -320,6 +321,162 @@ function CustomerTable({ customers }: { customers: RecentCustomer[] }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/* ── Onglet : Analytique ── */
+type Period = '7d' | '30d' | '90d';
+const MS_DAY = 86_400_000;
+
+function AnalyticsContent({ raw }: { raw: RawBundle }) {
+  const [period, setPeriod] = useState<Period>('30d');
+  const [NOW] = useState(() => Date.now());
+  const nf = new Intl.NumberFormat('fr-FR');
+  const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+  const periodMs = days * MS_DAY;
+
+  const a = useMemo(() => {
+    const { customers, transactions, programType, vipThreshold } = raw;
+    const inPeriod = (iso: string) => NOW - new Date(iso).getTime() < periodMs;
+
+    const visits = transactions.filter((t) => t.type === 'visit' && inPeriod(t.created_at));
+    const active = customers.filter((c) => c.last_visit_at && inPeriod(c.last_visit_at)).length;
+    const news = customers.filter((c) => inPeriod(c.created_at)).length;
+
+    const visitsByCust = new Map<string, number>();
+    visits.forEach((t) => visitsByCust.set(t.customer_id, (visitsByCust.get(t.customer_id) ?? 0) + 1));
+    const withVisits = visitsByCust.size;
+    const returning = [...visitsByCust.values()].filter((v) => v > 1).length;
+    const returnRate = withVisits > 0 ? Math.round((returning / withVisits) * 100) : 0;
+
+    // Répartition (statut, tous clients)
+    const status = (c: RawBundle['customers'][number]): 'new' | 'inactive' | 'vip' | 'active' => {
+      if (NOW - new Date(c.created_at).getTime() < 30 * MS_DAY) return 'new';
+      if (!c.last_visit_at || NOW - new Date(c.last_visit_at).getTime() > 30 * MS_DAY) return 'inactive';
+      const val = programType === 'stamps' ? c.stamps_count : c.total_points;
+      if (vipThreshold > 0 && val >= vipThreshold) return 'vip';
+      return 'active';
+    };
+    const dist = { active: 0, new: 0, vip: 0, inactive: 0 };
+    customers.forEach((c) => { dist[status(c)]++; });
+
+    // Activité quotidienne (visites/jour sur la période)
+    const daily = new Array(days).fill(0) as number[];
+    const start = NOW - periodMs;
+    visits.forEach((t) => {
+      const idx = Math.floor((new Date(t.created_at).getTime() - start) / MS_DAY);
+      if (idx >= 0 && idx < days) daily[idx] += 1;
+    });
+
+    // Croissance mensuelle (6 mois) : nouveaux vs récurrents
+    const months: { label: string; nw: number; rec: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const mStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+      const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).getTime();
+      const label = new Date(mStart).toLocaleDateString('fr-FR', { month: 'short' });
+      const nw = customers.filter((c) => { const t = new Date(c.created_at).getTime(); return t >= mStart && t <= mEnd; }).length;
+      const rec = new Set(transactions.filter((t) => { const tt = new Date(t.created_at).getTime(); return t.type === 'visit' && tt >= mStart && tt <= mEnd; }).map((t) => t.customer_id)).size;
+      months.push({ label, nw, rec });
+    }
+
+    return { active, news, returnRate, visits: visits.length, dist, total: customers.length, daily, months };
+  }, [raw, NOW, periodMs, days]);
+
+  const chart = buildChart(a.daily);
+  const distItems = [
+    { key: 'active', label: 'Actifs', color: 'var(--v2-ok)', value: a.dist.active },
+    { key: 'new', label: 'Nouveaux', color: 'var(--v2-a-600)', value: a.dist.new },
+    { key: 'vip', label: 'VIP', color: 'var(--v2-honey)', value: a.dist.vip },
+    { key: 'inactive', label: 'Inactifs', color: 'var(--v2-faint)', value: a.dist.inactive },
+  ];
+  const distMax = Math.max(...distItems.map((d) => d.value), 1);
+
+  return (
+    <>
+      <div className="v2-tabh">
+        <div><h1>Analytique</h1><div className="cnt">Performance de votre programme</div></div>
+        <div className="v2-seg">
+          {(['7d', '30d', '90d'] as Period[]).map((p) => (
+            <button key={p} className={period === p ? 'is-on' : ''} onClick={() => setPeriod(p)}>{p.replace('d', 'j')}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="v2-kpis">
+        <Stat label="Clients actifs" value={nf.format(a.active)} delta={<span style={{ color: 'var(--v2-faint)', fontWeight: 500 }}>sur {days}j</span>} />
+        <Stat label="Nouveaux clients" value={nf.format(a.news)} delta={<span style={{ color: 'var(--v2-faint)', fontWeight: 500 }}>sur {days}j</span>} />
+        <Stat label="Taux de retour" value={`${a.returnRate}%`} delta={<span style={{ color: 'var(--v2-faint)', fontWeight: 500 }}>reviennent</span>} />
+        <Stat label="Visites" value={nf.format(a.visits)} delta={<span style={{ color: 'var(--v2-faint)', fontWeight: 500 }}>sur {days}j</span>} />
+      </div>
+
+      <div className="v2-lower">
+        <Card>
+          <CardHeader title={`Activité · ${days} jours`} />
+          <div className="v2-chart-wrap">
+            {chart.hasData ? (
+              <svg viewBox="0 0 460 150" width="100%" preserveAspectRatio="none" style={{ display: 'block' }} aria-hidden="true">
+                <defs><linearGradient id="v2an" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--v2-a-600)" stopOpacity="0.20" /><stop offset="100%" stopColor="var(--v2-a-600)" stopOpacity="0" /></linearGradient></defs>
+                <line x1="0" y1="37" x2="460" y2="37" stroke="var(--v2-line)" /><line x1="0" y1="75" x2="460" y2="75" stroke="var(--v2-line)" /><line x1="0" y1="113" x2="460" y2="113" stroke="var(--v2-line)" />
+                <path d={chart.area} fill="url(#v2an)" />
+                <path d={chart.line} fill="none" stroke="var(--v2-a-600)" strokeWidth="2.2" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <div className="v2-empty" style={{ padding: '32px 20px' }}><p style={{ margin: 0 }}>Aucune visite sur la période.</p></div>
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Répartition clients" actions={<Badge tone="neutral" bare>{nf.format(a.total)}</Badge>} />
+          <div className="v2-an__dist">
+            {distItems.map((d) => (
+              <div key={d.key} className="v2-an__dist-row">
+                <span className="v2-an__dist-lbl">{d.label}</span>
+                <span className="v2-an__dist-track"><span className="v2-an__dist-fill" style={{ width: `${(d.value / distMax) * 100}%`, background: d.color }} /></span>
+                <span className="v2-an__dist-val">{nf.format(d.value)}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader title="Croissance · 6 mois" />
+        <div className="v2-chart-wrap">
+          <MonthlyBars data={a.months} />
+        </div>
+        <div className="v2-an__legend">
+          <span className="v2-an__leg"><i style={{ background: 'var(--v2-a-600)' }} /> Nouveaux</span>
+          <span className="v2-an__leg"><i style={{ background: 'var(--v2-a-200)' }} /> Clients récurrents</span>
+        </div>
+      </Card>
+    </>
+  );
+}
+
+function MonthlyBars({ data }: { data: { label: string; nw: number; rec: number }[] }) {
+  const W = 460, H = 150, base = 128;
+  const max = Math.max(...data.flatMap((d) => [d.nw, d.rec]), 1);
+  const groupW = W / data.length;
+  const barW = Math.min(22, groupW * 0.26);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }} aria-hidden="true">
+      <line x1="0" y1={base} x2={W} y2={base} stroke="var(--v2-line)" />
+      {data.map((d, i) => {
+        const gx = i * groupW + groupW / 2;
+        const h1 = (d.nw / max) * (base - 12);
+        const h2 = (d.rec / max) * (base - 12);
+        return (
+          <g key={i}>
+            <rect x={gx - barW - 2} y={base - h1} width={barW} height={h1} rx="3" fill="var(--v2-a-600)" />
+            <rect x={gx + 2} y={base - h2} width={barW} height={h2} rx="3" fill="var(--v2-a-200)" />
+            <text x={gx} y={H - 6} textAnchor="middle" fontSize="10" fill="var(--v2-faint)" style={{ textTransform: 'capitalize' }}>{d.label}</text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 

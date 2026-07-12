@@ -570,6 +570,17 @@
 .v2-wip h3 { font-size: 15px; font-weight: 660; margin: 0; }
 .v2-wip p { font-size: 13.5px; color: var(--v2-muted); margin: 0; max-width: 40ch; }
 
+/* ═══ Onglet Analytique ══════════════════════════════════════════ */
+.v2-an__dist { display: flex; flex-direction: column; gap: 13px; padding: 16px 17px; }
+.v2-an__dist-row { display: grid; grid-template-columns: 96px 1fr 44px; align-items: center; gap: 12px; }
+.v2-an__dist-lbl { font-size: 12.5px; color: var(--v2-muted); }
+.v2-an__dist-track { height: 8px; border-radius: 99px; background: var(--v2-sunken); overflow: hidden; }
+.v2-an__dist-fill { height: 100%; border-radius: 99px; transition: width .5s cubic-bezier(.4,0,.2,1); }
+.v2-an__dist-val { font-size: 12.5px; font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
+.v2-an__legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 0 17px 16px; }
+.v2-an__leg { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--v2-muted); }
+.v2-an__leg i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
 @media (prefers-reduced-motion: reduce) {
   [data-ui-v2] * { transition: none !important; }
 }
