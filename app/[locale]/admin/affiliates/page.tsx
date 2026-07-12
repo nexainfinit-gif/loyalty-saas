@@ -50,6 +50,8 @@ export default function AdminAffiliatesPage() {
   const [detail, setDetail] = useState<AffiliateDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [payingAll, setPayingAll] = useState(false);
+  const [testingInvoice, setTestingInvoice] = useState<string | null>(null);
+  const [testMsg, setTestMsg] = useState('');
   const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   async function fetchList() {
@@ -128,6 +130,26 @@ export default function AdminAffiliatesPage() {
       fetchList();
     } catch {}
     setPayingAll(false);
+  }
+
+  async function testInvoice(restaurantId: string) {
+    setTestingInvoice(restaurantId);
+    setTestMsg('');
+    try {
+      const res = await fetch('/api/admin/affiliates/test-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurantId, amount: 2900 }),
+      });
+      const j = await res.json();
+      if (res.ok) {
+        setTestMsg(`Facture test payée (${(j.amount_paid / 100).toFixed(2)}€). Commission en route via webhook.`);
+        setTimeout(() => { if (detail) openDetail(detail.affiliate.id); fetchList(); }, 3000);
+      } else {
+        setTestMsg(j.error || 'Erreur');
+      }
+    } catch { setTestMsg('Erreur réseau.'); }
+    setTestingInvoice(null);
   }
 
   if (authed === false) {
@@ -287,14 +309,26 @@ export default function AdminAffiliatesPage() {
                         <p className="text-sm font-medium text-gray-900">{r.name}</p>
                         <p className="text-xs text-gray-500">{new Date(r.created_at).toLocaleDateString('fr-FR')}</p>
                       </div>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-lg ${r.subscription_status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {r.plan} — {r.subscription_status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => testInvoice(r.id)} disabled={testingInvoice === r.id}
+                          className="text-xs font-medium bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg hover:bg-blue-100 transition disabled:opacity-50">
+                          {testingInvoice === r.id ? 'Envoi...' : 'Test facture'}
+                        </button>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-lg ${r.subscription_status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {r.plan} — {r.subscription_status}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+
+            {testMsg && (
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-800">
+                {testMsg}
+              </div>
+            )}
 
             {/* Commissions */}
             <div>
