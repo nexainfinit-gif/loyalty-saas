@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
+import AdminLogin from '@/components/AdminLogin';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -152,6 +153,7 @@ export default function AdminRestaurantDetailPage() {
   const [totals, setTotals]         = useState<Totals | null>(null);
   const [trend, setTrend]           = useState<TrendRow[]>([]);
   const [loading, setLoading]       = useState(true);
+  const [authed, setAuthed]         = useState<boolean | null>(null);
   const [error, setError]           = useState<string | null>(null);
   const [kpiMetrics, setKpiMetrics] = useState<KpiMetrics | null>(null);
   const [plans, setPlans]                   = useState<PlanOption[]>([]);
@@ -169,7 +171,8 @@ export default function AdminRestaurantDetailPage() {
       fetch('/api/admin/plans'),
     ])
       .then(async ([restRes, plansRes]) => {
-        if (restRes.status === 401 || restRes.status === 403) { router.replace('/dashboard'); return; }
+        if (restRes.status === 401 || restRes.status === 403) { setAuthed(false); return; }
+        setAuthed(true);
         if (restRes.status === 404) { setError(t('admin.detailNotFound')); return; }
         if (!restRes.ok) throw new Error(t('api.serverError'));
         const restJson    = await restRes.json();
@@ -215,6 +218,10 @@ export default function AdminRestaurantDetailPage() {
     'Clients uniques': d.unique_customers_scanned,
     Inscriptions:  d.registrations_count,
   }));
+
+  if (authed === false) {
+    return <AdminLogin onAuthenticated={() => { setAuthed(true); window.location.reload(); }} />;
+  }
 
   if (loading) {
     return (

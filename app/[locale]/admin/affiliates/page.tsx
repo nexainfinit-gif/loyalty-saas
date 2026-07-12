@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
+import AdminLogin from '@/components/AdminLogin';
 
 interface Affiliate {
   id: string;
@@ -41,6 +42,7 @@ export default function AdminAffiliatesPage() {
   const router = useLocaleRouter();
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authed, setAuthed] = useState<boolean | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', code: '', commission_rate: '20', notes: '' });
   const [saving, setSaving] = useState(false);
@@ -54,7 +56,8 @@ export default function AdminAffiliatesPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/affiliates');
-      if (res.status === 401 || res.status === 403) { router.replace('/dashboard'); return; }
+      if (res.status === 401 || res.status === 403) { setAuthed(false); return; }
+      setAuthed(true);
       if (res.ok) setAffiliates(await res.json());
     } catch {}
     setLoading(false);
@@ -125,6 +128,10 @@ export default function AdminAffiliatesPage() {
       fetchList();
     } catch {}
     setPayingAll(false);
+  }
+
+  if (authed === false) {
+    return <AdminLogin onAuthenticated={() => { setAuthed(true); fetchList(); }} />;
   }
 
   return (

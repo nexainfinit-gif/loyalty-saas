@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
+import AdminLogin from '@/components/AdminLogin';
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
 
@@ -128,6 +129,7 @@ function SortTh({
 export default function AdminPage() {
   const router = useLocaleRouter();
   const { t, locale } = useTranslation();
+  const [authed, setAuthed] = useState<boolean | null>(null);
 
   const [restaurants, setRestaurants] = useState<RestaurantRow[]>([]);
   const [date, setDate]               = useState<string>('');
@@ -177,9 +179,10 @@ export default function AdminPage() {
       const params = new URLSearchParams({ filter, sort, order });
       const res = await fetch(`/api/admin/restaurants?${params}`);
       if (res.status === 401 || res.status === 403) {
-        router.replace('/dashboard');
+        setAuthed(false);
         return;
       }
+      setAuthed(true);
       if (!res.ok) throw new Error(t('api.serverError'));
       const json = await res.json();
       setRestaurants(json.restaurants ?? []);
@@ -294,9 +297,10 @@ export default function AdminPage() {
   const churnHighCount = restaurants.filter((r) => r.churn_risk_score >= 60).length;
   const freeCount = restaurants.filter((r) => r.plan === 'starter').length;
 
-  // Anti-flash : ne rien montrer du panel tant que la 1re réponse API n'a pas
-  // confirmé la session (401/403 → redirection). Même sans données, un shell
-  // admin qui clignote avant le login est trompeur.
+  if (authed === false) {
+    return <AdminLogin onAuthenticated={() => { setAuthed(true); fetchData(); }} />;
+  }
+
   if (loading && restaurants.length === 0 && !error) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">

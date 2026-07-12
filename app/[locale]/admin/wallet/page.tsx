@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
 import LocaleLink from '@/components/LocaleLink';
+import AdminLogin from '@/components/AdminLogin';
 import { toast } from 'sonner';
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
@@ -117,6 +118,7 @@ export default function AdminWalletPage() {
   const [templates, setTemplates]   = useState<WalletTemplate[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading]       = useState(true);
+  const [authed, setAuthed]         = useState<boolean | null>(null);
   const [error, setError]           = useState<string | null>(null);
   const [filterRestaurant, setFilterRestaurant] = useState('');
 
@@ -148,7 +150,8 @@ export default function AdminWalletPage() {
         ? `/api/admin/wallet/templates?restaurantId=${filterRestaurant}`
         : '/api/admin/wallet/templates';
       const res = await fetch(url);
-      if (res.status === 401 || res.status === 403) { router.replace('/dashboard'); return; }
+      if (res.status === 401 || res.status === 403) { setAuthed(false); return; }
+      setAuthed(true);
       if (!res.ok) throw new Error(t('admin.walletServerError'));
       const json = await res.json();
       setTemplates(json.templates ?? []);
@@ -359,6 +362,10 @@ export default function AdminWalletPage() {
     draft:     t('admin.walletStatusDraft'),
     archived:  t('admin.walletStatusArchived'),
   };
+
+  if (authed === false) {
+    return <AdminLogin onAuthenticated={() => { setAuthed(true); fetchTemplates(); fetchRestaurants(); }} />;
+  }
 
   return (
     <div className="min-h-screen bg-surface">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { useLocaleRouter } from '@/lib/i18n';
+import AdminLogin from '@/components/AdminLogin';
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
 
@@ -151,20 +152,25 @@ export default function AdminPlansPage() {
   const { t } = useTranslation();
   const [plans, setPlans]     = useState<PlanRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authed, setAuthed]   = useState<boolean | null>(null);
   const [error, setError]     = useState('');
   const [showCreate, setShowCreate] = useState(false);
 
-  useEffect(() => {
+  function fetchPlans() {
+    setLoading(true);
     fetch('/api/admin/plans')
       .then(async (res) => {
-        if (res.status === 401 || res.status === 403) { router.replace('/dashboard'); return; }
+        if (res.status === 401 || res.status === 403) { setAuthed(false); return; }
+        setAuthed(true);
         if (!res.ok) throw new Error(t('common.error'));
         const json = await res.json();
         setPlans(json.plans ?? []);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [router, t]);
+  }
+
+  useEffect(() => { fetchPlans(); }, [router, t]);
 
   async function toggleActive(plan: PlanRow) {
     const res = await fetch(`/api/admin/plans/${plan.id}`, {
@@ -186,6 +192,10 @@ export default function AdminPlansPage() {
 
   function countEnabled(features: Record<string, boolean>) {
     return Object.values(features).filter(Boolean).length;
+  }
+
+  if (authed === false) {
+    return <AdminLogin onAuthenticated={() => { setAuthed(true); fetchPlans(); }} />;
   }
 
   if (loading) {

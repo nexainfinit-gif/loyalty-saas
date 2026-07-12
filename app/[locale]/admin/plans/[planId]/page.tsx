@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
+import AdminLogin from '@/components/AdminLogin';
 import { PLAN_FEATURE_KEYS } from '@/lib/plan-features';
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
@@ -73,6 +74,7 @@ export default function AdminPlanEditPage() {
   const [plan, setPlan]                   = useState<Plan | null>(null);
   const [restaurantCount, setRestaurantCount] = useState(0);
   const [loading, setLoading]             = useState(true);
+  const [authed, setAuthed]               = useState<boolean | null>(null);
   const [error, setError]                 = useState('');
   const [savingMeta, setSavingMeta]       = useState(false);
   const [savingFeatures, setSavingFeatures] = useState(false);
@@ -93,7 +95,8 @@ export default function AdminPlanEditPage() {
     setLoading(true);
     fetch(`/api/admin/plans/${planId}`)
       .then(async (res) => {
-        if (res.status === 401 || res.status === 403) { router.replace('/dashboard'); return; }
+        if (res.status === 401 || res.status === 403) { setAuthed(false); return; }
+        setAuthed(true);
         if (res.status === 404) { setError(t('admin.planDetailNotFound')); return; }
         if (!res.ok) throw new Error(t('admin.walletServerError'));
         const json = await res.json();
@@ -182,6 +185,10 @@ export default function AdminPlanEditPage() {
   // Known keys with label, plus unknown keys already in features
   const knownKeys = PLAN_FEATURE_KEYS.map((f) => f.key);
   const unknownKeys = Object.keys(features).filter((k) => !knownKeys.includes(k as typeof knownKeys[number]));
+
+  if (authed === false) {
+    return <AdminLogin onAuthenticated={() => { setAuthed(true); window.location.reload(); }} />;
+  }
 
   if (loading) {
     return (

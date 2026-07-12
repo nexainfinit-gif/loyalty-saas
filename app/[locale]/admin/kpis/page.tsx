@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
+import AdminLogin from '@/components/AdminLogin';
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
 
@@ -187,6 +188,7 @@ export default function AdminKpisPage() {
   const [kpis, setKpis]         = useState<KpiRow[]>([]);
   const [plans, setPlans]       = useState<PlanRef[]>([]);
   const [loading, setLoading]   = useState(true);
+  const [authed, setAuthed]     = useState<boolean | null>(null);
   const [error, setError]       = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving]     = useState(false);
@@ -195,7 +197,8 @@ export default function AdminKpisPage() {
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/kpis');
-      if (res.status === 401 || res.status === 403) { router.replace('/dashboard'); return; }
+      if (res.status === 401 || res.status === 403) { setAuthed(false); return; }
+      setAuthed(true);
       if (!res.ok) throw new Error(t('admin.walletServerError'));
       const json = await res.json();
       setKpis(json.kpis ?? []);
@@ -256,6 +259,10 @@ export default function AdminKpisPage() {
     revenue:    t('admin.kpisCatRevenue'),
     engagement: t('admin.kpisCatEngagement'),
   };
+
+  if (authed === false) {
+    return <AdminLogin onAuthenticated={() => { setAuthed(true); fetchData(); }} />;
+  }
 
   if (loading) {
     return (
