@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { supabase as ssrClient } from '@/lib/supabase-browser';
 
 interface Props {
   onAuthenticated: () => void;
@@ -14,6 +15,7 @@ export default function AdminLogin({ onAuthenticated }: Props) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [cooldown, setCooldown] = useState(0);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -22,14 +24,26 @@ export default function AdminLogin({ onAuthenticated }: Props) {
   }, [cooldown]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) supabase.auth.signOut();
-    });
+    async function clearStaleSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.auth.signOut();
+        await ssrClient.auth.signOut();
+      }
+      setReady(true);
+    }
+    clearStaleSession();
   }, []);
 
   const sendOtp = useCallback(async () => {
     setStatus('loading');
-    await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    setErrorMsg('');
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    if (error) {
+      setErrorMsg('Erreur lors de l\'envoi. Vérifiez votre email.');
+      setStatus('error');
+      return;
+    }
     setStep('otp');
     setStatus('idle');
     setCooldown(60);
@@ -38,13 +52,27 @@ export default function AdminLogin({ onAuthenticated }: Props) {
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
     setStatus('loading');
-    const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'magiclink' });
-    if (error) {
+    setErrorMsg('');
+    const { data, error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'email' });
+    if (error || !data.session) {
       setErrorMsg('Code invalide ou expiré.');
       setStatus('error');
       return;
     }
+    await ssrClient.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+    await new Promise(r => setTimeout(r, 300));
     onAuthenticated();
+  }
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (
