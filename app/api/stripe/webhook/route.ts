@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { sendAffiliateCommissionEmail } from '@/lib/email';
 import Stripe from 'stripe';
 
 export const runtime = 'nodejs';
@@ -245,12 +246,12 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   const subscriptionId = typeof sub === 'string' ? sub : sub?.id;
   const customerId = typeof invoice.customer === 'string' ? invoice.customer : (invoice.customer as { id: string } | null)?.id;
 
-  let restaurant: { id: string; affiliate_id: string | null } | null = null;
+  let restaurant: { id: string; name: string; affiliate_id: string | null } | null = null;
 
   if (subscriptionId) {
     const { data } = await supabaseAdmin
       .from('restaurants')
-      .select('id, affiliate_id')
+      .select('id, name, affiliate_id')
       .eq('stripe_subscription_id', subscriptionId)
       .maybeSingle();
     restaurant = data;
@@ -259,7 +260,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   if (!restaurant && customerId) {
     const { data } = await supabaseAdmin
       .from('restaurants')
-      .select('id, affiliate_id')
+      .select('id, name, affiliate_id')
       .eq('stripe_customer_id', customerId)
       .maybeSingle();
     restaurant = data;
@@ -269,7 +270,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 
   const { data: affiliate } = await supabaseAdmin
     .from('affiliates')
-    .select('id, commission_rate, status')
+    .select('id, name, email, commission_rate, status')
     .eq('id', restaurant.affiliate_id)
     .single();
   if (!affiliate || affiliate.status !== 'active') return;
@@ -288,6 +289,19 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
       commission_rate: affiliate.commission_rate,
       status: 'pending',
     }, { onConflict: 'stripe_invoice_id,affiliate_id' });
+
+  const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.rebites.be';
+  try {
+    await sendAffiliateCommissionEmail({
+      to: affiliate.email,
+      affiliateName: affiliate.name,
+      restaurantName: restaurant.name,
+      invoiceAmount: amountPaid,
+      commissionAmount,
+      commissionRate: Number(affiliate.commission_rate),
+      portalUrl: `${appUrl}/fr/affiliate`,
+    });
+  } catch { /* email is best-effort — don't break webhook */ }
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */

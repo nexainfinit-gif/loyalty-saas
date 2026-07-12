@@ -1147,3 +1147,54 @@ export async function sendEventTicketsEmail({
     `,
   });
 }
+
+/* ── Affiliate commission notification ─────────────────────────────────── */
+
+interface AffiliateCommissionEmailProps {
+  to: string;
+  affiliateName: string;
+  restaurantName: string;
+  invoiceAmount: number;
+  commissionAmount: number;
+  commissionRate: number;
+  portalUrl: string;
+}
+
+export async function sendAffiliateCommissionEmail({
+  to, affiliateName, restaurantName, invoiceAmount, commissionAmount, commissionRate, portalUrl,
+}: AffiliateCommissionEmailProps) {
+  const safeName = esc(affiliateName);
+  const safeRestaurant = esc(restaurantName);
+  const invoiceEur = (invoiceAmount / 100).toFixed(2);
+  const commissionEur = (commissionAmount / 100).toFixed(2);
+
+  await resend.emails.send({
+    from: 'Rebites Affiliés <noreply@rebites.be>',
+    to,
+    subject: `Nouvelle commission : ${commissionEur}€ — ${restaurantName}`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem; background: #ffffff;">
+        <div style="background: #1e293b; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem;">
+          <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em;">Programme Affiliés</p>
+          <p style="color: white; margin: 0.5rem 0 0; font-size: 1.8rem; font-weight: 800;">${commissionEur}€</p>
+          <p style="color: rgba(255,255,255,0.7); margin: 0.3rem 0 0; font-size: 0.9rem;">commission enregistrée</p>
+        </div>
+        <p style="color: #374151; margin: 0 0 1rem;">Bonjour <strong>${safeName}</strong>,</p>
+        <p style="color: #374151; margin: 0 0 1.5rem;">Un paiement de <strong>${invoiceEur}€</strong> a été effectué par <strong>${safeRestaurant}</strong>, un établissement que vous avez parrainé. Votre commission de <strong>${commissionRate}%</strong> a été enregistrée.</p>
+        <div style="background: #f8fafc; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; color: #374151;">
+            <tr><td style="padding: 0.3rem 0;">Établissement</td><td style="padding: 0.3rem 0; text-align: right; font-weight: 600;">${safeRestaurant}</td></tr>
+            <tr><td style="padding: 0.3rem 0;">Montant facturé</td><td style="padding: 0.3rem 0; text-align: right; font-weight: 600;">${invoiceEur}€</td></tr>
+            <tr><td style="padding: 0.3rem 0;">Taux</td><td style="padding: 0.3rem 0; text-align: right; font-weight: 600;">${commissionRate}%</td></tr>
+            <tr style="border-top: 1px solid #e2e8f0;"><td style="padding: 0.5rem 0 0.3rem; font-weight: 700;">Votre commission</td><td style="padding: 0.5rem 0 0.3rem; text-align: right; font-weight: 700; color: #059669;">${commissionEur}€</td></tr>
+          </table>
+        </div>
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+          <a href="${esc(portalUrl)}" style="display: inline-block; background: #1e293b; color: white; text-decoration: none; padding: 0.7rem 1.8rem; border-radius: 10px; font-weight: 600; font-size: 0.9rem;">Voir mon tableau de bord</a>
+        </div>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">Rebites — Programme Affiliés<br /><a href="https://rebites.be" style="color: #9ca3af;">rebites.be</a></p>
+      </div>
+    `,
+  });
+}
