@@ -23,9 +23,9 @@ export default function AdminLogin({ onAuthenticated }: Props) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) onAuthenticated();
+      if (session) supabase.auth.signOut();
     });
-  }, [onAuthenticated]);
+  }, []);
 
   const sendOtp = useCallback(async () => {
     setStatus('loading');
