@@ -57,14 +57,21 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     async function checkExisting() {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref) {
+        const code = ref.trim().toUpperCase();
+        setAffiliateCode(code);
+        sessionStorage.setItem('affiliate_ref', code);
+      } else {
+        const saved = sessionStorage.getItem('affiliate_ref');
+        if (saved) setAffiliateCode(saved);
+      }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/dashboard/login');
         return;
       }
-      const params = new URLSearchParams(window.location.search);
-      const ref = params.get('ref');
-      if (ref) setAffiliateCode(ref.trim().toUpperCase());
       const wantsAdditional = params.get('new') === '1';
       if (wantsAdditional) {
         setIsAdditional(true);
@@ -150,6 +157,7 @@ export default function OnboardingPage() {
         return;
       }
 
+      sessionStorage.removeItem('affiliate_ref');
       if (isAdditional && data.restaurant?.id) {
         // Bascule sur le nouvel établissement (même cookie que le sélecteur).
         document.cookie = `selected_restaurant=${data.restaurant.id}; path=/; max-age=31536000; samesite=lax`;
