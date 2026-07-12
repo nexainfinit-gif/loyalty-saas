@@ -459,6 +459,58 @@
 .v2-bk__spin { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--v2-line-2); border-top-color: var(--v2-a-600); animation: v2-shimmer-none 0.7s linear infinite; }
 @keyframes v2-shimmer-none { to { transform: rotate(360deg); } }
 
+/* ═══ Page publique : portail client ═════════════════════════════ */
+.v2-spin { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--v2-line-2); border-top-color: var(--v2-a-600); animation: v2-spin-kf 0.7s linear infinite; }
+@keyframes v2-spin-kf { to { transform: rotate(360deg); } }
+
+.v2-cp { min-height: 100vh; background: var(--v2-canvas); }
+.v2-cp__login { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.v2-cp__login-in { width: 100%; max-width: 360px; }
+.v2-cp__icon { width: 54px; height: 54px; border-radius: 15px; background: var(--v2-a-600); color: var(--v2-btn-fg); display: grid; place-items: center; margin: 0 auto 16px; }
+.v2-cp__login h1 { font-size: 20px; font-weight: 690; letter-spacing: -0.02em; text-align: center; margin: 0 0 4px; }
+.v2-cp__login .sub { font-size: 13.5px; color: var(--v2-muted); text-align: center; margin: 0 0 24px; }
+
+.v2-cp__header { background: var(--v2-surface); border-bottom: 1px solid var(--v2-line); padding: 20px; }
+.v2-cp__header-in { max-width: 512px; margin: 0 auto; display: flex; align-items: center; gap: 13px; }
+.v2-cp__logo { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; flex-shrink: 0; }
+.v2-cp__logo-fb { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--v2-a-600); color: var(--v2-btn-fg); font-weight: 700; font-size: 17px; flex-shrink: 0; }
+.v2-cp__bname { font-size: 12px; color: var(--v2-faint); font-weight: 550; }
+.v2-cp__greeting { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin-top: 1px; }
+
+.v2-cp__body { max-width: 512px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+
+.v2-cp__loyalty { background: var(--v2-surface); border: 1px solid var(--v2-line); border-radius: var(--v2-r-lg); box-shadow: var(--v2-e1); overflow: hidden; }
+.v2-cp__loyalty-top { background: var(--v2-a-50); padding: 22px 20px; text-align: center; }
+.v2-cp__loyalty-lbl { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.09em; color: var(--v2-a-700); margin-bottom: 8px; }
+.v2-cp__loyalty-num { font-size: 46px; font-weight: 770; letter-spacing: -0.03em; color: var(--v2-a-600); line-height: 1; font-variant-numeric: tabular-nums; }
+.v2-cp__loyalty-sub { font-size: 12.5px; color: var(--v2-muted); margin-top: 8px; }
+.v2-cp__loyalty-foot { padding: 16px 20px; }
+.v2-cp__loyalty-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.v2-cp__loyalty-meta .lab { font-size: 11.5px; font-weight: 600; color: var(--v2-muted); }
+.v2-cp__visits { font-size: 11.5px; color: var(--v2-faint); font-variant-numeric: tabular-nums; }
+.v2-cp__bar { height: 8px; border-radius: 99px; background: var(--v2-sunken); overflow: hidden; }
+.v2-cp__bar > span { display: block; height: 100%; border-radius: 99px; background: var(--v2-a-600); transition: width .5s cubic-bezier(.4,0,.2,1); }
+.v2-cp__reward { font-size: 12px; color: var(--v2-muted); text-align: center; margin-top: 12px; line-height: 1.5; }
+
+.v2-cp__sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+.v2-cp__sec-head h2 { font-size: 14px; font-weight: 660; margin: 0; }
+.v2-cp__book-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--v2-a-600); text-decoration: none; }
+.v2-cp__book-link:hover { text-decoration: underline; }
+.v2-cp__empty { background: var(--v2-surface); border: 1px solid var(--v2-line); border-radius: var(--v2-r-md); padding: 26px; text-align: center; color: var(--v2-faint); font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 9px; }
+
+.v2-cp__apt { background: var(--v2-surface); border: 1px solid var(--v2-line); border-radius: var(--v2-r-md); box-shadow: var(--v2-e1); padding: 15px 16px; }
+.v2-cp__apt--past { opacity: 0.66; }
+.v2-cp__apt-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.v2-cp__apt-name { font-size: 14px; font-weight: 620; }
+.v2-cp__apt-staff { font-size: 12px; color: var(--v2-muted); margin-top: 1px; }
+.v2-cp__apt-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 12px; color: var(--v2-muted); }
+.v2-cp__apt-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.v2-cp__apt-actions { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--v2-line); display: flex; gap: 18px; }
+.v2-cp__apt-cancel { font-size: 12.5px; font-weight: 560; color: var(--v2-bad); background: none; border: 0; cursor: pointer; text-decoration: none; padding: 0; }
+.v2-cp__apt-cancel:hover { text-decoration: underline; }
+.v2-cp__apt-resched { font-size: 12.5px; font-weight: 560; color: var(--v2-a-600); text-decoration: none; }
+.v2-cp__apt-resched:hover { text-decoration: underline; }
+
 @media (prefers-reduced-motion: reduce) {
   [data-ui-v2] * { transition: none !important; }
 }
