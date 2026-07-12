@@ -581,6 +581,30 @@
 .v2-an__leg { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--v2-muted); }
 .v2-an__leg i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
 
+/* ═══ Interrupteur (toggle) ═══════════════════════════════════════ */
+.v2-switch { width: 40px; height: 23px; border-radius: 99px; background: var(--v2-line-2); position: relative; cursor: pointer; border: 0; padding: 0; flex-shrink: 0; transition: background .18s; }
+.v2-switch.is-on { background: var(--v2-a-600); }
+.v2-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: var(--v2-e1); transition: transform .18s; }
+.v2-switch.is-on::after { transform: translateX(17px); }
+.v2-switch:focus-visible { outline: 2px solid var(--v2-a-600); outline-offset: 2px; }
+
+/* ═══ Onglet Fidélité — formulaire ════════════════════════════════ */
+.v2-lf { display: flex; flex-direction: column; gap: 18px; }
+.v2-lf__body { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+.v2-lf__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) { .v2-lf__grid { grid-template-columns: 1fr; } }
+.v2-lf__mode { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 15px; border-radius: var(--v2-r-md); background: var(--v2-a-50); }
+.v2-lf__mode-t { font-size: 13px; font-weight: 600; color: var(--v2-a-700); }
+.v2-lf__mode-d { font-size: 12px; color: var(--v2-muted); margin-top: 2px; }
+.v2-lf__row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; }
+.v2-lf__row + .v2-lf__row { border-top: 1px solid var(--v2-line); }
+.v2-lf__row-t { font-size: 13.5px; font-weight: 570; }
+.v2-lf__row-d { font-size: 12px; color: var(--v2-muted); margin-top: 2px; }
+.v2-lf__textarea { width: 100%; font-family: inherit; font-size: 14px; padding: 10px 12px; color: var(--v2-ink); background: var(--v2-surface); border: 1px solid var(--v2-line-2); border-radius: var(--v2-r-sm); resize: vertical; min-height: 74px; line-height: 1.5; }
+.v2-lf__textarea:focus { outline: none; border-color: var(--v2-a-600); box-shadow: 0 0 0 3.5px var(--v2-ring); }
+.v2-lf__savebar { position: sticky; bottom: 16px; display: flex; align-items: center; justify-content: flex-end; gap: 14px; background: color-mix(in srgb, var(--v2-canvas) 82%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 12px 4px; border-radius: var(--v2-r-md); }
+.v2-lf__saved { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 560; color: var(--v2-ok); }
+
 @media (prefers-reduced-motion: reduce) {
   [data-ui-v2] * { transition: none !important; }
 }

@@ -66,6 +66,7 @@ export interface DashboardInsights {
 }
 
 export interface DashboardData {
+  restaurantId: string;
   restaurantName: string;
   greetingName: string;
   kpis: DashboardKpis;
@@ -268,7 +269,7 @@ export function useDashboardData(): DashboardState {
         if (!cancelled) {
           setState({
             status: 'ready',
-            data: { restaurantName: resto.name ?? resto.slug, greetingName, kpis, chartDaily: daily, chartLabels, recent, customers: mappedCustomers, insights, raw },
+            data: { restaurantId: resto.id, restaurantName: resto.name ?? resto.slug, greetingName, kpis, chartDaily: daily, chartLabels, recent, customers: mappedCustomers, insights, raw },
           });
         }
       } catch (e) {

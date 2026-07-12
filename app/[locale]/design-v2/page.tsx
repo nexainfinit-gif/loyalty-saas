@@ -2,8 +2,9 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
-import { Button, Badge, Card, CardHeader, Stat } from '@/components/ui-v2';
+import { Button, Badge, Card, CardHeader, Stat, Input } from '@/components/ui-v2';
 import { useDashboardData, type RecentCustomer, type RawBundle } from '@/components/ui-v2/useDashboardData';
+import { useLoyaltySettings } from '@/components/ui-v2/useLoyaltySettings';
 
 /* ─────────────────────────────────────────────────────────────
    Dashboard v2 « Comptoir » — shell à onglets, câblé aux données
@@ -66,7 +67,8 @@ export default function DesignV2Dashboard() {
           {tab === 'overview' && <OverviewContent data={state.data} />}
           {tab === 'clients' && <ClientsContent customers={state.data.customers} />}
           {tab === 'analytics' && <AnalyticsContent raw={state.data.raw} />}
-          {tab !== 'overview' && tab !== 'clients' && tab !== 'analytics' && <WipContent tab={tab} />}
+          {tab === 'loyalty' && <LoyaltyContent restaurantId={state.data.restaurantId} />}
+          {tab !== 'overview' && tab !== 'clients' && tab !== 'analytics' && tab !== 'loyalty' && <WipContent tab={tab} />}
         </div>
       )}
     </Shell>
@@ -321,6 +323,123 @@ function CustomerTable({ customers }: { customers: RecentCustomer[] }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/* ── Onglet : Fidélité ── */
+function LoyaltyContent({ restaurantId }: { restaurantId: string }) {
+  const { status, settings, setField, save, saveState } = useLoyaltySettings(restaurantId);
+  const isStamps = settings.program_type === 'stamps';
+
+  if (status === 'loading') {
+    return (
+      <>
+        <div className="v2-tabh"><div><h1>Fidélité</h1></div></div>
+        <div className="v2-lf">{[0, 1, 2].map((i) => <div key={i} className="v2-skel" style={{ height: 180, borderRadius: 14 }} />)}</div>
+      </>
+    );
+  }
+  if (status === 'error') {
+    return (<><div className="v2-tabh"><div><h1>Fidélité</h1></div></div><Card><div className="v2-empty" style={{ padding: 32 }}><p style={{ margin: 0 }}>Impossible de charger les réglages.</p></div></Card></>);
+  }
+
+  const num = (v: number) => (Number.isFinite(v) ? String(v) : '0');
+  const setNum = (k: Parameters<typeof setField>[0]) => (e: React.ChangeEvent<HTMLInputElement>) => setField(k, Math.max(0, parseInt(e.target.value || '0', 10)) as never);
+
+  return (
+    <>
+      <div className="v2-tabh">
+        <div><h1>Fidélité</h1><div className="cnt">Réglez votre programme de récompenses</div></div>
+      </div>
+
+      <div className="v2-lf">
+        {/* Programme */}
+        <Card>
+          <CardHeader title="Programme" />
+          <div className="v2-lf__body">
+            <div className="v2-lf__mode">
+              <div>
+                <div className="v2-lf__mode-t">Mode : {isStamps ? 'Tampons' : 'Points'}</div>
+                <div className="v2-lf__mode-d">Le changement de mode (points ↔ tampons) reste sur votre dashboard actuel — c&apos;est une migration délicate.</div>
+              </div>
+              <Badge tone="accent">{isStamps ? 'Tampons' : 'Points'}</Badge>
+            </div>
+
+            <div className="v2-lf__grid">
+              {isStamps ? (
+                <Input label="Tampons pour une récompense" type="number" min={1} value={num(settings.stamps_total)} onChange={setNum('stamps_total')} />
+              ) : (
+                <>
+                  <Input label="Points par scan" type="number" min={0} value={num(settings.points_per_scan)} onChange={setNum('points_per_scan')} />
+                  <Input label="Points pour une récompense" type="number" min={1} value={num(settings.reward_threshold)} onChange={setNum('reward_threshold')} />
+                </>
+              )}
+            </div>
+
+            <div className="v2-field">
+              <label className="v2-label">Message de récompense</label>
+              <textarea className="v2-lf__textarea" value={settings.reward_message} maxLength={200}
+                onChange={(e) => setField('reward_message', e.target.value)}
+                placeholder="Ex : Félicitations ! Une boisson offerte vous attend 🎉" />
+            </div>
+
+            <div className="v2-lf__grid">
+              <Input label="Bonus de bienvenue (points)" type="number" min={0} value={num(settings.welcome_bonus_points)} onChange={setNum('welcome_bonus_points')} />
+              <Input label="Bonus d'anniversaire (points)" type="number" min={0} value={num(settings.birthday_bonus_points)} onChange={setNum('birthday_bonus_points')} />
+            </div>
+          </div>
+        </Card>
+
+        {/* Notifications */}
+        <Card>
+          <CardHeader title="Notifications automatiques" />
+          <ToggleRow t="Récompense atteinte" d="Email quand un client débloque une récompense" on={settings.notify_reward_reached} onToggle={() => setField('notify_reward_reached', !settings.notify_reward_reached)} />
+          <ToggleRow t="Proche d'une récompense" d="Email d'encouragement à l'approche du palier" on={settings.notify_near_reward} onToggle={() => setField('notify_near_reward', !settings.notify_near_reward)} />
+          <ToggleRow t="Client inactif" d="Email de relance après une période sans visite" on={settings.notify_inactive} onToggle={() => setField('notify_inactive', !settings.notify_inactive)} />
+        </Card>
+
+        {/* Avancé / anti-fraude */}
+        <Card>
+          <CardHeader title="Anti-fraude & seuils" />
+          <div className="v2-lf__body">
+            <div className="v2-lf__grid">
+              <Input label="Scans max par jour / client" type="number" min={1} value={num(settings.max_scans_per_day)} onChange={setNum('max_scans_per_day')} />
+              <Input label="Délai min. entre scans (min)" type="number" min={0} value={num(settings.min_scan_delay_minutes)} onChange={setNum('min_scan_delay_minutes')} />
+              {isStamps ? (
+                <Input label="Seuil VIP (tampons)" type="number" min={0} value={num(settings.vip_threshold_stamps)} onChange={setNum('vip_threshold_stamps')} />
+              ) : (
+                <Input label="Seuil VIP (points)" type="number" min={0} value={num(settings.vip_threshold_points)} onChange={setNum('vip_threshold_points')} />
+              )}
+            </div>
+          </div>
+        </Card>
+
+        <div className="v2-lf__savebar">
+          {saveState === 'saved' && (
+            <span className="v2-lf__saved">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              Enregistré
+            </span>
+          )}
+          {saveState === 'error' && <span style={{ fontSize: 13, color: 'var(--v2-bad)' }}>Erreur — réessayez</span>}
+          <Button variant="primary" onClick={save} disabled={saveState === 'saving'}>
+            {saveState === 'saving' ? 'Enregistrement…' : 'Enregistrer les réglages'}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ToggleRow({ t, d, on, onToggle }: { t: string; d: string; on: boolean; onToggle: () => void }) {
+  return (
+    <div className="v2-lf__row">
+      <div>
+        <div className="v2-lf__row-t">{t}</div>
+        <div className="v2-lf__row-d">{d}</div>
+      </div>
+      <button type="button" role="switch" aria-checked={on} className={`v2-switch${on ? ' is-on' : ''}`} onClick={onToggle} />
+    </div>
   );
 }
 
