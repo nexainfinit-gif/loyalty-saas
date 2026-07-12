@@ -104,7 +104,7 @@ export async function PATCH(request: Request) {
   if (body.email !== undefined) update.email = body.email.trim().toLowerCase();
   if (body.phone !== undefined) update.phone = body.phone?.trim() || null;
   if (body.commission_rate !== undefined) update.commission_rate = Math.min(100, Math.max(0, parseFloat(body.commission_rate) || 20));
-  if (body.status !== undefined && ['active', 'inactive'].includes(body.status)) update.status = body.status;
+  if (body.status !== undefined && ['active', 'inactive', 'pending'].includes(body.status)) update.status = body.status;
   if (body.notes !== undefined) update.notes = body.notes?.trim() || null;
 
   const { error } = await supabaseAdmin

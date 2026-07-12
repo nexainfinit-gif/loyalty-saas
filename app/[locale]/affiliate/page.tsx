@@ -9,11 +9,20 @@ interface AffiliateData {
   summary: { total_pending: number; total_paid: number; total_referrals: number };
 }
 
+interface ConnectStatus {
+  connected: boolean;
+  chargesEnabled: boolean;
+  detailsSubmitted: boolean;
+  payoutsEnabled: boolean;
+}
+
 export default function AffiliatePortalPage() {
   const [code, setCode] = useState('');
   const [data, setData] = useState<AffiliateData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(null);
+  const [connectLoading, setConnectLoading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -28,8 +37,30 @@ export default function AffiliatePortalPage() {
       const res = await fetch(`/api/affiliate?code=${encodeURIComponent(c)}`);
       if (!res.ok) { setError('Code introuvable.'); setData(null); return; }
       setData(await res.json());
+      loadConnectStatus(c);
     } catch { setError('Erreur réseau.'); }
     finally { setLoading(false); }
+  }
+
+  async function loadConnectStatus(c: string) {
+    try {
+      const res = await fetch(`/api/affiliate/connect?code=${encodeURIComponent(c)}`);
+      if (res.ok) setConnectStatus(await res.json());
+    } catch { /* best-effort */ }
+  }
+
+  async function startOnboarding() {
+    setConnectLoading(true);
+    try {
+      const res = await fetch('/api/affiliate/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const j = await res.json();
+      if (j.url) window.location.href = j.url;
+    } catch { /* ignore */ }
+    setConnectLoading(false);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -106,6 +137,43 @@ export default function AffiliatePortalPage() {
                   <p className="text-2xl font-bold text-emerald-700">{(data.summary.total_paid / 100).toFixed(2)}€</p>
                   <p className="text-xs text-emerald-600 mt-1">Versé</p>
                 </div>
+              </div>
+
+              {/* Stripe Connect */}
+              <div className="p-4 rounded-xl border border-gray-200">
+                {!connectStatus || !connectStatus.connected ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Recevoir vos commissions</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Configurez votre compte bancaire pour recevoir vos paiements automatiquement.</p>
+                    </div>
+                    <button onClick={startOnboarding} disabled={connectLoading}
+                      className="px-4 py-2 rounded-xl bg-[#635bff] text-white text-sm font-medium hover:bg-[#5851db] transition disabled:opacity-50 whitespace-nowrap">
+                      {connectLoading ? 'Redirection...' : 'Configurer'}
+                    </button>
+                  </div>
+                ) : connectStatus.payoutsEnabled ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Compte bancaire configuré</p>
+                      <p className="text-xs text-gray-500">Vos commissions seront versées automatiquement.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-amber-700">Configuration incomplète</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Finalisez la configuration de votre compte pour recevoir les paiements.</p>
+                    </div>
+                    <button onClick={startOnboarding} disabled={connectLoading}
+                      className="px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition disabled:opacity-50 whitespace-nowrap">
+                      {connectLoading ? 'Redirection...' : 'Finaliser'}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Parrainages */}

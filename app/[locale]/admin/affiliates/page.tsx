@@ -13,6 +13,7 @@ interface Affiliate {
   commission_rate: number;
   status: string;
   notes: string | null;
+  stripe_account_id: string | null;
   created_at: string;
   referrals: number;
   total_pending: number;
@@ -255,8 +256,8 @@ export default function AdminAffiliatesPage() {
                       <td className="px-4 py-3 text-xs font-medium text-amber-700">{(a.total_pending / 100).toFixed(2)}€</td>
                       <td className="px-4 py-3 text-xs font-medium text-emerald-700">{(a.total_paid / 100).toFixed(2)}€</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold ${a.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {a.status === 'active' ? 'Actif' : 'Inactif'}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold ${a.status === 'active' ? 'bg-emerald-50 text-emerald-700' : a.status === 'pending' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {a.status === 'active' ? 'Actif' : a.status === 'pending' ? 'En attente' : 'Inactif'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -286,6 +287,18 @@ export default function AdminAffiliatesPage() {
               <div>
                 <h2 className="text-lg font-bold text-gray-900">{detail.affiliate.name}</h2>
                 <p className="text-sm text-gray-500">{detail.affiliate.email} — {detail.affiliate.commission_rate}% récurrent</p>
+                <div className="flex items-center gap-2 mt-1">
+                  {detail.affiliate.stripe_account_id ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      Stripe Connect
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center text-xs font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg">
+                      Pas de compte Stripe
+                    </span>
+                  )}
+                </div>
               </div>
               <button onClick={() => setDetail(null)} className="text-sm text-gray-400 hover:text-gray-600">Fermer</button>
             </div>
@@ -336,8 +349,8 @@ export default function AdminAffiliatesPage() {
                 <h3 className="text-sm font-semibold text-gray-900">Commissions ({detail.commissions.length})</h3>
                 {detail.commissions.some(c => c.status === 'pending') && (
                   <button onClick={markAllPaid} disabled={payingAll}
-                    className="text-xs font-medium bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
-                    {payingAll ? 'Traitement...' : 'Tout marquer payé'}
+                    className={`text-xs font-medium text-white px-3 py-1.5 rounded-lg transition disabled:opacity-50 ${detail.affiliate.stripe_account_id ? 'bg-[#635bff] hover:bg-[#5851db]' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+                    {payingAll ? 'Traitement...' : detail.affiliate.stripe_account_id ? 'Verser via Stripe' : 'Marquer payé (manuel)'}
                   </button>
                 )}
               </div>
