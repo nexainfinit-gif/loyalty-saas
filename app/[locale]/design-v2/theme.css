@@ -209,7 +209,10 @@
 .v2-crumb b { color: var(--v2-ink); font-weight: 620; }
 .v2-cmdk { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--v2-faint); background: var(--v2-surface); border: 1px solid var(--v2-line-2); border-radius: var(--v2-r-sm); padding: 6px 10px; min-width: 180px; cursor: text; }
 .v2-cmdk__k { margin-left: auto; font-family: var(--v2-fm); font-size: 10.5px; background: var(--v2-sunken); padding: 1px 5px; border-radius: 4px; }
-.v2-content { padding: 26px 24px 48px; display: flex; flex-direction: column; gap: 20px; max-width: 1180px; width: 100%; }
+.v2-content { padding: 26px 32px 48px; display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1560px; margin: 0 auto; }
+/* Marque + recherche visibles uniquement en mobile (sidebar masquée) */
+.v2-topbar__brand { display: none; align-items: center; gap: 9px; }
+.v2-bottomnav { display: none; }
 .v2-pageh { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .v2-pageh h1 { font-size: 24px; font-weight: 680; letter-spacing: -0.02em; margin: 0; }
 .v2-pageh__sub { font-size: 13px; color: var(--v2-muted); margin-top: 3px; }
@@ -234,13 +237,44 @@
 }
 .v2-toggle:hover { color: var(--v2-ink); border-color: var(--v2-faint); }
 
+/* ── Barre de navigation mobile (bas d'écran) ────────────────────── */
+.v2-bottomnav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+  background: color-mix(in srgb, var(--v2-surface) 92%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--v2-line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.v2-bottomnav__inner { display: grid; grid-template-columns: repeat(5, 1fr); }
+.v2-bnav {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  padding: 9px 4px 8px; color: var(--v2-faint); font-size: 10.5px; font-weight: 540;
+  text-decoration: none; min-height: 54px; transition: color .12s;
+}
+.v2-bnav svg { width: 20px; height: 20px; stroke-width: 1.8; }
+.v2-bnav.is-active { color: var(--v2-a-600); }
+
 @media (max-width: 860px) {
   .v2-shell { grid-template-columns: 1fr; }
   .v2-side { display: none; }
-  .v2-kpis { grid-template-columns: repeat(2, 1fr); }
   .v2-lower { grid-template-columns: 1fr; }
+  .v2-kpis { grid-template-columns: repeat(2, 1fr); gap: 11px; }
+
+  .v2-topbar { padding: 12px 16px; }
+  .v2-topbar__brand { display: flex; }
+  .v2-crumb { display: none; }
+  .v2-cmdk { min-width: 0; padding: 7px 11px; }
+  .v2-cmdk span:not(.v2-cmdk__k) { display: none; }
+
+  .v2-content { padding: 20px 16px 92px; gap: 16px; }
+  .v2-pageh h1 { font-size: 21px; }
+  .v2-kpi__val { font-size: 24px; }
+
+  .v2-bottomnav { display: block; }
+  /* Le toggle de thème remonte au-dessus de la barre du bas */
+  .v2-toggle { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); right: 16px; }
 }
-@media (max-width: 480px) {
+@media (max-width: 340px) {
   .v2-kpis { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -69,10 +69,14 @@ export default function DesignV2Dashboard() {
       {/* ── Main ── */}
       <div className="v2-main">
         <div className="v2-topbar">
+          <div className="v2-topbar__brand">
+            <span className="v2-lm">R</span>
+            <span className="v2-brand__nm">Rebites</span>
+          </div>
           <div className="v2-crumb">Le Petit Comptoir · <b>Vue d&apos;ensemble</b></div>
           <div className="v2-cmdk">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
-            Rechercher
+            <span>Rechercher</span>
             <span className="v2-cmdk__k">⌘K</span>
           </div>
         </div>
@@ -195,6 +199,18 @@ export default function DesignV2Dashboard() {
             </table>
           </Card>
         </div>
+
+        {/* Navigation mobile (barre du bas) */}
+        <nav className="v2-bottomnav">
+          <div className="v2-bottomnav__inner">
+            {NAV.map((n) => (
+              <a key={n.label} className={`v2-bnav${n.active ? ' is-active' : ''}`}>
+                {n.icon}
+                {n.label.replace('Vue d\'ensemble', 'Accueil')}
+              </a>
+            ))}
+          </div>
+        </nav>
       </div>
     </div>
   );
