@@ -248,7 +248,7 @@ export default function RegisterPageV2() {
               <Input name="phone" type="tel" label={`${t('registerSlug.phone')} `} placeholder="+32 470 00 00 00" />
 
               <label className="v2-reg__consent">
-                <input name="consent_marketing" type="checkbox" required />
+                <input name="consent_marketing" type="checkbox" required defaultChecked />
                 <span>{t('registerSlug.consent', { restaurant: restaurant?.name ?? '' })}</span>
               </label>
 
