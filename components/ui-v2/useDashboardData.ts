@@ -60,6 +60,8 @@ export interface DashboardData {
   chartDaily: number[];
   chartLabels: string[];
   recent: RecentCustomer[];
+  /** Liste complète des clients (pour l'onglet Clients). */
+  customers: RecentCustomer[];
   insights: DashboardInsights;
 }
 
@@ -200,8 +202,8 @@ export function useDashboardData(): DashboardState {
           new Date(start + offsetDays * 86_400_000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
         const chartLabels = [fmtDay(0), fmtDay(10), fmtDay(20), fmtDay(29)];
 
-        // Clients récents (5)
-        const recent: RecentCustomer[] = customers.slice(0, 5).map((c) => {
+        // Clients (liste complète mappée ; les 5 premiers = récents)
+        const mappedCustomers: RecentCustomer[] = customers.map((c) => {
           const st = statusOf(c, programType, vipThreshold);
           const name = `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || (c.email ?? 'Client');
           const val = programType === 'stamps' ? (c.stamps_count ?? 0) : (c.total_points ?? 0);
@@ -217,6 +219,7 @@ export function useDashboardData(): DashboardState {
             status: LABEL[st],
           };
         });
+        const recent = mappedCustomers.slice(0, 5);
 
         // Insights — dernière campagne envoyée
         const lastSent = (campsRes.data ?? []).find((c) => c.status === 'sent' && c.sent_at) as
@@ -236,7 +239,7 @@ export function useDashboardData(): DashboardState {
         if (!cancelled) {
           setState({
             status: 'ready',
-            data: { restaurantName: resto.name ?? resto.slug, greetingName, kpis, chartDaily: daily, chartLabels, recent, insights },
+            data: { restaurantName: resto.name ?? resto.slug, greetingName, kpis, chartDaily: daily, chartLabels, recent, customers: mappedCustomers, insights },
           });
         }
       } catch (e) {
