@@ -238,18 +238,33 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
-  const sub = (invoice as unknown as { subscription: string | { id: string } | null }).subscription;
-  const subscriptionId = typeof sub === 'string' ? sub : sub?.id;
-  if (!subscriptionId) return;
-
   const amountPaid = (invoice as unknown as { amount_paid: number }).amount_paid;
   if (!amountPaid || amountPaid <= 0) return;
 
-  const { data: restaurant } = await supabaseAdmin
-    .from('restaurants')
-    .select('id, affiliate_id')
-    .eq('stripe_subscription_id', subscriptionId)
-    .maybeSingle();
+  const sub = (invoice as unknown as { subscription: string | { id: string } | null }).subscription;
+  const subscriptionId = typeof sub === 'string' ? sub : sub?.id;
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : (invoice.customer as { id: string } | null)?.id;
+
+  let restaurant: { id: string; affiliate_id: string | null } | null = null;
+
+  if (subscriptionId) {
+    const { data } = await supabaseAdmin
+      .from('restaurants')
+      .select('id, affiliate_id')
+      .eq('stripe_subscription_id', subscriptionId)
+      .maybeSingle();
+    restaurant = data;
+  }
+
+  if (!restaurant && customerId) {
+    const { data } = await supabaseAdmin
+      .from('restaurants')
+      .select('id, affiliate_id')
+      .eq('stripe_customer_id', customerId)
+      .maybeSingle();
+    restaurant = data;
+  }
+
   if (!restaurant?.affiliate_id) return;
 
   const { data: affiliate } = await supabaseAdmin

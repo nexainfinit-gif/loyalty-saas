@@ -45,7 +45,6 @@ export async function POST(request: Request) {
     customer: restaurant.stripe_customer_id,
     auto_advance: false,
     metadata: { restaurantId: restaurant.id, test: 'true' },
-    subscription: restaurant.stripe_subscription_id || undefined,
   });
 
   await stripe.invoices.finalizeInvoice(invoice.id);
