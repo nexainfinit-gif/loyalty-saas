@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Button, Badge, Card, CardHeader, Stat, Input } from '@/components/ui-v2';
 import { useDashboardData, type RecentCustomer, type RawBundle, type CampaignRow } from '@/components/ui-v2/useDashboardData';
 import { useLoyaltySettings } from '@/components/ui-v2/useLoyaltySettings';
+import { useSettingsData } from '@/components/ui-v2/useSettingsData';
 import { supabase } from '@/lib/supabase';
 
 /* ─────────────────────────────────────────────────────────────
@@ -70,7 +71,8 @@ export default function DesignV2Dashboard() {
           {tab === 'analytics' && <AnalyticsContent raw={state.data.raw} />}
           {tab === 'loyalty' && <LoyaltyContent restaurantId={state.data.restaurantId} />}
           {tab === 'campaigns' && <CampaignsContent raw={state.data.raw} campaigns={state.data.campaigns} />}
-          {tab !== 'overview' && tab !== 'clients' && tab !== 'analytics' && tab !== 'loyalty' && tab !== 'campaigns' && <WipContent tab={tab} />}
+          {tab === 'settings' && <SettingsContent restaurantId={state.data.restaurantId} />}
+          {tab !== 'overview' && tab !== 'clients' && tab !== 'analytics' && tab !== 'loyalty' && tab !== 'campaigns' && tab !== 'settings' && <WipContent tab={tab} />}
         </div>
       )}
     </Shell>
@@ -325,6 +327,105 @@ function CustomerTable({ customers }: { customers: RecentCustomer[] }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/* ── Onglet : Réglages ── */
+function SettingsContent({ restaurantId }: { restaurantId: string }) {
+  const { locale } = useParams() as { locale: string };
+  const s = useSettingsData(restaurantId);
+
+  if (s.status === 'loading') {
+    return (<><div className="v2-tabh"><div><h1>Réglages</h1></div></div><div className="v2-lf">{[0, 1, 2].map((i) => <div key={i} className="v2-skel" style={{ height: 150, borderRadius: 14 }} />)}</div></>);
+  }
+  if (s.status === 'error') {
+    return (<><div className="v2-tabh"><div><h1>Réglages</h1></div></div><Card><div className="v2-empty" style={{ padding: 32 }}><p style={{ margin: 0 }}>Impossible de charger les réglages.</p></div></Card></>);
+  }
+
+  const statusTone = s.plan?.status === 'active' ? 'ok' : s.plan?.status === 'past_due' ? 'warn' : s.plan?.status === 'canceled' ? 'bad' : 'neutral';
+  const statusLabel = s.plan?.status === 'active' ? 'Actif' : s.plan?.status === 'trialing' ? 'Essai' : s.plan?.status === 'past_due' ? 'Paiement en retard' : s.plan?.status === 'canceled' ? 'Annulé' : (s.plan?.status ?? '—');
+
+  return (
+    <>
+      <div className="v2-tabh"><div><h1>Réglages</h1><div className="cnt">Informations et préférences de votre établissement</div></div></div>
+
+      <div className="v2-lf">
+        {/* Informations */}
+        <Card>
+          <CardHeader title="Informations" />
+          <div className="v2-lf__body">
+            <Input label="Nom de l'établissement" value={s.name} onChange={(e) => s.setName(e.target.value)} />
+            <div className="v2-field">
+              <label className="v2-label">Identifiant (slug)</label>
+              <input className="v2-input" value={s.slug} onChange={(e) => s.setSlug(e.target.value)} />
+              <p className="v2-fielderr" style={{ color: 'var(--v2-faint)' }}>Votre page publique : /register/{s.slug || '…'}</p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 14 }}>
+              {s.infoState === 'saved' && <SavedTag />}
+              {s.infoState === 'error' && <span style={{ fontSize: 13, color: 'var(--v2-bad)' }}>Erreur — réessayez</span>}
+              <Button variant="primary" onClick={s.saveInfo} disabled={!s.infoDirty || s.infoState === 'saving'}>
+                {s.infoState === 'saving' ? 'Enregistrement…' : 'Enregistrer'}
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Paramètres analytiques */}
+        <Card>
+          <CardHeader title="Paramètres analytiques" />
+          <div className="v2-lf__body">
+            <p style={{ fontSize: 12.5, color: 'var(--v2-muted)', margin: 0 }}>Servent à estimer votre chiffre d&apos;affaires et le coût de vos récompenses dans l&apos;onglet Analytique.</p>
+            <div className="v2-lf__grid">
+              <Input label="Ticket moyen (€)" type="number" step="0.01" min={0} value={s.settings['average_ticket'] ?? ''} onChange={(e) => s.setKpi('average_ticket', e.target.value)} placeholder="Ex : 18,50" />
+              <Input label="Coût moyen d'une récompense (€)" type="number" step="0.01" min={0} value={s.settings['average_reward_cost'] ?? ''} onChange={(e) => s.setKpi('average_reward_cost', e.target.value)} placeholder="Ex : 4,00" />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 14 }}>
+              {s.kpiState === 'saved' && <SavedTag />}
+              {s.kpiState === 'error' && <span style={{ fontSize: 13, color: 'var(--v2-bad)' }}>Erreur — réessayez</span>}
+              <Button variant="primary" onClick={s.saveKpi} disabled={s.kpiState === 'saving'}>
+                {s.kpiState === 'saving' ? 'Enregistrement…' : 'Enregistrer'}
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Abonnement */}
+        <Card>
+          <CardHeader title="Abonnement" actions={<Badge tone={statusTone as 'ok' | 'warn' | 'bad' | 'neutral'}>{statusLabel}</Badge>} />
+          <div className="v2-lf__body">
+            <div className="v2-lf__mode" style={{ background: 'var(--v2-sunken)' }}>
+              <div>
+                <div className="v2-lf__mode-t" style={{ color: 'var(--v2-ink)', fontSize: 15, fontWeight: 700, textTransform: 'capitalize' }}>{s.plan?.name}</div>
+                <div className="v2-lf__mode-d">
+                  {s.plan?.key === 'starter' ? 'Jusqu\'à 500 clients' : 'Clients illimités'}
+                  {s.plan?.status === 'active' && s.plan?.periodEnd ? ` · renouvellement le ${new Date(s.plan.periodEnd).toLocaleDateString('fr-FR')}` : ''}
+                </div>
+              </div>
+              <a href={`/${locale}/dashboard/billing`}><Button variant="secondary" size="sm">Gérer</Button></a>
+            </div>
+          </div>
+        </Card>
+
+        {/* Déféré vers le dashboard actuel */}
+        <Card>
+          <div className="v2-wip" style={{ padding: '28px 24px' }}>
+            <span className="v2-wip__ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.2A1.6 1.6 0 0 0 6.6 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 12.6H3a2 2 0 0 1 0-4h.2A1.6 1.6 0 0 0 4.6 6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3.6V3a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1z" /></svg></span>
+            <h3>Logo, accès équipe & services</h3>
+            <p>Le logo (avec recadrage), la gestion de l&apos;équipe et l&apos;activation des services restent pour l&apos;instant sur votre dashboard actuel.</p>
+            <a href={`/${locale}/dashboard`}><Button variant="secondary">Ouvrir le dashboard actuel</Button></a>
+          </div>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function SavedTag() {
+  return (
+    <span className="v2-lf__saved">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+      Enregistré
+    </span>
   );
 }
 
