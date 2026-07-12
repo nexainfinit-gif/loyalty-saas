@@ -52,6 +52,29 @@ function stripLocalePrefix(pathname: string, locale: Locale): string {
   return pathname.replace(new RegExp(`^/${locale}(/|$)`), '/');
 }
 
+/**
+ * Bascule design v2 « Comptoir » — mappe un chemin public (locale déjà retirée)
+ * vers sa page v2 équivalente, ou null si aucune. UNIQUEMENT les pages publiques
+ * validées : le dashboard n'est PAS inclus (pas encore iso-fonctionnel).
+ * Servi par REWRITE (URL inchangée) → QR/NFC/emails/billets/embed intacts.
+ */
+function mapToV2(strippedPath: string): string | null {
+  const seg = strippedPath.split('/').filter(Boolean);
+  // /register/[slug]
+  if (seg.length === 2 && seg[0] === 'register') return `/design-v2/register/${seg[1]}`;
+  // /book/[slug] — exclut cancel/reschedule/status ; /book/[slug]/success (3 seg) exclu par la longueur
+  if (seg.length === 2 && seg[0] === 'book' && !['cancel', 'reschedule', 'status'].includes(seg[1])) return `/book-v2/${seg[1]}`;
+  // /client/[slug]
+  if (seg.length === 2 && seg[0] === 'client') return `/client-v2/${seg[1]}`;
+  // /event/[slug]/[eventSlug] — exclut /event/ticket/[code]
+  if (seg.length === 3 && seg[0] === 'event' && seg[1] !== 'ticket') return `/event-v2/${seg[1]}/${seg[2]}`;
+  // /dashboard/login
+  if (seg.length === 2 && seg[0] === 'dashboard' && seg[1] === 'login') return `/login-v2`;
+  // /onboarding
+  if (seg.length === 1 && seg[0] === 'onboarding') return `/onboarding-v2`;
+  return null;
+}
+
 function getPreferredLocale(request: NextRequest): Locale {
   // 1. Check cookie
   const cookie = request.cookies.get('locale')?.value as Locale | undefined;
@@ -108,6 +131,37 @@ export async function proxy(request: NextRequest) {
   // for /admin) remain in the API layer — this gate only requires a session.
 
   const strippedPath = stripLocalePrefix(pathname, pathnameLocale);
+
+  /* ── Bascule design v2 « Comptoir » ──────────────────────────────────── */
+  // Beta opt-in via cookie `ui_v2` (posé par ?v2=1, retiré par ?v2=0). Flag
+  // global `UI_V2_GLOBAL` = seam pour un toggle runtime (à câbler sur un KV
+  // Upstash quand on passera en bascule globale sans redeploy).
+  const v2Query = request.nextUrl.searchParams.get('v2');
+  const v2GlobalOn = process.env.UI_V2_GLOBAL === 'on'; // TODO: lire depuis KV (Upstash) pour un toggle sans redeploy
+  const v2OptIn = v2Query === '1' || (request.cookies.get('ui_v2')?.value === '1' && v2Query !== '0');
+  const v2Enabled = v2GlobalOn || v2OptIn;
+
+  const setV2Cookie = (res: NextResponse) => {
+    if (v2Query === '1') res.cookies.set('ui_v2', '1', { path: '/', maxAge: 60 * 60 * 24 * 180, sameSite: 'lax' });
+    else if (v2Query === '0') res.cookies.set('ui_v2', '', { path: '/', maxAge: 0 });
+  };
+
+  const v2Target = v2Enabled ? mapToV2(strippedPath) : null;
+  if (v2Target) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${pathnameLocale}${v2Target}`;
+    const rw = NextResponse.rewrite(url);
+    rw.cookies.set('locale', pathnameLocale, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' });
+    setV2Cookie(rw);
+    rw.headers.set('X-Frame-Options', 'DENY');
+    rw.headers.set('X-Content-Type-Options', 'nosniff');
+    rw.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    rw.headers.set('Permissions-Policy', 'camera=(self), microphone=()');
+    return rw;
+  }
+  // Pas de rewrite mais opt-in/opt-out demandé → poser/retirer le cookie.
+  setV2Cookie(response);
+
   const isPublic = PUBLIC_PATHS.some((p) => strippedPath.startsWith(p));
   const needsAuth = !isPublic && PROTECTED_PATHS.some((p) => strippedPath.startsWith(p));
 
