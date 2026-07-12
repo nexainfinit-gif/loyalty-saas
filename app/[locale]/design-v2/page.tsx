@@ -3,8 +3,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { Button, Badge, Card, CardHeader, Stat, Input } from '@/components/ui-v2';
-import { useDashboardData, type RecentCustomer, type RawBundle } from '@/components/ui-v2/useDashboardData';
+import { useDashboardData, type RecentCustomer, type RawBundle, type CampaignRow } from '@/components/ui-v2/useDashboardData';
 import { useLoyaltySettings } from '@/components/ui-v2/useLoyaltySettings';
+import { supabase } from '@/lib/supabase';
 
 /* ─────────────────────────────────────────────────────────────
    Dashboard v2 « Comptoir » — shell à onglets, câblé aux données
@@ -68,7 +69,8 @@ export default function DesignV2Dashboard() {
           {tab === 'clients' && <ClientsContent customers={state.data.customers} />}
           {tab === 'analytics' && <AnalyticsContent raw={state.data.raw} />}
           {tab === 'loyalty' && <LoyaltyContent restaurantId={state.data.restaurantId} />}
-          {tab !== 'overview' && tab !== 'clients' && tab !== 'analytics' && tab !== 'loyalty' && <WipContent tab={tab} />}
+          {tab === 'campaigns' && <CampaignsContent raw={state.data.raw} campaigns={state.data.campaigns} />}
+          {tab !== 'overview' && tab !== 'clients' && tab !== 'analytics' && tab !== 'loyalty' && tab !== 'campaigns' && <WipContent tab={tab} />}
         </div>
       )}
     </Shell>
@@ -323,6 +325,168 @@ function CustomerTable({ customers }: { customers: RecentCustomer[] }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/* ── Onglet : Campagnes ── */
+const CMP_ICON: Record<string, ReactNode> = {
+  reengagement: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8" /><path d="M3 4v4h4" /></svg>,
+  birthday: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 21h16M4 16h16v5H4zM6 16v-4a6 6 0 0 1 12 0v4M12 4v2" /></svg>,
+  near_reward: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z" /></svg>,
+  promo: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 12v8H4v-8M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /></svg>,
+  custom: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>,
+  wallet_push: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /></svg>,
+};
+
+type Composer = { name: string; type: string; subject: string; body: string; segment: string; scheduled_at: string };
+
+const TEMPLATES: { type: string; name: string; segment: string; subject: string; body: string }[] = [
+  { type: 'reengagement', name: 'Réengagement', segment: 'inactive_45', subject: 'On vous a gardé une place', body: 'Cela fait un moment ! Revenez profiter de vos avantages fidélité — on serait ravis de vous revoir.' },
+  { type: 'birthday', name: 'Anniversaire', segment: 'birthday', subject: 'Joyeux anniversaire !', body: 'Toute l\'équipe vous souhaite un excellent anniversaire — une petite surprise vous attend lors de votre prochaine visite.' },
+  { type: 'near_reward', name: 'Proche récompense', segment: 'near_reward', subject: 'Vous y êtes presque !', body: 'Plus que quelques points avant de débloquer votre récompense. À très vite !' },
+  { type: 'promo', name: 'Promotion', segment: 'all', subject: 'Offre spéciale', body: 'Profitez de notre offre du moment, réservée à nos membres fidèles.' },
+  { type: 'custom', name: 'Personnalisé', segment: 'all', subject: '', body: '' },
+];
+
+const SEGMENTS: { value: string; label: string }[] = [
+  { value: 'all', label: 'Tous les clients' },
+  { value: 'active', label: 'Clients actifs' },
+  { value: 'inactive_45', label: 'Inactifs (45j+)' },
+  { value: 'near_reward', label: 'Proches d\'une récompense' },
+  { value: 'vip', label: 'Clients VIP' },
+  { value: 'birthday', label: 'Anniversaire ce mois' },
+];
+
+function segCount(seg: string, raw: RawBundle): number {
+  const { customers, programType, vipThreshold, rewardThreshold, stampsTotal } = raw;
+  const now = Date.now();
+  switch (seg) {
+    case 'active': return customers.filter((c) => c.last_visit_at && now - new Date(c.last_visit_at).getTime() < 30 * MS_DAY).length;
+    case 'inactive_45': return customers.filter((c) => !c.last_visit_at || now - new Date(c.last_visit_at).getTime() > 45 * MS_DAY).length;
+    case 'near_reward': return customers.filter((c) => programType === 'stamps' ? (c.stamps_count >= stampsTotal - 2 && c.stamps_count < stampsTotal) : (c.total_points >= rewardThreshold * 0.7 && c.total_points < rewardThreshold)).length;
+    case 'vip': return vipThreshold > 0 ? customers.filter((c) => (programType === 'stamps' ? c.stamps_count : c.total_points) >= vipThreshold).length : 0;
+    case 'birthday': { const m = new Date().getMonth(); return customers.filter((c) => c.birth_date && new Date(c.birth_date).getMonth() === m).length; }
+    default: return customers.length;
+  }
+}
+
+function CampaignsContent({ raw, campaigns }: { raw: RawBundle; campaigns: CampaignRow[] }) {
+  const [composer, setComposer] = useState<Composer>({ name: '', type: 'custom', subject: '', body: '', segment: 'all', scheduled_at: '' });
+  const [activeTpl, setActiveTpl] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const [sent, setSent] = useState<CampaignRow[]>(campaigns);
+  const nf = new Intl.NumberFormat('fr-FR');
+  const recipients = segCount(composer.segment, raw);
+  const canSend = composer.name.trim() && composer.subject.trim() && composer.body.trim() && !sending;
+
+  function applyTpl(tpl: typeof TEMPLATES[number]) {
+    setActiveTpl(tpl.type);
+    setComposer((c) => ({ ...c, type: tpl.type, name: tpl.name, subject: tpl.subject, body: tpl.body, segment: tpl.segment }));
+  }
+
+  async function send() {
+    setSending(true);
+    setError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setError('Session expirée — reconnectez-vous.'); setSending(false); return; }
+      const res = await fetch('/api/compaigns', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...composer, scheduled_at: composer.scheduled_at || '', bodyText: composer.body }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSent((prev) => [{
+          id: data.campaign_id ?? crypto.randomUUID(), name: composer.name, type: composer.type,
+          recipients_count: data.sent ?? data.recipients ?? recipients,
+          status: data.scheduled ? 'scheduled' : 'sent',
+          sent_at: data.scheduled ? null : new Date().toISOString(),
+          scheduled_at: composer.scheduled_at || null, created_at: new Date().toISOString(),
+        }, ...prev]);
+        setComposer({ name: '', type: 'custom', subject: '', body: '', segment: 'all', scheduled_at: '' });
+        setActiveTpl(null);
+      } else {
+        setError(data.error || 'Échec de l\'envoi.');
+      }
+    } catch {
+      setError('Erreur réseau — réessayez.');
+    }
+    setSending(false);
+  }
+
+  return (
+    <>
+      <div className="v2-tabh"><div><h1>Campagnes</h1><div className="cnt">Envoyez des emails ciblés à vos clients</div></div></div>
+
+      <Card>
+        <CardHeader title="Choisir un modèle" />
+        <div className="v2-cmp__templates">
+          {TEMPLATES.map((tpl) => (
+            <button key={tpl.type} className={`v2-cmp__tpl${activeTpl === tpl.type ? ' is-active' : ''}`} onClick={() => applyTpl(tpl)}>
+              <span className="v2-cmp__tpl-ic">{CMP_ICON[tpl.type]}</span>
+              <div className="v2-cmp__tpl-n">{tpl.name}</div>
+              <div className="v2-cmp__tpl-c">{nf.format(segCount(tpl.segment, raw))} destinataires</div>
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Composer" />
+        <div className="v2-cmp__body">
+          <Input label="Nom de la campagne" value={composer.name} onChange={(e) => setComposer((c) => ({ ...c, name: e.target.value }))} placeholder="Ex : Relance de printemps" />
+          <div className="v2-field">
+            <label className="v2-label">Cible</label>
+            <div className="v2-cmp__seg">
+              <select value={composer.segment} onChange={(e) => setComposer((c) => ({ ...c, segment: e.target.value }))}>
+                {SEGMENTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+              <span className="v2-cmp__count">{nf.format(recipients)} destinataire{recipients > 1 ? 's' : ''}</span>
+            </div>
+          </div>
+          <Input label="Objet de l'email" value={composer.subject} onChange={(e) => setComposer((c) => ({ ...c, subject: e.target.value }))} placeholder="Ex : Une surprise vous attend" />
+          <div className="v2-field">
+            <label className="v2-label">Message</label>
+            <textarea className="v2-lf__textarea" value={composer.body} maxLength={1000} onChange={(e) => setComposer((c) => ({ ...c, body: e.target.value }))} placeholder="Votre message aux clients…" style={{ minHeight: 120 }} />
+          </div>
+          <div className="v2-field">
+            <label className="v2-label">Programmer l&apos;envoi <span style={{ color: 'var(--v2-faint)', fontWeight: 400 }}>(facultatif)</span></label>
+            <input type="datetime-local" className="v2-input" value={composer.scheduled_at} onChange={(e) => setComposer((c) => ({ ...c, scheduled_at: e.target.value }))} />
+          </div>
+          {error && <div className="v2-bk__notice v2-bk__notice--err">{error}</div>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button variant="primary" onClick={send} disabled={!canSend}>
+              {sending ? 'Envoi…' : composer.scheduled_at ? `Programmer · ${nf.format(recipients)}` : `Envoyer à ${nf.format(recipients)} client${recipients > 1 ? 's' : ''}`}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title={`Historique${sent.length ? ` · ${sent.length}` : ''}`} />
+        {sent.length === 0 ? (
+          <div className="v2-empty" style={{ padding: 32 }}><p style={{ margin: 0 }}>Aucune campagne envoyée pour le moment.</p></div>
+        ) : (
+          <div>
+            {sent.map((c) => (
+              <div key={c.id} className="v2-cmp__row">
+                <span className="v2-cmp__row-ic">{CMP_ICON[c.type] ?? CMP_ICON.custom}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div className="v2-cmp__row-n">{c.name || 'Campagne'}</div>
+                  <div className="v2-cmp__row-m">{c.status === 'scheduled' ? 'Programmée' : c.sent_at ? new Date(c.sent_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
+                </div>
+                <div className="v2-cmp__row-r">
+                  <div className="n">{nf.format(c.recipients_count)}</div>
+                  <Badge tone={c.status === 'sent' ? 'ok' : c.status === 'scheduled' ? 'accent' : 'neutral'} bare>{c.status === 'sent' ? 'Envoyée' : c.status === 'scheduled' ? 'Programmée' : c.status}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </>
   );
 }
 

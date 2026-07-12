@@ -23,6 +23,7 @@ interface CustomerRow {
   completed_cards: number | null;
   total_visits: number | null;
   last_visit_at: string | null;
+  birth_date: string | null;
   reward_pending: boolean | null;
   created_at: string;
 }
@@ -30,7 +31,7 @@ interface CustomerRow {
 /** Données brutes exposées pour l'onglet Analytique (calcul côté client). */
 export interface RawCustomer {
   id: string; total_points: number; stamps_count: number; completed_cards: number;
-  total_visits: number; last_visit_at: string | null; created_at: string;
+  total_visits: number; last_visit_at: string | null; birth_date: string | null; created_at: string;
 }
 export interface RawTx { created_at: string; type: string; customer_id: string; points_delta: number; }
 export interface RawBundle {
@@ -65,6 +66,17 @@ export interface DashboardInsights {
   lastCampaign: { name: string; recipients: number; when: string } | null;
 }
 
+export interface CampaignRow {
+  id: string;
+  name: string;
+  type: string;
+  recipients_count: number;
+  status: string;
+  sent_at: string | null;
+  scheduled_at: string | null;
+  created_at: string;
+}
+
 export interface DashboardData {
   restaurantId: string;
   restaurantName: string;
@@ -78,6 +90,8 @@ export interface DashboardData {
   insights: DashboardInsights;
   /** Données brutes pour l'onglet Analytique. */
   raw: RawBundle;
+  /** Campagnes récentes (pour l'onglet Campagnes). */
+  campaigns: CampaignRow[];
 }
 
 export type DashboardState =
@@ -165,12 +179,12 @@ export function useDashboardData(): DashboardState {
         // 3 — Données en parallèle : clients, réglages fidélité, campagnes, transactions, métriques
         const since90 = new Date(Date.now() - 90 * 86_400_000).toISOString();
         const [clientsRes, lsRes, campsRes, txRes, metricsRes] = await Promise.all([
-          supabase.from('customers').select('id, first_name, last_name, email, total_points, stamps_count, completed_cards, total_visits, last_visit_at, reward_pending, created_at')
+          supabase.from('customers').select('id, first_name, last_name, email, total_points, stamps_count, completed_cards, total_visits, last_visit_at, birth_date, reward_pending, created_at')
             .eq('restaurant_id', resto.id).order('created_at', { ascending: false }),
           supabase.from('loyalty_settings').select('program_type, vip_threshold_points, vip_threshold_stamps, reward_threshold, stamps_total')
             .eq('restaurant_id', resto.id).maybeSingle(),
-          supabase.from('campaigns').select('name, recipients_count, sent_at, status')
-            .eq('restaurant_id', resto.id).order('created_at', { ascending: false }).limit(5),
+          supabase.from('campaigns').select('id, name, type, recipients_count, sent_at, scheduled_at, status, created_at')
+            .eq('restaurant_id', resto.id).order('created_at', { ascending: false }).limit(20),
           supabase.from('transactions').select('created_at, points_delta, type, customer_id')
             .eq('restaurant_id', resto.id).gte('created_at', since90).order('created_at', { ascending: true }),
           fetch('/api/restaurant-metrics', { headers: { Authorization: `Bearer ${session.access_token}` } })
@@ -256,7 +270,7 @@ export function useDashboardData(): DashboardState {
           customers: customers.map((c) => ({
             id: c.id, total_points: c.total_points ?? 0, stamps_count: c.stamps_count ?? 0,
             completed_cards: c.completed_cards ?? 0, total_visits: c.total_visits ?? 0,
-            last_visit_at: c.last_visit_at, created_at: c.created_at,
+            last_visit_at: c.last_visit_at, birth_date: c.birth_date, created_at: c.created_at,
           })),
           transactions: ((txRes.data ?? []) as { created_at: string; type: string | null; customer_id: string | null; points_delta: number | null }[])
             .map((t) => ({ created_at: t.created_at, type: t.type ?? '', customer_id: t.customer_id ?? '', points_delta: t.points_delta ?? 0 })),
@@ -266,10 +280,21 @@ export function useDashboardData(): DashboardState {
           stampsTotal: lsRes.data?.stamps_total ?? 10,
         };
 
+        const campaigns: CampaignRow[] = ((campsRes.data ?? []) as Array<Partial<CampaignRow>>).map((c) => ({
+          id: c.id ?? '',
+          name: c.name ?? '',
+          type: c.type ?? 'custom',
+          recipients_count: c.recipients_count ?? 0,
+          status: c.status ?? 'sent',
+          sent_at: c.sent_at ?? null,
+          scheduled_at: c.scheduled_at ?? null,
+          created_at: c.created_at ?? '',
+        }));
+
         if (!cancelled) {
           setState({
             status: 'ready',
-            data: { restaurantId: resto.id, restaurantName: resto.name ?? resto.slug, greetingName, kpis, chartDaily: daily, chartLabels, recent, customers: mappedCustomers, insights, raw },
+            data: { restaurantId: resto.id, restaurantName: resto.name ?? resto.slug, greetingName, kpis, chartDaily: daily, chartLabels, recent, customers: mappedCustomers, insights, raw, campaigns },
           });
         }
       } catch (e) {
