@@ -34,27 +34,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Pas d\'affilié lié à ce restaurant.' }, { status: 400 });
   }
 
-  const invoiceItem = await stripe.invoiceItems.create({
-    customer: restaurant.stripe_customer_id,
-    amount,
-    currency: 'eur',
-    description: `[TEST] Facturation fictive — ${restaurant.name}`,
-  });
+  try {
+    await stripe.invoiceItems.create({
+      customer: restaurant.stripe_customer_id,
+      amount,
+      currency: 'eur',
+      description: `[TEST] Facturation fictive — ${restaurant.name}`,
+    });
 
-  const invoice = await stripe.invoices.create({
-    customer: restaurant.stripe_customer_id,
-    auto_advance: false,
-    metadata: { restaurantId: restaurant.id, test: 'true' },
-  });
+    const invoice = await stripe.invoices.create({
+      customer: restaurant.stripe_customer_id,
+      auto_advance: false,
+      metadata: { restaurantId: restaurant.id, test: 'true' },
+    });
 
-  await stripe.invoices.finalizeInvoice(invoice.id);
-  const paid = await stripe.invoices.pay(invoice.id);
+    await stripe.invoices.finalizeInvoice(invoice.id);
+    const paid = await stripe.invoices.pay(invoice.id, { paid_out_of_band: true });
 
-  return NextResponse.json({
-    ok: true,
-    invoice_id: paid.id,
-    amount_paid: paid.amount_paid,
-    status: paid.status,
-    message: `Facture test de ${(amount / 100).toFixed(2)}€ créée et payée. Le webhook invoice.paid devrait déclencher la commission.`,
-  });
+    return NextResponse.json({
+      ok: true,
+      invoice_id: paid.id,
+      amount_paid: paid.amount_paid,
+      status: paid.status,
+      message: `Facture test de ${(amount / 100).toFixed(2)}€ créée et payée. Le webhook invoice.paid devrait déclencher la commission.`,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erreur Stripe inconnue';
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
