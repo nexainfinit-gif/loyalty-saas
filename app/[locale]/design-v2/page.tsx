@@ -6,6 +6,7 @@ import { Button, Badge, Card, CardHeader, Stat, Input } from '@/components/ui-v2
 import { useDashboardData, type RecentCustomer, type RawBundle, type CampaignRow } from '@/components/ui-v2/useDashboardData';
 import { useLoyaltySettings } from '@/components/ui-v2/useLoyaltySettings';
 import { useSettingsData } from '@/components/ui-v2/useSettingsData';
+import { useWalletData, type WalletTemplate } from '@/components/ui-v2/useWalletData';
 import { supabase } from '@/lib/supabase';
 
 /* ─────────────────────────────────────────────────────────────
@@ -72,7 +73,8 @@ export default function DesignV2Dashboard() {
           {tab === 'loyalty' && <LoyaltyContent restaurantId={state.data.restaurantId} />}
           {tab === 'campaigns' && <CampaignsContent raw={state.data.raw} campaigns={state.data.campaigns} />}
           {tab === 'settings' && <SettingsContent restaurantId={state.data.restaurantId} />}
-          {tab !== 'overview' && tab !== 'clients' && tab !== 'analytics' && tab !== 'loyalty' && tab !== 'campaigns' && tab !== 'settings' && <WipContent tab={tab} />}
+          {tab === 'wallet' && <WalletContent restaurantId={state.data.restaurantId} restaurantName={state.data.restaurantName} />}
+          {tab !== 'overview' && tab !== 'clients' && tab !== 'analytics' && tab !== 'loyalty' && tab !== 'campaigns' && tab !== 'settings' && tab !== 'wallet' && <WipContent tab={tab} />}
         </div>
       )}
     </Shell>
@@ -327,6 +329,129 @@ function CustomerTable({ customers }: { customers: RecentCustomer[] }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/* ── Onglet : Wallet ── */
+function WalletContent({ restaurantId, restaurantName }: { restaurantId: string; restaurantName: string }) {
+  const { locale } = useParams() as { locale: string };
+  const { status, templates, stats } = useWalletData(restaurantId);
+  const nf = new Intl.NumberFormat('fr-FR');
+
+  if (status === 'loading') {
+    return (<><div className="v2-tabh"><div><h1>Wallet</h1></div></div><div className="v2-kpis">{[0, 1, 2].map((i) => <div key={i} className="v2-skel" style={{ height: 92, borderRadius: 14 }} />)}</div><div className="v2-wl__grid" style={{ marginTop: 20 }}>{[0, 1].map((i) => <div key={i} className="v2-skel" style={{ height: 190, borderRadius: 16 }} />)}</div></>);
+  }
+  if (status === 'error') {
+    return (<><div className="v2-tabh"><div><h1>Wallet</h1></div></div><Card><div className="v2-empty" style={{ padding: 32 }}><p style={{ margin: 0 }}>Impossible de charger les cartes Wallet.</p></div></Card></>);
+  }
+
+  return (
+    <>
+      <div className="v2-tabh"><div><h1>Wallet</h1><div className="cnt">Vos cartes Apple &amp; Google Wallet</div></div></div>
+
+      <div className="v2-kpis" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        <Stat label="Pass actifs" value={nf.format(stats.total)} />
+        <Stat label="Apple Wallet" value={nf.format(stats.apple)} />
+        <Stat label="Google Wallet" value={nf.format(stats.google)} />
+      </div>
+
+      {templates.length === 0 ? (
+        <Card>
+          <div className="v2-empty">
+            <span className="v2-empty__ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /></svg></span>
+            <h3>Aucune carte Wallet</h3>
+            <p>Une carte générique est créée automatiquement à la configuration de votre programme de fidélité.</p>
+          </div>
+        </Card>
+      ) : (
+        <div>
+          <div className="v2-sec-head" style={{ marginBottom: 12 }}><h2 style={{ fontSize: 14, fontWeight: 660, margin: 0 }}>Modèles ({templates.length})</h2>
+            <a href={`/${locale}/dashboard`} className="v2-cp__book-link">Modifier dans le studio →</a>
+          </div>
+          <div className="v2-wl__grid">
+            {templates.map((tmpl) => <WalletCard key={tmpl.id} tmpl={tmpl} restaurantName={restaurantName} />)}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function WalletCard({ tmpl, restaurantName }: { tmpl: WalletTemplate; restaurantName: string }) {
+  const nf = new Intl.NumberFormat('fr-FR');
+  const cfg = tmpl.config_json ?? {};
+  const bg = (cfg.bgColor as string) ?? tmpl.primary_color ?? '#4148D6';
+  const fg = (cfg.foregroundColor as string) ?? '#ffffff';
+  const label = `${fg}80`;
+  const logoText = (cfg.logoText as string) ?? (cfg.merchantName as string) ?? restaurantName ?? tmpl.name;
+  const logoUrl = typeof cfg.logoImageUrl === 'string' && cfg.logoImageUrl.startsWith('http') ? cfg.logoImageUrl : null;
+  const isStamps = tmpl.pass_kind === 'stamps';
+  const stampsTotal = (cfg.stampsTotal as number) ?? 10;
+  const filled = Math.min(4, stampsTotal);
+  const isDraft = tmpl.status === 'draft';
+
+  return (
+    <div className="v2-wl__cardwrap">
+      <div className="v2-wl__card" style={{ background: bg }}>
+        {/* Haut : logo + type */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 14px 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            {logoUrl
+              ? <img src={logoUrl} alt="" style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+              : <div style={{ width: 30, height: 30, borderRadius: 8, background: `${fg}22`, color: fg, display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{(logoText || 'R').charAt(0).toUpperCase()}</div>}
+            <div style={{ minWidth: 0 }}>
+              <p style={{ color: fg, fontSize: 14, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{logoText}</p>
+              <p style={{ color: label, fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '1px 0 0' }}>{isStamps ? 'Tampons' : 'Points'}</p>
+            </div>
+          </div>
+          {tmpl.is_default && <span style={{ background: `${fg}26`, color: fg, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '2px 7px', borderRadius: 99 }}>Par défaut</span>}
+        </div>
+
+        <div style={{ borderTop: `1px solid ${fg}1a`, margin: '2px 14px 0' }} />
+
+        {/* Contenu : tampons ou points */}
+        <div style={{ padding: '12px 14px 6px', minHeight: 64 }}>
+          {isStamps ? (
+            <>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {Array.from({ length: Math.min(stampsTotal, 10) }, (_, i) => (
+                  <div key={i} className="v2-wl__stamp" style={{ background: i < filled ? 'rgba(255,255,255,0.95)' : `${fg}22`, border: `1.5px solid ${fg}40` }}>
+                    {i < filled && <svg width="12" height="12" viewBox="0 0 24 24" fill={bg}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>}
+                  </div>
+                ))}
+              </div>
+              <p style={{ color: label, fontSize: 10, margin: '7px 0 0' }}>{filled} / {stampsTotal}</p>
+            </>
+          ) : (
+            <>
+              <p style={{ color: label, fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px' }}>Points</p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <span style={{ color: fg, fontSize: 28, fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>42</span>
+                <span style={{ color: label, fontSize: 12, fontWeight: 500 }}>pts</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Bas : compteur + mini QR */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '4px 14px 13px' }}>
+          <span style={{ color: label, fontSize: 10 }}>{nf.format(tmpl.active_passes)} pass actifs</span>
+          <div style={{ width: 30, height: 30, borderRadius: 5, background: 'rgba(255,255,255,0.92)', padding: 3 }}>
+            <div style={{ width: '100%', height: '100%', backgroundImage: `linear-gradient(90deg, ${bg} 25%, transparent 25% 50%, ${bg} 50% 75%, transparent 75%), linear-gradient(${bg} 25%, transparent 25% 50%, ${bg} 50% 75%, transparent 75%)`, backgroundSize: '4px 4px' }} />
+          </div>
+        </div>
+      </div>
+
+      {isDraft && <div className="v2-wl__draft"><span>Brouillon</span></div>}
+
+      <div className="v2-wl__meta">
+        <div>
+          <div className="v2-wl__meta-n">{tmpl.name}</div>
+          <div className="v2-wl__meta-s">{isStamps ? 'Carte à tampons' : 'Carte à points'}</div>
+        </div>
+        <Badge tone={tmpl.status === 'published' ? 'ok' : 'neutral'}>{tmpl.status === 'published' ? 'Publié' : 'Brouillon'}</Badge>
+      </div>
+    </div>
   );
 }
 

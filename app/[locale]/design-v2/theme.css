@@ -626,6 +626,17 @@
 .v2-cmp__row-r { margin-left: auto; text-align: right; }
 .v2-cmp__row-r .n { font-size: 13px; font-weight: 640; font-variant-numeric: tabular-nums; }
 
+/* ═══ Onglet Wallet ═══════════════════════════════════════════════ */
+.v2-wl__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(288px, 1fr)); gap: 20px; }
+.v2-wl__cardwrap { position: relative; }
+.v2-wl__card { border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(28,27,25,0.16); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.v2-wl__meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 11px; }
+.v2-wl__meta-n { font-size: 13px; font-weight: 600; }
+.v2-wl__meta-s { font-size: 11.5px; color: var(--v2-faint); margin-top: 1px; }
+.v2-wl__draft { position: absolute; inset: 0; border-radius: 16px; background: rgba(0,0,0,0.30); display: grid; place-items: center; }
+.v2-wl__draft span { background: rgba(0,0,0,0.6); color: #fff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 5px 12px; border-radius: 99px; }
+.v2-wl__stamp { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; }
+
 @media (prefers-reduced-motion: reduce) {
   [data-ui-v2] * { transition: none !important; }
 }
