@@ -35,17 +35,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    await stripe.invoiceItems.create({
-      customer: restaurant.stripe_customer_id,
-      amount,
-      currency: 'eur',
-      description: `[TEST] Facturation fictive — ${restaurant.name}`,
-    });
-
     const invoice = await stripe.invoices.create({
       customer: restaurant.stripe_customer_id,
       auto_advance: false,
+      pending_invoice_items_behavior: 'exclude',
       metadata: { restaurantId: restaurant.id, test: 'true' },
+    });
+
+    await stripe.invoiceItems.create({
+      customer: restaurant.stripe_customer_id,
+      invoice: invoice.id,
+      amount,
+      currency: 'eur',
+      description: `[TEST] Facturation fictive — ${restaurant.name}`,
     });
 
     await stripe.invoices.finalizeInvoice(invoice.id);
