@@ -150,7 +150,9 @@ export async function POST(request: Request) {
   const restaurantName = restaurant?.name ?? 'Votre restaurant';
   const restaurantColor = safeCssColor(restaurant?.primary_color ?? restaurant?.color ?? '#4F6BED');
   const safeName = esc(restaurantName);
-  const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/team/accept?token=${invite.token}`;
+  // Page CLIENT d'acceptation (auth localStorage) — évite la boucle de login
+  // du flux serveur/cookies. Les anciens liens /api/team/accept redirigent ici.
+  const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/fr/team/accept?token=${invite.token}`;
   const roleLabel = inviteRole === 'restaurant_admin' ? 'Administrateur' : 'Staff';
 
   // Send invite email via Resend

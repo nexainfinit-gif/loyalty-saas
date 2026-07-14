@@ -1,94 +1,74 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createClient } from '@/lib/supabase-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/* ── GET /api/team/accept?token=XXX ────────────────────────────────────── */
-
-/**
- * Accept a team invite via token link (from email).
- * The user must be authenticated (logged in) to accept.
- * Creates a team_member row and marks the invite as accepted.
+/* ── GET /api/team/accept?token=XXX ────────────────────────────────────────
+ * Compat : les anciens emails d'invitation pointent vers cette route. L'auth
+ * de l'app vit en localStorage (pas en cookies), donc on ne peut PAS accepter
+ * côté serveur ici sans provoquer une boucle de login (le cookie n'est pas
+ * synchronisé au retour du login). On redirige simplement vers la PAGE CLIENT
+ * d'acceptation, qui lit la session localStorage et appelle le POST ci-dessous.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const token = searchParams.get('token');
+  const token = searchParams.get('token') ?? '';
+  const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || '';
+  return NextResponse.redirect(`${appUrl}/fr/team/accept?token=${encodeURIComponent(token)}`);
+}
 
-  if (!token || typeof token !== 'string' || token.trim().length === 0) {
-    return NextResponse.json(
-      { error: 'Token d\'invitation manquant.' },
-      { status: 400 },
-    );
+/* ── POST /api/team/accept ─────────────────────────────────────────────────
+ * Accepte une invitation. Authentifié par TOKEN BEARER (comme le reste de
+ * l'app) — fonctionne pour un nouveau staff sans établissement possédé.
+ * Body: { token }. Renvoie du JSON ; la page client gère la navigation.
+ */
+export async function POST(request: Request) {
+  // Auth par Bearer token (session localStorage côté client)
+  const bearer = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '').trim();
+  if (!bearer) {
+    return NextResponse.json({ error: 'Non authentifié.', needsLogin: true }, { status: 401 });
+  }
+  const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(bearer);
+  if (authErr || !user) {
+    return NextResponse.json({ error: 'Session invalide.', needsLogin: true }, { status: 401 });
+  }
+  const userId = user.id;
+  const userEmail = user.email?.toLowerCase() ?? null;
+
+  const body = await request.json().catch(() => null);
+  const token = typeof body?.token === 'string' ? body.token.trim() : '';
+  if (!token) {
+    return NextResponse.json({ error: 'Token d\'invitation manquant.' }, { status: 400 });
   }
 
-  // Look up the invite by token
-  const { data: invite, error: lookupErr } = await supabaseAdmin
+  // Lookup invite
+  const { data: invite } = await supabaseAdmin
     .from('team_invites')
     .select('id, restaurant_id, email, role, status, expires_at')
-    .eq('token', token.trim())
+    .eq('token', token)
     .maybeSingle();
 
-  if (lookupErr || !invite) {
-    return NextResponse.json(
-      { error: 'Invitation introuvable ou invalide.' },
-      { status: 404 },
-    );
+  if (!invite) {
+    return NextResponse.json({ error: 'Invitation introuvable ou invalide.' }, { status: 404 });
   }
-
-  // Check status
   if (invite.status !== 'pending') {
-    return NextResponse.json(
-      { error: 'Cette invitation a déjà été utilisée ou a expiré.' },
-      { status: 410 },
-    );
+    return NextResponse.json({ error: 'Cette invitation a déjà été utilisée ou a expiré.' }, { status: 410 });
   }
-
-  // Check expiration
   if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-    // Mark as expired
-    await supabaseAdmin
-      .from('team_invites')
-      .update({ status: 'expired' })
-      .eq('id', invite.id);
+    await supabaseAdmin.from('team_invites').update({ status: 'expired' }).eq('id', invite.id);
+    return NextResponse.json({ error: 'Cette invitation a expiré. Demandez-en une nouvelle.' }, { status: 410 });
+  }
 
+  // The logged-in email must match the invite
+  if (!userEmail || userEmail !== invite.email.toLowerCase()) {
     return NextResponse.json(
-      { error: 'Cette invitation a expiré. Demandez une nouvelle invitation au propriétaire.' },
-      { status: 410 },
-    );
-  }
-
-  // Authenticate the current user via cookie session
-  let userId: string | null = null;
-  let userEmail: string | null = null;
-
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    userId = user?.id ?? null;
-    userEmail = user?.email?.toLowerCase() ?? null;
-  } catch {
-    // No session
-  }
-
-  if (!userId || !userEmail) {
-    // Redirect to login with return URL
-    const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/fr/dashboard/login?redirect=${encodeURIComponent(request.url)}`;
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // Verify the authenticated user's email matches the invite email
-  if (userEmail !== invite.email.toLowerCase()) {
-    return NextResponse.json(
-      {
-        error: `Cette invitation est destinée à ${invite.email}. Connectez-vous avec cette adresse email pour l'accepter.`,
-      },
+      { error: `Cette invitation est destinée à ${invite.email}. Connectez-vous avec cette adresse pour l'accepter.`, wrongEmail: true },
       { status: 403 },
     );
   }
 
-  // Check if already a team member
+  // Already a member? Mark accepted and succeed.
   const { data: existingMember } = await supabaseAdmin
     .from('team_members')
     .select('id')
@@ -97,41 +77,19 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (existingMember) {
-    // Mark invite as accepted anyway
-    await supabaseAdmin
-      .from('team_invites')
-      .update({ status: 'accepted' })
-      .eq('id', invite.id);
-
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/fr/dashboard/appointments?team_joined=already`,
-    );
+    await supabaseAdmin.from('team_invites').update({ status: 'accepted' }).eq('id', invite.id);
+    return NextResponse.json({ ok: true, already: true, restaurantId: invite.restaurant_id });
   }
 
-  // Create the team member
   const { error: insertErr } = await supabaseAdmin
     .from('team_members')
-    .insert({
-      restaurant_id: invite.restaurant_id,
-      user_id: userId,
-      role: invite.role,
-    });
+    .insert({ restaurant_id: invite.restaurant_id, user_id: userId, role: invite.role });
 
   if (insertErr) {
-    return NextResponse.json(
-      { error: 'Erreur lors de l\'ajout à l\'équipe. Veuillez réessayer.' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Erreur lors de l\'ajout à l\'équipe. Réessayez.' }, { status: 500 });
   }
 
-  // Mark invite as accepted
-  await supabaseAdmin
-    .from('team_invites')
-    .update({ status: 'accepted' })
-    .eq('id', invite.id);
+  await supabaseAdmin.from('team_invites').update({ status: 'accepted' }).eq('id', invite.id);
 
-  // Redirect to dashboard with success indicator
-  return NextResponse.redirect(
-    `${process.env.NEXT_PUBLIC_APP_URL}/fr/dashboard/appointments?team_joined=success`,
-  );
+  return NextResponse.json({ ok: true, restaurantId: invite.restaurant_id });
 }
