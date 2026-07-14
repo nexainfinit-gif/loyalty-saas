@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireOwner } from '@/lib/server-auth';
 import { issueGooglePass } from '@/lib/google-wallet';
 import { randomUUID } from 'crypto';
-import { Resend } from 'resend';
+import { mailer } from '@/lib/mailer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -305,7 +305,7 @@ async function sendPassEmail(opts: {
 }) {
   if (!opts.to || !process.env.RESEND_API_KEY) return;
 
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = mailer;
   const platformLabel = opts.platform === 'apple' ? 'Apple Wallet' : 'Google Wallet';
 
   await resend.emails.send({

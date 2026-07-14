@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
-import { Resend } from 'resend';
+import { mailer as resend } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const limiter = rateLimit({ prefix: 'client-auth', limit: 5, windowMs: 300_000 });
 // GET (validation de token) : plus permissif que le POST mais borné —
 // cohérent avec scanner-info (30/min/IP)

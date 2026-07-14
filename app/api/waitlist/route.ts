@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { Resend } from 'resend';
+import { mailer } from '@/lib/mailer';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail && !duplicate) {
     try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
+      const resend = mailer;
       await resend.emails.send({
         from: 'Rebites Alertes <noreply@rebites.be>',
         to: adminEmail,

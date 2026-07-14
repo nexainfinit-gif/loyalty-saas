@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/server-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { Resend } from 'resend';
+import { mailer as resend } from '@/lib/mailer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const VALID_ROLES = ['staff', 'restaurant_admin'] as const;
 type TeamRole = (typeof VALID_ROLES)[number];

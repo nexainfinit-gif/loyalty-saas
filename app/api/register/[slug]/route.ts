@@ -150,7 +150,7 @@ export async function POST(
   })
 
   // Send verification email (no wallet card until email is confirmed)
-  if (process.env.RESEND_API_KEY) {
+  if (process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
     try {
       await sendVerificationEmail({
         to: email,

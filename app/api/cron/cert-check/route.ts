@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
-import { Resend } from 'resend';
+import { mailer } from '@/lib/mailer';
 import { getCertExpiryDate } from '@/lib/apple-wallet';
 import { logger } from '@/lib/logger';
 
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 
   if (adminEmail) {
     try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
+      const resend = mailer;
 
       const urgencyLabel = expired
         ? 'EXPIRÉ'

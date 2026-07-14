@@ -2,12 +2,11 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAuth, requireFeature } from '@/lib/server-auth'
 import { NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { mailer as resend } from '@/lib/mailer'
 import { checkPlanLimit, checkEmailQuota, planLimitError } from '@/lib/plan-limits'
 import { logger } from '@/lib/logger'
 import { auditLog } from '@/lib/audit'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: Request) {
   const guard = await requireAuth(req)
