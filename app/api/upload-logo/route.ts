@@ -65,5 +65,11 @@ export async function POST(req: NextRequest) {
 
   const { data } = supabaseAdmin.storage.from('logos').getPublicUrl(storagePath);
 
-  return NextResponse.json({ url: data.publicUrl });
+  // Le chemin de stockage est fixe (`<id>/logo.<ext>`) → l'URL publique ne
+  // change jamais, donc le CDN/navigateur servait l'ANCIEN logo en cache après
+  // un remplacement. On ajoute un paramètre de version unique pour forcer le
+  // rechargement partout où l'URL est stockée (dashboard, inscription, email).
+  const bustedUrl = `${data.publicUrl}?v=${Date.now()}`;
+
+  return NextResponse.json({ url: bustedUrl });
 }
