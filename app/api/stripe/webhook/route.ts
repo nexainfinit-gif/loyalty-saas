@@ -211,6 +211,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       current_period_end: null,
       plan: starterPlan?.key ?? 'starter',
       plan_id: starterPlan?.id ?? null,
+      // Abonnement annulé → l'add-on Booking tombe aussi (055 / phase 2).
+      booking_active: false,
     })
     .eq('id', targetId);
 }

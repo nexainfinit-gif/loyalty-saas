@@ -723,6 +723,27 @@ export default function DashboardPage() {
     }
   }
 
+  /* Active/désactive l'add-on mensuel Rebites Booking (055 / phase 2). */
+  async function toggleBookingAddon(active: boolean) {
+    if (!restaurant) return;
+    setBusyAction('booking-addon');
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) return;
+      const res = await fetch('/api/stripe/booking-addon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
+        body: JSON.stringify({ active }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error || t('common.error')); return; }
+      setRestaurant(prev => prev ? { ...prev, booking_active: json.active } : prev);
+      toast.success(active ? 'Rebites Booking activé' : 'Rebites Booking désactivé');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function saveLoyaltySettings() {
     if (!restaurant) return;
     setSavingSettings(true);
@@ -2329,6 +2350,37 @@ export default function DashboardPage() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* Rebites Booking — add-on mensuel (055 / phase 2) */}
+                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-1">Rebites Booking</h3>
+                      <p className="text-xs text-gray-400">
+                        Agenda de réservations : prise de rendez-vous en ligne, rappels, acomptes. Ajoutez l&apos;accès à vos employés depuis « Accès équipe ».
+                      </p>
+                    </div>
+                    {restaurant?.booking_active && (
+                      <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-success-50 text-success-700">Actif</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-4">
+                    {restaurant?.booking_active ? (
+                      <button onClick={() => toggleBookingAddon(false)} disabled={busyAction === 'booking-addon'}
+                        className="px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">
+                        {busyAction === 'booking-addon' ? '…' : 'Désactiver'}
+                      </button>
+                    ) : (
+                      <button onClick={() => toggleBookingAddon(true)} disabled={busyAction === 'booking-addon'}
+                        className="px-4 py-2 rounded-xl text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors">
+                        {busyAction === 'booking-addon' ? '…' : `Activer${process.env.NEXT_PUBLIC_BOOKING_ADDON_PRICE ? ` · ${process.env.NEXT_PUBLIC_BOOKING_ADDON_PRICE}€/mois` : ''}`}
+                      </button>
+                    )}
+                    <span className="text-xs text-gray-400">
+                      {restaurant?.booking_active ? 'Facturé avec votre abonnement · résiliable à tout moment.' : 'Ajouté à votre abonnement · résiliable à tout moment.'}
+                    </span>
                   </div>
                 </div>
 
