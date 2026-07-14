@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useTranslation, useLocaleRouter } from '@/lib/i18n';
+import { staffLanding } from '@/lib/booking-eligibility';
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -93,16 +94,19 @@ function LoginForm() {
         .eq('is_demo', false)
         .limit(1);
       hasRestaurant = !!restos && restos.length > 0;
-      // Membre d'équipe sans restaurant possédé → son agenda (option B).
+      // Membre d'équipe sans restaurant possédé (option B) : café/resto →
+      // scanner fidélité ; salon → agenda.
       if (!hasRestaurant) {
-        const { data: tm } = await supabase
-          .from('team_members')
-          .select('restaurant_id')
-          .eq('user_id', userId)
-          .limit(1);
-        if (tm && tm.length > 0) {
-          document.cookie = `selected_restaurant=${tm[0].restaurant_id}; path=/; max-age=31536000; samesite=lax`;
-          window.location.href = `/${locale}/dashboard/appointments`;
+        const meRes = await fetch('/api/me/restaurants', {
+          headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+        });
+        const meJson = meRes.ok ? await meRes.json() : null;
+        const membership = (meJson?.restaurants ?? []).find(
+          (r: { role: string }) => r.role !== 'owner',
+        ) as { id: string; business_type: string | null; products: string[] | null } | undefined;
+        if (membership) {
+          document.cookie = `selected_restaurant=${membership.id}; path=/; max-age=31536000; samesite=lax`;
+          window.location.href = `/${locale}/dashboard/${staffLanding(membership.business_type, membership.products)}`;
           return;
         }
       }

@@ -11,7 +11,7 @@ import TeamAccessSection from '@/components/TeamAccessSection'
 import LogoCropper from '@/components/LogoCropper';
 import DashboardTutorial from '@/components/DashboardTutorial';
 import LoyaltySetupModal from '@/components/LoyaltySetupModal';
-import { BOOKING_ELIGIBLE_TYPES } from '@/lib/booking-eligibility';
+import { BOOKING_ELIGIBLE_TYPES, staffLanding } from '@/lib/booking-eligibility';
 import PlanSelection from '@/components/PlanSelection';
 import LoyaltyTab from '@/components/LoyaltyTab';
 import OverviewTab, { RETURN_GRACE_DAYS, DEFAULT_GRACE_DAYS } from '@/components/OverviewTab';
@@ -384,16 +384,18 @@ export default function DashboardPage() {
         resto = (selectedId && list.find((r: { id: string }) => r.id === selectedId)) || list[0] || null;
       }
       if (!resto) {
-        // Membre d'équipe (option B) : pas de restaurant possédé mais un
-        // rattachement team_members → on l'envoie sur l'agenda de son salon.
-        const { data: tm } = await supabase
-          .from('team_members')
-          .select('restaurant_id')
-          .eq('user_id', session.user.id)
-          .limit(1);
-        if (tm && tm.length > 0) {
-          document.cookie = `selected_restaurant=${tm[0].restaurant_id}; path=/; max-age=31536000; samesite=lax`;
-          router.replace('/dashboard/appointments');
+        // Membre d'équipe (option B) : pas de restaurant possédé → son
+        // établissement. Café/resto → scanner fidélité ; salon → agenda.
+        const meRes = await fetch('/api/me/restaurants', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const meJson = meRes.ok ? await meRes.json() : null;
+        const membership = (meJson?.restaurants ?? []).find(
+          (r: { role: string }) => r.role !== 'owner',
+        ) as { id: string; business_type: string | null; products: string[] | null } | undefined;
+        if (membership) {
+          document.cookie = `selected_restaurant=${membership.id}; path=/; max-age=31536000; samesite=lax`;
+          router.replace(`/dashboard/${staffLanding(membership.business_type, membership.products)}`);
           return;
         }
         router.replace('/onboarding');

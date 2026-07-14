@@ -46,8 +46,10 @@ function AcceptFlow() {
         if (j.restaurantId) {
           document.cookie = `selected_restaurant=${j.restaurantId}; path=/; max-age=31536000; samesite=lax`;
         }
+        // Café/resto → scanner ; salon → agenda (renvoyé par l'API).
+        const landing = j.landing === 'scanner' ? 'scanner' : 'appointments';
         setStatus('success');
-        setTimeout(() => { window.location.href = `/${locale}/dashboard/appointments?team_joined=success`; }, 900);
+        setTimeout(() => { window.location.href = `/${locale}/dashboard/${landing}?team_joined=success`; }, 900);
       } else if (j.needsLogin) {
         const here = `${window.location.origin}/${locale}/team/accept?token=${encodeURIComponent(token)}`;
         window.location.href = `/${locale}/dashboard/login?redirect=${encodeURIComponent(here)}`;

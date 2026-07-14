@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { staffLanding } from '@/lib/booking-eligibility';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -76,9 +77,17 @@ export async function POST(request: Request) {
     .eq('user_id', userId)
     .maybeSingle();
 
+  // Page d'accueil selon l'établissement : agenda (salons) ou scanner (cafés…).
+  const { data: resto } = await supabaseAdmin
+    .from('restaurants')
+    .select('business_type, products')
+    .eq('id', invite.restaurant_id)
+    .maybeSingle();
+  const landing = staffLanding(resto?.business_type, resto?.products);
+
   if (existingMember) {
     await supabaseAdmin.from('team_invites').update({ status: 'accepted' }).eq('id', invite.id);
-    return NextResponse.json({ ok: true, already: true, restaurantId: invite.restaurant_id });
+    return NextResponse.json({ ok: true, already: true, restaurantId: invite.restaurant_id, landing });
   }
 
   const { error: insertErr } = await supabaseAdmin
@@ -91,5 +100,5 @@ export async function POST(request: Request) {
 
   await supabaseAdmin.from('team_invites').update({ status: 'accepted' }).eq('id', invite.id);
 
-  return NextResponse.json({ ok: true, restaurantId: invite.restaurant_id });
+  return NextResponse.json({ ok: true, restaurantId: invite.restaurant_id, landing });
 }

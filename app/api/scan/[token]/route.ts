@@ -701,7 +701,10 @@ export async function GET(
     : defaultLocale;
   const tGet = await getTranslator(getLocale);
 
-  const guard = await requireAuth(req);
+  // allowStaff : un membre d'équipe (staff d'un café) doit pouvoir identifier
+  // un client au scanner. Le POST (crédit) accepte déjà le staff via
+  // requireScannerAuth ; on aligne le GET (identification).
+  const guard = await requireAuth(req, { allowStaff: true });
   if (guard instanceof NextResponse) return guard;
   if (!guard.restaurantId) {
     return Response.json({ error: tGet('api.restaurantNotFound') }, { status: 404 });
