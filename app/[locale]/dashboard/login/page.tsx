@@ -103,10 +103,10 @@ function LoginForm() {
         const meJson = meRes.ok ? await meRes.json() : null;
         const membership = (meJson?.restaurants ?? []).find(
           (r: { role: string }) => r.role !== 'owner',
-        ) as { id: string; business_type: string | null; products: string[] | null } | undefined;
+        ) as { id: string; business_type: string | null } | undefined;
         if (membership) {
           document.cookie = `selected_restaurant=${membership.id}; path=/; max-age=31536000; samesite=lax`;
-          window.location.href = `/${locale}/dashboard/${staffLanding(membership.business_type, membership.products)}`;
+          window.location.href = `/${locale}/dashboard/${staffLanding(membership.business_type)}`;
           return;
         }
       }

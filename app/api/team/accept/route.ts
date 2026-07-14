@@ -80,10 +80,10 @@ export async function POST(request: Request) {
   // Page d'accueil selon l'établissement : agenda (salons) ou scanner (cafés…).
   const { data: resto } = await supabaseAdmin
     .from('restaurants')
-    .select('business_type, products')
+    .select('business_type')
     .eq('id', invite.restaurant_id)
     .maybeSingle();
-  const landing = staffLanding(resto?.business_type, resto?.products);
+  const landing = staffLanding(resto?.business_type);
 
   if (existingMember) {
     await supabaseAdmin.from('team_invites').update({ status: 'accepted' }).eq('id', invite.id);

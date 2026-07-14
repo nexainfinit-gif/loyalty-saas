@@ -16,24 +16,15 @@ export function isBookingEligible(businessType: string | null | undefined): bool
 }
 
 /**
- * L'établissement utilise-t-il le module réservation ? On se fie d'abord aux
- * produits activés (choix explicite), sinon à l'éligibilité par type d'activité.
- */
-export function hasBooking(
-  businessType: string | null | undefined,
-  products: string[] | null | undefined,
-): boolean {
-  if (products && products.length) return products.includes('booking');
-  return isBookingEligible(businessType);
-}
-
-/**
  * Page d'accueil d'un membre d'équipe : l'agenda pour les établissements avec
  * réservation (salons…), le scanner fidélité pour les autres (cafés, restos…).
+ *
+ * On se base sur le TYPE d'activité (comme le dashboard qui gate l'agenda via
+ * BOOKING_ELIGIBLE_TYPES). ⚠️ NE PAS utiliser `products` : il contient
+ * 'booking' pour TOUS les commerces par défaut à l'onboarding → signal faux.
  */
 export function staffLanding(
   businessType: string | null | undefined,
-  products: string[] | null | undefined,
 ): 'appointments' | 'scanner' {
-  return hasBooking(businessType, products) ? 'appointments' : 'scanner';
+  return isBookingEligible(businessType) ? 'appointments' : 'scanner';
 }
