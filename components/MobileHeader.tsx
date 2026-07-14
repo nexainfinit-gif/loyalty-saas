@@ -2,7 +2,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import LocaleLink from '@/components/LocaleLink';
-import { BOOKING_ELIGIBLE_TYPES } from '@/lib/booking-eligibility';
 
 type Tab = 'overview' | 'clients' | 'loyalty' | 'campaigns' | 'analytics' | 'settings' | 'wallet';
 
@@ -27,6 +26,8 @@ interface Props {
   onAddRestaurant?: () => void;
   /** Produit fidélité actif (T0) : sans lui, clients + fidélité sont masqués. */
   hasLoyalty?: boolean;
+  /** Rebites Booking activé (add-on payant, 055) — affiche l'agenda. */
+  bookingActive?: boolean;
 }
 
 const BUSINESS_TYPE_EMOJI: Record<string, string> = {
@@ -40,7 +41,7 @@ export default function MobileHeader({
   drawerOpen, onDrawerToggle,
   enabledKpiKeys = [], showUpgrade, onUpgrade,
   restaurants = [], currentRestaurantId, onSwitchRestaurant, onAddRestaurant,
-  hasLoyalty = true,
+  hasLoyalty = true, bookingActive = false,
 }: Props) {
   const { t } = useTranslation();
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -283,8 +284,8 @@ export default function MobileHeader({
             </LocaleLink>
           )}
 
-          {/* Booking Rebites (conditional — salons, spas, beauty & wellness) */}
-          {BOOKING_ELIGIBLE_TYPES.has(businessType ?? '') && (
+          {/* Rebites Booking — visible quand le service est activé (add-on, 055) */}
+          {bookingActive && (
             <LocaleLink
               href="/dashboard/appointments"
               className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-all"

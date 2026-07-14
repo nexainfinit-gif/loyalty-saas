@@ -11,7 +11,7 @@ import TeamAccessSection from '@/components/TeamAccessSection'
 import LogoCropper from '@/components/LogoCropper';
 import DashboardTutorial from '@/components/DashboardTutorial';
 import LoyaltySetupModal from '@/components/LoyaltySetupModal';
-import { BOOKING_ELIGIBLE_TYPES, staffLanding } from '@/lib/booking-eligibility';
+import { staffLanding } from '@/lib/booking-eligibility';
 import PlanSelection from '@/components/PlanSelection';
 import LoyaltyTab from '@/components/LoyaltyTab';
 import OverviewTab, { RETURN_GRACE_DAYS, DEFAULT_GRACE_DAYS } from '@/components/OverviewTab';
@@ -67,6 +67,8 @@ interface Restaurant {
   tutorial_completed_at: string | null;
   /** Services choisis à l'onboarding : loyalty | booking | ticketing (045). */
   products: string[] | null;
+  /** Rebites Booking activé (add-on payant, 055) — remplace le gate par type. */
+  booking_active: boolean | null;
 }
 
 interface Transaction {
@@ -375,7 +377,7 @@ export default function DashboardPage() {
       let resto: any = null;
       {
         const { data: restos } = await supabase
-          .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, products, plans(name, key)')
+          .from('restaurants').select('id, name, slug, primary_color, logo_url, business_type, plan, plan_id, scanner_token, subscription_status, current_period_end, stripe_customer_id, tutorial_completed_at, products, booking_active, plans(name, key)')
           .eq('owner_id', session.user.id).eq('is_demo', false).order('created_at', { ascending: true });
         const list = restos ?? [];
         setMyRestaurants(list.map((r: { id: string; name: string | null; slug: string }) => ({ id: r.id, name: r.name ?? r.slug, slug: r.slug })));
@@ -1053,7 +1055,7 @@ export default function DashboardPage() {
           onTabChange={(tab: Tab) => setActiveTab(tab)}
           identityDone={!!restaurant?.logo_url}
           loyaltyEnabled={hasLoyalty}
-          bookingEligible={pf('booking') && BOOKING_ELIGIBLE_TYPES.has(restaurant?.business_type ?? '')}
+          bookingEligible={!!restaurant?.booking_active}
           onStartBooking={async () => {
             setShowTutorial(false);
             // Le tour du dashboard est terminé — on enchaîne sur le guide de
@@ -1228,8 +1230,9 @@ export default function DashboardPage() {
             {sidebarOpen && <span className="text-sm font-medium whitespace-nowrap">{t('nav.billing')}</span>}
           </Link>
 
-          {/* Booking Rebites — visible when booking feature enabled + eligible business type */}
-          {pf('booking') && BOOKING_ELIGIBLE_TYPES.has(restaurant?.business_type ?? '') && (
+          {/* Rebites Booking — visible quand le service est activé (add-on, 055),
+              indépendamment du type d'activité. */}
+          {!!restaurant?.booking_active && (
             <Link prefetch={false}
               href={`/${locale}/dashboard/appointments`}
               data-tutorial-booking
@@ -1310,6 +1313,7 @@ export default function DashboardPage() {
           logoUrl={restaurant?.logo_url ?? null}
           primaryColor={restaurant?.primary_color ?? '#4f6bed'}
           businessType={restaurant?.business_type ?? null}
+          bookingActive={!!restaurant?.booking_active}
           planName={restaurant?.plans?.name ?? restaurant?.plan ?? 'starter'}
           activeTab={activeTab}
           onTabChange={setActiveTab}
