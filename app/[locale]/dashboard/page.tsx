@@ -394,10 +394,10 @@ export default function DashboardPage() {
         const meJson = meRes.ok ? await meRes.json() : null;
         const membership = (meJson?.restaurants ?? []).find(
           (r: { role: string }) => r.role !== 'owner',
-        ) as { id: string; business_type: string | null } | undefined;
+        ) as { id: string; booking_active: boolean; booking_access: boolean } | undefined;
         if (membership) {
           document.cookie = `selected_restaurant=${membership.id}; path=/; max-age=31536000; samesite=lax`;
-          router.replace(`/dashboard/${staffLanding(membership.business_type)}`);
+          router.replace(`/dashboard/${staffLanding(membership.booking_active, membership.booking_access)}`);
           return;
         }
         router.replace('/onboarding');
@@ -2161,7 +2161,7 @@ export default function DashboardPage() {
 
               <div className="max-w-[560px] space-y-5">
                 {/* Accès équipe — tous les établissements (cafés compris) */}
-                <TeamAccessSection />
+                <TeamAccessSection bookingActive={!!restaurant?.booking_active} />
 
                 {/* Restaurant info */}
                 <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">

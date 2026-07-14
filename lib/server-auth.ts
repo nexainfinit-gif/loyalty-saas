@@ -33,6 +33,13 @@ export interface AuthContext {
    * défaut — les routes agenda l'acceptent via requireAuth(req, { allowStaff }).
    */
   memberRole: 'owner' | 'restaurant_admin' | 'staff';
+  /** Rebites Booking (add-on payant, 055) activé pour l'établissement actif. */
+  bookingActive: boolean;
+  /**
+   * Ce compte peut-il gérer l'agenda ? owner/restaurant_admin → toujours ;
+   * staff → seulement si team_members.booking_access est vrai (accès à la carte).
+   */
+  bookingAccess: boolean;
 }
 
 /* ── Internal: resolve user ID from Bearer header or cookie session ────────── */
@@ -66,7 +73,7 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
   const [{ data: restaurants }, { data: profile }, { data: memberships }] = await Promise.all([
     supabaseAdmin
       .from('restaurants')
-      .select('id, plan, plan_id, wallet_studio_enabled')
+      .select('id, plan, plan_id, wallet_studio_enabled, booking_active')
       .eq('owner_id', userId)
       .neq('is_demo', true)
       .order('created_at', { ascending: true })
@@ -79,7 +86,7 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
     // Comptes équipe (option B) : rattachements team_members de l'utilisateur.
     supabaseAdmin
       .from('team_members')
-      .select('restaurant_id, role')
+      .select('restaurant_id, role, booking_access')
       .eq('user_id', userId),
   ]);
 
@@ -102,7 +109,7 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
   if (selectedId && selectedId !== restaurant?.id) {
     const { data: sel } = await supabaseAdmin
       .from('restaurants')
-      .select('id, plan, plan_id, wallet_studio_enabled, owner_id')
+      .select('id, plan, plan_id, wallet_studio_enabled, booking_active, owner_id')
       .eq('id', selectedId)
       .neq('is_demo', true)
       .maybeSingle();
@@ -120,7 +127,7 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
     const first = memberships![0];
     const { data: teamResto } = await supabaseAdmin
       .from('restaurants')
-      .select('id, plan, plan_id, wallet_studio_enabled')
+      .select('id, plan, plan_id, wallet_studio_enabled, booking_active')
       .eq('id', first.restaurant_id)
       .maybeSingle();
     if (teamResto) {
@@ -139,7 +146,7 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
   if (impersonateId && role === 'owner') {
     const { data: impersonated } = await supabaseAdmin
       .from('restaurants')
-      .select('id, plan, plan_id, wallet_studio_enabled')
+      .select('id, plan, plan_id, wallet_studio_enabled, booking_active')
       .eq('id', impersonateId)
       .maybeSingle();
     if (impersonated) {
@@ -168,6 +175,14 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
     ? (features['wallet_studio'] || manualGrant)
     : (plan !== 'free' || manualGrant);
 
+  // ── Rebites Booking (055) : service actif + accès du compte à l'agenda ──
+  const bookingActive = (targetRestaurant as { booking_active?: boolean } | null)?.booking_active ?? false;
+  const activeMembership = (memberships ?? []).find((m) => m.restaurant_id === targetRestaurant?.id);
+  // owner / restaurant_admin gèrent tout ; staff seulement si booking_access.
+  const bookingAccess = memberRole !== 'staff'
+    ? true
+    : ((activeMembership as { booking_access?: boolean } | undefined)?.booking_access ?? false);
+
   return {
     userId,
     platformRole: role,
@@ -178,6 +193,8 @@ export async function getAuthContext(request: Request): Promise<AuthContext | nu
     walletEnabled,
     impersonating,
     memberRole,
+    bookingActive,
+    bookingAccess,
   };
 }
 
@@ -261,6 +278,32 @@ export async function requireScannerAuth(
     return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
   }
   return { restaurantId: ctx.restaurantId, userId: ctx.userId };
+}
+
+/**
+ * Accès à l'agenda Rebites Booking (add-on payant, 055).
+ *   - le service doit être ACTIF sur l'établissement (booking_active)
+ *   - owner / restaurant_admin → toujours autorisés
+ *   - staff → seulement s'ils ont booking_access (accès donné à la carte)
+ * Remplace `requireAuth(req, { allowStaff: true })` sur les routes agenda.
+ */
+export async function requireBooking(
+  request: Request,
+): Promise<AuthContext | NextResponse> {
+  const ctx = await getAuthContext(request);
+  if (!ctx) {
+    return NextResponse.json({ error: 'Non authentifié.' }, { status: 401 });
+  }
+  if (!ctx.restaurantId) {
+    return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
+  }
+  if (!ctx.bookingActive) {
+    return NextResponse.json({ error: 'Rebites Booking n\'est pas activé pour cet établissement.' }, { status: 403 });
+  }
+  if (!ctx.bookingAccess) {
+    return NextResponse.json({ error: 'Accès à l\'agenda non autorisé pour ce compte.' }, { status: 403 });
+  }
+  return ctx;
 }
 
 /**

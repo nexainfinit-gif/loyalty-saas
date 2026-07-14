@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requireAuth } from '@/lib/server-auth';
+import { requireAuth, requireBooking } from '@/lib/server-auth';
 
 /**
  * GET /api/appointments/waiting-list?date=YYYY-MM-DD
  * Returns waiting list entries for the restaurant (dashboard view).
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request, { allowStaff: true }); // lecture agenda: staff OK
+  const auth = await requireBooking(request); // agenda: staff avec accès booking
   if (auth instanceof NextResponse) return auth;
   if (!auth.restaurantId) {
     return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });

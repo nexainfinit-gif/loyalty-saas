@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { refreshAppointmentOnPass } from '@/lib/booking-wallet';
-import { requireAuth } from '@/lib/server-auth';
+import { requireAuth, requireBooking } from '@/lib/server-auth';
 import { sendStaffNotificationEmail } from '@/lib/email';
 import { syncAppointmentToCalendar, updateCalendarEvent } from '@/lib/google-calendar-sync';
 
@@ -29,7 +29,7 @@ const statusSchema = z.object({
  * Returns appointments for a specific date (or today) with joined service + staff.
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request, { allowStaff: true }); // agenda: coiffeurs OK
+  const auth = await requireBooking(request); // agenda: staff avec accès booking
   if (auth instanceof NextResponse) return auth;
   if (!auth.restaurantId) return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
 
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
  * POST /api/appointments — create appointment from dashboard
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request, { allowStaff: true }); // agenda: coiffeurs OK
+  const auth = await requireBooking(request); // agenda: staff avec accès booking
   if (auth instanceof NextResponse) return auth;
   if (!auth.restaurantId) return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
 
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
  * When reverting from no_show: decrements the counter.
  */
 export async function PUT(request: NextRequest) {
-  const auth = await requireAuth(request, { allowStaff: true }); // agenda: coiffeurs OK
+  const auth = await requireBooking(request); // agenda: staff avec accès booking
   if (auth instanceof NextResponse) return auth;
   if (!auth.restaurantId) return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
 

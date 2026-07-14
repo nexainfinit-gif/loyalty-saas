@@ -17,19 +17,19 @@ export async function GET(request: Request) {
   const [{ data: owned }, { data: memberships }] = await Promise.all([
     supabaseAdmin
       .from('restaurants')
-      .select('id, name, slug, business_type, products')
+      .select('id, name, slug, business_type, products, booking_active')
       .eq('owner_id', guard.userId)
       .neq('is_demo', true)
       .order('created_at', { ascending: true }),
     supabaseAdmin
       .from('team_members')
-      .select('restaurant_id, role')
+      .select('restaurant_id, role, booking_access')
       .eq('user_id', guard.userId),
   ]);
 
-  type Row = { id: string; name: string; slug: string; role: string; business_type: string | null; products: string[] | null };
+  type Row = { id: string; name: string; slug: string; role: string; business_type: string | null; products: string[] | null; booking_active: boolean; booking_access: boolean };
   const list: Row[] =
-    (owned ?? []).map((r) => ({ id: r.id, name: r.name ?? r.slug, slug: r.slug, role: 'owner', business_type: r.business_type ?? null, products: r.products ?? null }));
+    (owned ?? []).map((r) => ({ id: r.id, name: r.name ?? r.slug, slug: r.slug, role: 'owner', business_type: r.business_type ?? null, products: r.products ?? null, booking_active: r.booking_active ?? false, booking_access: true }));
 
   const memberIds = (memberships ?? [])
     .map((m) => m.restaurant_id)
@@ -37,11 +37,12 @@ export async function GET(request: Request) {
   if (memberIds.length) {
     const { data: teamRestos } = await supabaseAdmin
       .from('restaurants')
-      .select('id, name, slug, business_type, products')
+      .select('id, name, slug, business_type, products, booking_active')
       .in('id', memberIds);
     for (const r of teamRestos ?? []) {
-      const role = (memberships ?? []).find((m) => m.restaurant_id === r.id)?.role ?? 'staff';
-      list.push({ id: r.id, name: r.name ?? r.slug, slug: r.slug, role, business_type: r.business_type ?? null, products: r.products ?? null });
+      const m = (memberships ?? []).find((x) => x.restaurant_id === r.id);
+      const role = m?.role ?? 'staff';
+      list.push({ id: r.id, name: r.name ?? r.slug, slug: r.slug, role, business_type: r.business_type ?? null, products: r.products ?? null, booking_active: r.booking_active ?? false, booking_access: role === 'staff' ? (m?.booking_access ?? false) : true });
     }
   }
 

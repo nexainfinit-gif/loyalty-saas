@@ -69,27 +69,28 @@ export async function POST(request: Request) {
     );
   }
 
-  // Already a member? Mark accepted and succeed.
+  // Service Booking actif sur l'établissement ? (décide agenda vs scanner)
+  const { data: resto } = await supabaseAdmin
+    .from('restaurants')
+    .select('booking_active')
+    .eq('id', invite.restaurant_id)
+    .maybeSingle();
+
+  // Déjà membre ? On honore son accès booking existant.
   const { data: existingMember } = await supabaseAdmin
     .from('team_members')
-    .select('id')
+    .select('id, booking_access')
     .eq('restaurant_id', invite.restaurant_id)
     .eq('user_id', userId)
     .maybeSingle();
 
-  // Page d'accueil selon l'établissement : agenda (salons) ou scanner (cafés…).
-  const { data: resto } = await supabaseAdmin
-    .from('restaurants')
-    .select('business_type')
-    .eq('id', invite.restaurant_id)
-    .maybeSingle();
-  const landing = staffLanding(resto?.business_type);
-
   if (existingMember) {
     await supabaseAdmin.from('team_invites').update({ status: 'accepted' }).eq('id', invite.id);
+    const landing = staffLanding(resto?.booking_active, existingMember.booking_access);
     return NextResponse.json({ ok: true, already: true, restaurantId: invite.restaurant_id, landing });
   }
 
+  // Nouveau membre : commerce par défaut (booking_access = false) → scanner.
   const { error: insertErr } = await supabaseAdmin
     .from('team_members')
     .insert({ restaurant_id: invite.restaurant_id, user_id: userId, role: invite.role });
@@ -100,5 +101,6 @@ export async function POST(request: Request) {
 
   await supabaseAdmin.from('team_invites').update({ status: 'accepted' }).eq('id', invite.id);
 
+  const landing = staffLanding(resto?.booking_active, false);
   return NextResponse.json({ ok: true, restaurantId: invite.restaurant_id, landing });
 }

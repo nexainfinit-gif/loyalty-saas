@@ -5,6 +5,42 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/* ── PATCH /api/team/[id] ──────────────────────────────────────────────────
+ * Modifie l'accès Booking d'un membre d'équipe. Body: { booking_access: bool }.
+ * Auth : gérant (owner / restaurant_admin) — requireAuth refuse le staff.
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const guard = await requireAuth(request);
+  if (guard instanceof NextResponse) return guard;
+  if (!guard.restaurantId) {
+    return NextResponse.json({ error: 'Restaurant introuvable.' }, { status: 404 });
+  }
+
+  const { id } = await params;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return NextResponse.json({ error: 'Identifiant invalide.' }, { status: 400 });
+  }
+
+  const body = await request.json().catch(() => null);
+  if (typeof body?.booking_access !== 'boolean') {
+    return NextResponse.json({ error: 'booking_access (booléen) requis.' }, { status: 400 });
+  }
+
+  const { error } = await supabaseAdmin
+    .from('team_members')
+    .update({ booking_access: body.booking_access })
+    .eq('id', id)
+    .eq('restaurant_id', guard.restaurantId);
+
+  if (error) {
+    return NextResponse.json({ error: 'Erreur lors de la mise à jour.' }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, booking_access: body.booking_access });
+}
+
 /* ── DELETE /api/team/[id] ─────────────────────────────────────────────── */
 
 /**

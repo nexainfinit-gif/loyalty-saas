@@ -16,15 +16,13 @@ export function isBookingEligible(businessType: string | null | undefined): bool
 }
 
 /**
- * Page d'accueil d'un membre d'équipe : l'agenda pour les établissements avec
- * réservation (salons…), le scanner fidélité pour les autres (cafés, restos…).
- *
- * On se base sur le TYPE d'activité (comme le dashboard qui gate l'agenda via
- * BOOKING_ELIGIBLE_TYPES). ⚠️ NE PAS utiliser `products` : il contient
- * 'booking' pour TOUS les commerces par défaut à l'onboarding → signal faux.
+ * Page d'accueil d'un membre d'équipe : l'agenda s'il a accès au Booking
+ * (service actif sur l'établissement ET accès donné à ce membre), sinon le
+ * scanner fidélité. Modèle add-on 055 : tout staff = commerce ; booking à la carte.
  */
 export function staffLanding(
-  businessType: string | null | undefined,
+  bookingActive: boolean | null | undefined,
+  bookingAccess: boolean | null | undefined,
 ): 'appointments' | 'scanner' {
-  return isBookingEligible(businessType) ? 'appointments' : 'scanner';
+  return bookingActive && bookingAccess ? 'appointments' : 'scanner';
 }

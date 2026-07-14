@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     await Promise.all([
       supabaseAdmin
         .from('team_members')
-        .select('id, user_id, role, created_at')
+        .select('id, user_id, role, booking_access, created_at')
         .eq('restaurant_id', guard.restaurantId)
         .order('created_at', { ascending: true })
         .limit(100),
