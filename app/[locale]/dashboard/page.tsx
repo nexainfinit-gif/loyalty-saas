@@ -739,6 +739,14 @@ export default function DashboardPage() {
       if (!res.ok) { toast.error(json.error || t('common.error')); return; }
       setRestaurant(prev => prev ? { ...prev, booking_active: json.active } : prev);
       toast.success(active ? 'Rebites Booking activé' : 'Rebites Booking désactivé');
+      // À l'activation, on enchaîne DIRECTEMENT sur le guide de configuration
+      // des réservations (prestations → équipe → réglages) — même parcours que
+      // la fin du tutoriel (onStartBooking). Sans ça, le guide ne démarrait
+      // jamais après un simple ajout d'add-on.
+      if (active) {
+        try { localStorage.setItem('rebites_booking_setup', 'services'); } catch { /* navigation privée */ }
+        router.push('/dashboard/appointments/services');
+      }
     } finally {
       setBusyAction(null);
     }
