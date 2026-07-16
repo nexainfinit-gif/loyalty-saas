@@ -65,6 +65,7 @@ interface WelcomeEmailProps {
   restaurantColor: string;
   qrToken: string;
   appleWalletUrl?: string | null;
+  googleWalletUrl?: string | null;
   /** If the customer was referred, the bonus points/stamps they received. */
   referralBonusReceived?: number | null;
   /** Referral code for this customer to share with friends. */
@@ -84,6 +85,7 @@ export async function sendWelcomeEmail({
   restaurantColor,
   qrToken,
   appleWalletUrl,
+  googleWalletUrl,
   referralBonusReceived,
   referralCode,
   referralRewardAmount,
@@ -133,9 +135,17 @@ ${emailHeader({ color: safeColor, title: 'Bienvenue !', subtitle: safeName, logo
         </div>
 
         ${appleWalletUrl ? `
-        <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="text-align: center; margin-bottom: 1rem;">
           <a href="${appleWalletUrl}" target="_blank" style="display: inline-block; background: #000000; color: #ffffff; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
              Ajouter à Apple Wallet
+          </a>
+        </div>
+        ` : ''}
+
+        ${googleWalletUrl ? `
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <a href="${googleWalletUrl}" target="_blank" style="display: inline-block; background: #1a73e8; color: #ffffff; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
+             Ajouter à Google Wallet
           </a>
         </div>
         ` : ''}

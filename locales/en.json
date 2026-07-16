@@ -689,7 +689,7 @@
     "successTitle": "You're registered!",
     "successMessage": "Your loyalty card is ready 🎉",
     "checkEmailTitle": "Check your inbox",
-    "checkEmailSpam": "A confirmation email has been sent. Confirm your address to receive your digital loyalty card.",
+    "checkEmailSpam": "Your digital loyalty card has been sent to your email.",
     "spamTip": "If you can't find the email, check your spam folder and move it to your inbox so you don't miss future messages.",
     "addToWalletTitle": "📱 Add your card to your Wallet",
     "addToGoogleWallet": "🎫 Add to Google Wallet",

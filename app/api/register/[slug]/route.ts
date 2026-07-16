@@ -1,5 +1,6 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
-import { sendVerificationEmail } from '@/lib/email'
+import { sendWelcomeEmail } from '@/lib/email'
+import { issueWalletPasses } from '@/lib/wallet-issue'
 import { registerSlugSchema, parseBody } from '@/lib/validation'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { checkPlanLimit, planLimitError } from '@/lib/plan-limits'
@@ -112,8 +113,6 @@ export async function POST(
     );
   }
 
-  const emailVerificationToken = crypto.randomUUID()
-
   const { data: customer, error } = await supabase
     .from('customers')
     .insert({
@@ -124,8 +123,9 @@ export async function POST(
       phone: phone ?? null,
       consent_marketing: consent_marketing ?? false,
       consent_ip: ip,
-      email_verified: false,
-      email_verification_token: emailVerificationToken,
+      // Plus d'étape de confirmation d'email : le client est vérifié d'office
+      // et reçoit sa carte directement (décision produit, 2026-07).
+      email_verified: true,
       // qr_token explicite : pas de défaut DB fiable, clé du scan/QR/wallet.
       qr_token: crypto.randomUUID(),
     })
@@ -149,19 +149,23 @@ export async function POST(
     metadata: { reason: 'Bienvenue' },
   })
 
-  // Send verification email (no wallet card until email is confirmed)
+  // Carte livrée directement : on émet les passes Wallet et on envoie l'email
+  // de bienvenue (avec QR + boutons Apple/Google Wallet) — sans confirmation.
   if (process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
     try {
-      await sendVerificationEmail({
+      const walletUrls = await issueWalletPasses(customer)
+      await sendWelcomeEmail({
         to: email,
         firstName: first_name,
         restaurantName: restaurant.name,
         restaurantColor: restaurant.primary_color ?? '#FF6B35',
         restaurantLogoUrl: restaurant.logo_url ?? null,
-        verificationToken: emailVerificationToken,
+        qrToken: customer.qr_token,
+        appleWalletUrl: walletUrls.apple,
+        googleWalletUrl: walletUrls.google,
       })
     } catch (emailErr) {
-      logger.error({ ctx: 'register/slug', rid: restaurant.id, msg: 'Verification email failed', err: emailErr })
+      logger.error({ ctx: 'register/slug', rid: restaurant.id, msg: 'Welcome email failed', err: emailErr })
     }
   }
 
