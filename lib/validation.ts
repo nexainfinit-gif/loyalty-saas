@@ -22,7 +22,7 @@ export const registerSchema = z.object({
 export const registerSlugSchema = z.object({
   first_name:        z.string().trim().min(1, 'Le prénom est requis').max(100).transform(stripHtml),
   email:             z.string().trim().email('Adresse email invalide').max(255),
-  birth_date:        z.string().date().optional().nullable(),
+  birth_date:        z.string({ error: 'La date de naissance est requise.' }).date('Date de naissance invalide.'),
   phone:             z.string().trim().max(20).optional().nullable(),
   consent_marketing: z.literal(true, {
     error: 'Vous devez accepter les conditions pour vous inscrire.',

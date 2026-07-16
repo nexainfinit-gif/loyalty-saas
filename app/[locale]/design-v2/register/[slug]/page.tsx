@@ -246,7 +246,7 @@ export default function RegisterPageV2() {
             <form onSubmit={handleSubmit} className="v2-reg__stack">
               <Input name="first_name" type="text" label={t('registerSlug.firstName')} placeholder={t('register.firstNamePlaceholder')} required maxLength={100} />
               <Input name="email" type="email" label={t('registerSlug.email')} placeholder={t('register.emailPlaceholder')} required />
-              <Input name="birth_date" type="date" label={`${t('registerSlug.birthday')} `} />
+              <Input name="birth_date" type="date" required label={`${t('registerSlug.birthday')} `} />
               <Input name="phone" type="tel" label={`${t('registerSlug.phone')} `} placeholder="+32 470 00 00 00" />
 
               <label className="v2-reg__consent">

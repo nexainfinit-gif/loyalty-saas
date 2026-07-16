@@ -73,6 +73,7 @@ describe('parseBody', () => {
     const result = parseBody(registerSlugSchema, {
       first_name: 'Luc',
       email: 'luc@example.com',
+      birth_date: '1990-01-01',
       consent_marketing: true,
     });
 

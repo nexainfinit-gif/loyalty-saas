@@ -313,7 +313,7 @@ export default function RegisterPage() {
                   {t('registerSlug.birthday')}
                   <span style={{ color: '#9CA3AF', fontWeight: 400, marginLeft: '0.25rem' }}>({t('registerSlug.birthdayHint')})</span>
                 </label>
-                <input name="birth_date" type="date" />
+                <input name="birth_date" type="date" required />
               </div>
 
               {/* Téléphone */}
