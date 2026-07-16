@@ -71,6 +71,7 @@ export default function RegisterPageV2() {
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralBonus, setReferralBonus] = useState<number | null>(null);
   const [programType, setProgramType] = useState<'points' | 'stamps'>('points');
+  const [welcomeBonus, setWelcomeBonus] = useState<number>(10);
   const [referralRewardAmount, setReferralRewardAmount] = useState<number | undefined>(undefined);
   const turnstileRef = useRef<HTMLDivElement>(null);
 
@@ -151,6 +152,7 @@ export default function RegisterPageV2() {
     if (data.referralCode) setReferralCode(data.referralCode);
     if (data.referralBonus) setReferralBonus(data.referralBonus);
     if (data.programType) setProgramType(data.programType);
+    if (typeof data.welcomeBonus === 'number') setWelcomeBonus(data.welcomeBonus);
     if (data.referralRewardAmount) setReferralRewardAmount(data.referralRewardAmount);
     setStep('success');
   }
@@ -283,10 +285,14 @@ export default function RegisterPageV2() {
               </div>
             </div>
 
-            <div className="v2-reg__points">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z" /></svg>
-              <span>{t('registerSlug.welcomePoints', { points: '10' })}</span>
-            </div>
+            {welcomeBonus > 0 && (
+              <div className="v2-reg__points">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z" /></svg>
+                <span>{programType === 'stamps'
+                  ? t('registerSlug.welcomeStamps', { stamps: String(welcomeBonus) })
+                  : t('registerSlug.welcomePoints', { points: String(welcomeBonus) })}</span>
+              </div>
+            )}
 
             {referralBonus != null && referralBonus > 0 && (
               <div className="v2-reg__bonus">

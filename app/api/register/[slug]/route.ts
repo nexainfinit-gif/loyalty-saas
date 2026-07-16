@@ -140,14 +140,32 @@ export async function POST(
     return Response.json({ error: error.message }, { status: 500 })
   }
 
-  await supabase.from('transactions').insert({
-    restaurant_id: restaurant.id,
-    customer_id: customer.id,
-    type: 'points_add',
-    points_delta: 10,
-    balance_after: 10,
-    metadata: { reason: 'Bienvenue' },
-  })
+  // Bonus de bienvenue — adapté au type de programme (points OU tampons).
+  const { data: loyaltySettings } = await supabase
+    .from('loyalty_settings')
+    .select('program_type, welcome_bonus_points')
+    .eq('restaurant_id', restaurant.id)
+    .maybeSingle()
+
+  const programType: 'points' | 'stamps' = loyaltySettings?.program_type === 'stamps' ? 'stamps' : 'points'
+  const welcomeBonus = loyaltySettings?.welcome_bonus_points ?? 10
+
+  if (welcomeBonus > 0) {
+    const field = programType === 'stamps' ? 'stamps_count' : 'total_points'
+    await supabase.from('transactions').insert({
+      restaurant_id: restaurant.id,
+      customer_id: customer.id,
+      type: 'welcome_bonus',
+      points_delta: welcomeBonus,
+      balance_after: welcomeBonus,
+      metadata: { reason: 'Bienvenue' },
+    })
+    // Crédite le bon compteur (client tout neuf → valeur = bonus).
+    await supabase.from('customers').update({ [field]: welcomeBonus }).eq('id', customer.id)
+    // Reflète sur l'objet local pour l'émission des passes Wallet.
+    if (field === 'stamps_count') customer.stamps_count = welcomeBonus
+    else customer.total_points = welcomeBonus
+  }
 
   // Carte livrée directement : on émet les passes Wallet et on envoie l'email
   // de bienvenue (avec QR + boutons Apple/Google Wallet) — sans confirmation.
@@ -184,20 +202,13 @@ export async function POST(
       const { getReferralConfig, validateReferralCode, processReferral } = await import('@/lib/referral');
       const config = await getReferralConfig(restaurant.id);
       if (config.enabled) {
-        // Fetch loyalty settings for program_type
-        const { data: loyaltySettings } = await supabase
-          .from('loyalty_settings')
-          .select('program_type')
-          .eq('restaurant_id', restaurant.id)
-          .maybeSingle();
-
         const validation = await validateReferralCode(restaurant.id, ref.trim(), email);
         if (validation.valid && validation.referrerId) {
           const result = await processReferral({
             restaurantId: restaurant.id,
             referrerId: validation.referrerId,
             refereeId: customer.id,
-            programType: loyaltySettings?.program_type ?? 'points',
+            programType,
             config,
           });
           if (result.success) {
@@ -213,5 +224,5 @@ export async function POST(
     }
   }
 
-  return Response.json({ success: true, customer_id: customer.id, referralCode, referralBonus })
+  return Response.json({ success: true, customer_id: customer.id, referralCode, referralBonus, programType, welcomeBonus })
 }

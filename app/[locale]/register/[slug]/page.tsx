@@ -50,6 +50,7 @@ export default function RegisterPage() {
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralBonus, setReferralBonus] = useState<number | null>(null);
   const [programType, setProgramType] = useState<'points' | 'stamps'>('points');
+  const [welcomeBonus, setWelcomeBonus] = useState<number>(10);
   const [referralRewardAmount, setReferralRewardAmount] = useState<number | undefined>(undefined);
   const turnstileRef = useRef<HTMLDivElement>(null);
 
@@ -141,6 +142,7 @@ export default function RegisterPage() {
     if (data.referralCode) setReferralCode(data.referralCode);
     if (data.referralBonus) setReferralBonus(data.referralBonus);
     if (data.programType) setProgramType(data.programType);
+    if (typeof data.welcomeBonus === 'number') setWelcomeBonus(data.welcomeBonus);
     if (data.referralRewardAmount) setReferralRewardAmount(data.referralRewardAmount);
     setStep('success');
   }
@@ -427,14 +429,18 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div style={{
-              background: `${color}10`, borderRadius: '12px', padding: '1rem',
-              border: `1.5px solid ${color}30`,
-            }}>
-              <p style={{ fontSize: '0.82rem', color: '#374151', margin: 0, lineHeight: 1.6 }}>
-                {t('registerSlug.welcomePoints', { points: '10' })}
-              </p>
-            </div>
+            {welcomeBonus > 0 && (
+              <div style={{
+                background: `${color}10`, borderRadius: '12px', padding: '1rem',
+                border: `1.5px solid ${color}30`,
+              }}>
+                <p style={{ fontSize: '0.82rem', color: '#374151', margin: 0, lineHeight: 1.6 }}>
+                  {programType === 'stamps'
+                    ? t('registerSlug.welcomeStamps', { stamps: String(welcomeBonus) })
+                    : t('registerSlug.welcomePoints', { points: String(welcomeBonus) })}
+                </p>
+              </div>
+            )}
 
             {/* Referral bonus message */}
             {referralBonus != null && referralBonus > 0 && (

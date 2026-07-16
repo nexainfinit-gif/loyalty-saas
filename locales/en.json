@@ -695,6 +695,7 @@
     "addToGoogleWallet": "🎫 Add to Google Wallet",
     "generatingCard": "⏳ Generating your card...",
     "welcomePoints": "🎁 {points} welcome points have been added to your card!",
+    "welcomeStamps": "🎁 {stamps} welcome stamps have been added to your card!",
     "consentRequired": "You must agree to receive your rewards.",
     "emailAlreadyRegistered": "This email is already registered in this program."
   },

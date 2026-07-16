@@ -678,6 +678,7 @@
     "addToGoogleWallet": "🎫 Toevoegen aan Google Wallet",
     "generatingCard": "⏳ Uw kaart wordt gegenereerd...",
     "welcomePoints": "🎁 {points} welkomstpunten zijn toegevoegd aan uw kaart!",
+    "welcomeStamps": "🎁 {stamps} welkomststempels zijn toegevoegd aan uw kaart!",
     "consentRequired": "U moet akkoord gaan met het ontvangen van uw beloningen.",
     "emailAlreadyRegistered": "Dit e-mailadres is al ingeschreven voor dit programma."
   },
