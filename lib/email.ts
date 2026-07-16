@@ -116,11 +116,30 @@ ${emailHeader({ color: safeColor, title: 'Bienvenue !', subtitle: safeName, logo
         </p>
 
         <p style="color: #374151;">
-          Votre carte fidélité <strong>${safeName}</strong> est prête.
-          Présentez ce QR code à chaque visite pour gagner des points.
+          Votre carte fidélité <strong>${safeName}</strong> est prête. Ajoutez-la à votre téléphone en un tap :
         </p>
 
-        <div style="text-align: center; margin: 2rem 0;">
+        ${appleWalletUrl ? `
+        <div style="text-align: center; margin-bottom: 0.75rem;">
+          <a href="${appleWalletUrl}" target="_blank" style="display: inline-block; background: #000000; color: #ffffff; text-decoration: none; padding: 0.85rem 1.75rem; border-radius: 12px; font-size: 0.95rem; font-weight: 600;">
+             Ajouter à Apple Wallet
+          </a>
+        </div>
+        ` : ''}
+
+        ${googleWalletUrl ? `
+        <div style="text-align: center; margin-bottom: 0.75rem;">
+          <a href="${googleWalletUrl}" target="_blank" style="display: inline-block; background: #1a73e8; color: #ffffff; text-decoration: none; padding: 0.85rem 1.75rem; border-radius: 12px; font-size: 0.95rem; font-weight: 600;">
+             Ajouter à Google Wallet
+          </a>
+        </div>
+        ` : ''}
+
+        <p style="color: #6b7280; font-size: 0.9rem; text-align: center; margin: 1.75rem 0 0.5rem;">
+          Ou présentez ce QR code à chaque visite :
+        </p>
+
+        <div style="text-align: center; margin: 0.5rem 0 1rem;">
           <img
             src="${qrUrl}"
             alt="QR Code fidélité"
@@ -133,22 +152,6 @@ ${emailHeader({ color: safeColor, title: 'Bienvenue !', subtitle: safeName, logo
             Conseil : faites une capture d'écran de ce QR code pour l'avoir toujours avec vous !
           </p>
         </div>
-
-        ${appleWalletUrl ? `
-        <div style="text-align: center; margin-bottom: 1rem;">
-          <a href="${appleWalletUrl}" target="_blank" style="display: inline-block; background: #000000; color: #ffffff; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
-             Ajouter à Apple Wallet
-          </a>
-        </div>
-        ` : ''}
-
-        ${googleWalletUrl ? `
-        <div style="text-align: center; margin-bottom: 2rem;">
-          <a href="${googleWalletUrl}" target="_blank" style="display: inline-block; background: #1a73e8; color: #ffffff; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-size: 0.9rem; font-weight: 600;">
-             Ajouter à Google Wallet
-          </a>
-        </div>
-        ` : ''}
 
         ${referralBonusReceived ? `
         <div style="background: #f0fdf4; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #bbf7d0;">
