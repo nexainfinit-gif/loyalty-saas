@@ -200,7 +200,11 @@ export default function DashboardTutorial({ onComplete, onTabChange, bookingElig
           data-tutorial-card
           className={[
             'fixed z-[100] w-[calc(100vw-24px)] sm:w-80 max-w-80 animate-fade-up',
-            step.interactive ? 'bottom-4 right-3 sm:right-4' : '',
+            // Étape interactive : carte docké en bas à droite, mais RELEVÉE
+            // (bottom-24 ≈ 96px) pour passer AU-DESSUS de la barre « Enregistrer »
+            // sticky (~72px) des formulaires identité/fidélité — sinon elle
+            // recouvrait le bouton Enregistrer que cette étape demande de cliquer.
+            step.interactive ? 'bottom-24 right-3 sm:right-4' : '',
           ].join(' ')}
           style={step.interactive ? undefined : { top: tooltipPos!.top, left: tooltipPos!.left }}
         >
