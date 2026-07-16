@@ -69,7 +69,17 @@ async function sendViaBrevo(a: SendArgs): Promise<{ data: { id: string | null };
 export const mailer = {
   emails: {
     async send(a: SendArgs) {
-      if (BREVO_KEY) return sendViaBrevo(a);
+      if (BREVO_KEY) {
+        try {
+          return await sendViaBrevo(a);
+        } catch (err) {
+          // Résilience : si Brevo échoue (clé invalide, incident…), on ne casse
+          // pas l'email — on retombe sur Resend s'il est configuré, en loggant.
+          console.error('[mailer] Brevo failed, fallback to Resend:', err instanceof Error ? err.message : err);
+          if (resendClient) return resendClient.emails.send(a as Parameters<typeof resendClient.emails.send>[0]);
+          throw err;
+        }
+      }
       if (resendClient) return resendClient.emails.send(a as Parameters<typeof resendClient.emails.send>[0]);
       throw new Error('Aucun fournisseur email configuré (BREVO_API_KEY ou RESEND_API_KEY).');
     },
@@ -79,7 +89,12 @@ export const mailer = {
       if (BREVO_KEY) {
         const results = await Promise.allSettled(arr.map(sendViaBrevo));
         const rejected = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
-        return { data: null, error: rejected ? { message: String(rejected.reason) } : null };
+        if (rejected) {
+          console.error('[mailer] Brevo batch failed, fallback to Resend:', String(rejected.reason));
+          if (resendClient) return resendClient.batch.send(arr as Parameters<typeof resendClient.batch.send>[0]);
+          return { data: null, error: { message: String(rejected.reason) } };
+        }
+        return { data: null, error: null };
       }
       if (resendClient) return resendClient.batch.send(arr as Parameters<typeof resendClient.batch.send>[0]);
       throw new Error('Aucun fournisseur email configuré.');
