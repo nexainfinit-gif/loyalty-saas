@@ -71,7 +71,12 @@ export default function BookingSetupGuide() {
     return () => { stop = true; clearInterval(iv); };
   }, [stepId]);
 
-  if (!stepId) return null;
+  // Le guide ne flotte que dans l'espace réservations — sinon il recouvrait
+  // les boutons (ex. « Enregistrer » de la config fidélité) sur les autres
+  // onglets du dashboard. L'état de setup persiste en localStorage : le guide
+  // réapparaît dès le retour sur une page /dashboard/appointments.
+  const onBookingArea = pathname?.includes('/dashboard/appointments') ?? false;
+  if (!stepId || !onBookingArea) return null;
 
   const idx = STEPS.findIndex(s => s.id === stepId);
   const step = STEPS[idx];
