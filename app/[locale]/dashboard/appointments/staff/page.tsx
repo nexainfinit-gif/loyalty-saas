@@ -113,6 +113,9 @@ export default function StaffPage() {
   }
 
   const deleteMember = async (id: string) => {
+    // Confirmation — sur mobile un tap accidentel supprimait sans retour possible.
+    const member = staff.find((s) => s.id === id)
+    if (!window.confirm(`Supprimer « ${member?.name ?? 'ce membre'} » ?`)) return
     const res = await api('/api/appointments/staff?id=' + id, { method: 'DELETE' })
     if (!res.error) {
       setStaff((prev) => prev.filter((s) => s.id !== id))
@@ -195,8 +198,8 @@ export default function StaffPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Header — empilé sur mobile pour ne pas écraser le titre */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('appointmentStaff.title')}</h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -205,7 +208,7 @@ export default function StaffPage() {
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-3 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors w-full sm:w-auto"
         >
           <Plus size={16} />
           {t('appointmentStaff.addEmployee')}
@@ -244,15 +247,17 @@ export default function StaffPage() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => openEdit(member)}
-                      className="w-7 h-7 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
+                      aria-label={t('common.edit') || 'Modifier'}
+                      className="w-9 h-9 rounded-lg hover:bg-gray-50 flex items-center justify-center transition-colors"
                     >
-                      <Pencil size={13} className="text-gray-400" />
+                      <Pencil size={15} className="text-gray-400" />
                     </button>
                     <button
                       onClick={() => deleteMember(member.id)}
-                      className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors"
+                      aria-label={t('common.delete') || 'Supprimer'}
+                      className="w-9 h-9 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors"
                     >
-                      <Trash2 size={13} className="text-red-400" />
+                      <Trash2 size={15} className="text-red-400" />
                     </button>
                   </div>
                 </div>
@@ -313,9 +318,10 @@ export default function StaffPage() {
 
       {/* Staff form modal */}
       {modalView === 'form' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setModalView('list')} />
-          <div className="relative bg-white rounded-2xl border border-gray-200 shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+          {/* Bottom-sheet sur mobile, modale centrée sur desktop */}
+          <div className="relative bg-white rounded-t-2xl sm:rounded-2xl border border-gray-200 shadow-xl w-full max-w-md mx-0 sm:mx-4 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto animate-fade-up sm:animate-none">
             <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200">
               <h2 className="text-base font-semibold">
                 {editingId ? t('appointmentStaff.editTitle') : t('appointmentStaff.createTitle')}
@@ -411,9 +417,10 @@ export default function StaffPage() {
 
       {/* Schedule modal */}
       {modalView === 'schedule' && scheduleStaff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setModalView('list')} />
-          <div className="relative bg-white rounded-2xl border border-gray-200 shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+          {/* Bottom-sheet sur mobile, modale centrée sur desktop */}
+          <div className="relative bg-white rounded-t-2xl sm:rounded-2xl border border-gray-200 shadow-xl w-full max-w-lg mx-0 sm:mx-4 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto animate-fade-up sm:animate-none">
             <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200">
               <div>
                 <h2 className="text-base font-semibold">{t('appointmentStaff.hoursTitle', { name: scheduleStaff.name })}</h2>
@@ -438,7 +445,7 @@ export default function StaffPage() {
                 return (
                   <div
                     key={day}
-                    className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${
+                    className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-xl transition-colors ${
                       isWorking ? 'bg-gray-50' : ''
                     }`}
                   >

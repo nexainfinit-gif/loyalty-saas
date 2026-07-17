@@ -108,8 +108,8 @@ export default function AppointmentAnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Period selector */}
-      <div className="flex items-center justify-between">
+      {/* Period selector — wrap autorisé pour les titres longs sur mobile */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-gray-900">
           {t('appointmentAnalytics.title') || 'Statistiques rendez-vous'}
         </h2>

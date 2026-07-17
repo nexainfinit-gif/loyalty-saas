@@ -360,18 +360,22 @@ export default function SettingsPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('appointmentSettings.title')}</h1>
-          <p className="text-sm text-gray-500 mt-1">
+      {/* Header — sticky sur mobile : la page est très longue, le bouton
+          Enregistrer doit rester accessible sans remonter tout en haut.
+          (Pas de barre en bas : le BookingSetupGuide flotte déjà là pendant
+          le parcours guidé et la recouvrirait.) */}
+      <div className="sticky top-0 z-30 sm:static flex items-center justify-between gap-3 mb-6 py-2.5 sm:py-0 bg-surface/95 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-semibold tracking-tight truncate">{t('appointmentSettings.title')}</h1>
+          {/* Sous-titre masqué sur mobile pour garder la barre sticky compacte */}
+          <p className="hidden sm:block text-sm text-gray-500 mt-1">
             {t('appointmentSettings.subtitle')}
           </p>
         </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+          className={`shrink-0 flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
             saved
               ? 'bg-green-600 text-white'
               : 'bg-gray-900 text-white hover:bg-gray-800'
@@ -419,7 +423,7 @@ export default function SettingsPage() {
             <label className="text-xs font-medium text-gray-500 mb-2 block">
               {t('appointmentSettings.daysLabel')}
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {[1, 2, 3, 4, 5, 6, 0].map((day) => (
                 <button
                   key={day}
@@ -830,10 +834,10 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Créer une offre */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+              {/* Créer une offre — le nom prend sa propre ligne sur mobile */}
+              <div className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
                 <input value={offerName} onChange={e => setOfferName(e.target.value)} maxLength={80}
-                  placeholder={t('appointmentSettings.pkgName')} className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors" />
+                  placeholder={t('appointmentSettings.pkgName')} className="col-span-3 sm:col-span-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors" />
                 <input value={offerSessions} onChange={e => setOfferSessions(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
                   placeholder={t('appointmentSettings.pkgSessions')} className="w-16 px-2 py-2 rounded-lg border border-gray-200 text-sm text-center focus:outline-none focus:border-gray-900 transition-colors" />
                 <input value={offerPrice} onChange={e => setOfferPrice(e.target.value)} inputMode="decimal"
@@ -844,12 +848,12 @@ export default function SettingsPage() {
               {/* Rachat d'une séance */}
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1.5 block">{t('appointmentSettings.pkgRedeemLabel')}</label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <input
                     value={pkgCode}
                     onChange={(e) => setPkgCode(e.target.value.toUpperCase())}
                     placeholder="XXXX-XXXX"
-                    className="flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm font-mono tracking-wider focus:outline-none focus:border-gray-900 transition-colors"
+                    className="flex-1 min-w-[140px] px-3 py-2.5 rounded-lg border border-gray-200 text-sm font-mono tracking-wider focus:outline-none focus:border-gray-900 transition-colors"
                   />
                   <button type="button" onClick={() => redeemPackage('lookup')} className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
                     {t('appointmentSettings.giftCheck')}
@@ -895,9 +899,10 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
+          {/* Invitation — l'email prend sa propre ligne sur mobile */}
+          <div className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto] gap-2 items-center">
             <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} type="email"
-              placeholder={t('appointmentSettings.teamEmailPlaceholder')} className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors" />
+              placeholder={t('appointmentSettings.teamEmailPlaceholder')} className="col-span-2 sm:col-span-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors" />
             <select value={inviteRole} onChange={e => setInviteRole(e.target.value as 'staff' | 'restaurant_admin')}
               className="px-2 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors">
               <option value="staff">{t('appointmentSettings.teamRoleStaff')}</option>
