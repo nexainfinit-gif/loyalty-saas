@@ -33,9 +33,13 @@ export default function ClientPortalPageV2() {
   const searchParams = useSearchParams()
   const { t, locale } = useTranslation()
   const slug = params.slug as string
-  const token = searchParams.get('token')
+  const urlToken = searchParams.get('token')
+  // Lien tokenisé ?t=<qr_token> (emails, passes Wallet) : échangé contre une
+  // session côté serveur — aucun email magic-link envoyé (quota limité).
+  const directToken = searchParams.get('t')
+  const [token, setToken] = useState<string | null>(urlToken)
 
-  const [loading, setLoading] = useState(Boolean(token))
+  const [loading, setLoading] = useState(Boolean(urlToken || directToken))
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [loyalty, setLoyalty] = useState<Loyalty | null>(null)
@@ -43,6 +47,25 @@ export default function ClientPortalPageV2() {
   const [loginEmail, setLoginEmail] = useState('')
   const [loginSent, setLoginSent] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
+
+  // Échange silencieux qr_token → session (accès direct depuis nos liens)
+  useEffect(() => {
+    if (token || !directToken) return
+    let stop = false
+    fetch('/api/client/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qrToken: directToken, slug }),
+    })
+      .then((r) => r.json())
+      .then((j) => {
+        if (stop) return
+        if (j.token) setToken(j.token)
+        else setLoading(false)
+      })
+      .catch(() => { if (!stop) setLoading(false) })
+    return () => { stop = true }
+  }, [token, directToken, slug])
 
   useEffect(() => {
     if (!token) return
@@ -75,8 +98,8 @@ export default function ClientPortalPageV2() {
     <div data-ui-v2="" className="v2-cp" style={accentVars(primaryColor)}>{children}</div>
   )
 
-  // ── Login (pas de token) ──────────────────────────────────────────────
-  if (!token) {
+  // ── Login (pas de token, et pas d'échange de lien direct en cours) ────
+  if (!token && !loading) {
     return (
       <Frame>
         <div className="v2-cp__login">
@@ -187,7 +210,7 @@ export default function ClientPortalPageV2() {
         <div>
           <div className="v2-cp__sec-head">
             <h2>{t('clientPortal.upcomingAppointments')}</h2>
-            <Link href={`/${locale}/book/${slug}`} className="v2-cp__book-link">
+            <Link href={`/${locale}/book/${slug}?ct=${token}`} className="v2-cp__book-link">
               {t('clientPortal.book')} <ArrowRight size={12} />
             </Link>
           </div>

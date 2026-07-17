@@ -63,6 +63,11 @@ export default function BookingPage() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [calendarStart, setCalendarStart] = useState<Date>(startOfDay(new Date()))
   const [clientForm, setClientForm] = useState({ name: '', email: '', phone: '' })
+  // Coordonnées pré-remplies depuis l'espace client (?ct=<session>) : l'étape 4
+  // devient une simple confirmation quand tout est déjà connu.
+  const clientToken = searchParams.get('ct')
+  const [prefilled, setPrefilled] = useState(false)
+  const [editInfo, setEditInfo] = useState(false)
 
   // ── Slots state ─────────────────────────────────────────────────────────
   const [timeSlots, setTimeSlots] = useState<{ time: string; available: boolean; multiplier?: number }[]>([])
@@ -72,6 +77,23 @@ export default function BookingPage() {
   const [waitlistForm, setWaitlistForm] = useState({ name: '', email: '', phone: '' })
   const [waitlistLoading, setWaitlistLoading] = useState(false)
   const [waitlistJoined, setWaitlistJoined] = useState(false)
+
+  // ── Pré-remplissage depuis la session espace client (?ct=) ──────────────
+  useEffect(() => {
+    if (!clientToken) return
+    fetch(`/api/client/auth?token=${clientToken}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!j?.customer) return
+        setClientForm({
+          name: `${j.customer.first_name ?? ''} ${j.customer.last_name ?? ''}`.trim(),
+          email: j.customer.email ?? '',
+          phone: j.customer.phone ?? '',
+        })
+        setPrefilled(true)
+      })
+      .catch(() => { /* best-effort — formulaire vide en cas d'échec */ })
+  }, [clientToken])
 
   // ── Fetch business data on mount ────────────────────────────────────────
   useEffect(() => {
@@ -662,6 +684,23 @@ export default function BookingPage() {
               }}
               className="space-y-4"
             >
+              {prefilled && !editInfo && clientForm.name && clientForm.email && clientForm.phone ? (
+                /* Client connu (espace client) : identité affichée, pas de formulaire */
+                <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{clientForm.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{clientForm.email} · {clientForm.phone}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditInfo(true)}
+                    className="text-xs text-gray-400 underline hover:text-gray-600 transition-colors shrink-0"
+                  >
+                    {t('common.edit')}
+                  </button>
+                </div>
+              ) : (
+              <>
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1.5 block">
                   {t('booking.nameLabel')}
@@ -701,6 +740,8 @@ export default function BookingPage() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gray-900 transition-colors placeholder:text-gray-400"
                 />
               </div>
+              </>
+              )}
 
               <button
                 type="submit"

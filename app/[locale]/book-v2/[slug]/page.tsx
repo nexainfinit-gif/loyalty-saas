@@ -50,6 +50,27 @@ export default function BookingPageV2() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [calendarStart, setCalendarStart] = useState<Date>(startOfDay(new Date()))
   const [clientForm, setClientForm] = useState({ name: '', email: '', phone: '' })
+  // Coordonnées pré-remplies depuis l'espace client (?ct=<session>) : l'étape 4
+  // devient une simple confirmation quand tout est déjà connu.
+  const clientToken = searchParams.get('ct')
+  const [prefilled, setPrefilled] = useState(false)
+  const [editInfo, setEditInfo] = useState(false)
+
+  useEffect(() => {
+    if (!clientToken) return
+    fetch(`/api/client/auth?token=${clientToken}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!j?.customer) return
+        setClientForm({
+          name: `${j.customer.first_name ?? ''} ${j.customer.last_name ?? ''}`.trim(),
+          email: j.customer.email ?? '',
+          phone: j.customer.phone ?? '',
+        })
+        setPrefilled(true)
+      })
+      .catch(() => { /* best-effort — formulaire vide en cas d'échec */ })
+  }, [clientToken])
 
   const [timeSlots, setTimeSlots] = useState<{ time: string; available: boolean; multiplier?: number }[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
@@ -432,9 +453,24 @@ export default function BookingPageV2() {
             {bookingError && <div className="v2-bk__notice v2-bk__notice--err" style={{ marginBottom: 16 }}>{bookingError}</div>}
 
             <form onSubmit={(e) => { e.preventDefault(); handleBooking() }} className="flex flex-col gap-4">
-              <Input label={t('booking.nameLabel')} value={clientForm.name} onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })} required placeholder="Marie Dupont" />
-              <Input label={t('booking.emailLabel')} type="email" value={clientForm.email} onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })} required placeholder="marie@email.com" />
-              <Input label={t('booking.phoneLabel')} type="tel" value={clientForm.phone} onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })} required placeholder="0470 12 34 56" />
+              {prefilled && !editInfo && clientForm.name && clientForm.email && clientForm.phone ? (
+                /* Client connu (espace client) : identité affichée, pas de formulaire */
+                <div className="v2-bk__summary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p className="v2-bk__summary-name">{clientForm.name}</p>
+                    <p className="v2-bk__summary-date" style={{ margin: 0 }}>{clientForm.email} · {clientForm.phone}</p>
+                  </div>
+                  <button type="button" onClick={() => setEditInfo(true)} className="text-xs underline opacity-60 hover:opacity-100 transition-opacity" style={{ flexShrink: 0 }}>
+                    {t('common.edit')}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Input label={t('booking.nameLabel')} value={clientForm.name} onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })} required placeholder="Marie Dupont" />
+                  <Input label={t('booking.emailLabel')} type="email" value={clientForm.email} onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })} required placeholder="marie@email.com" />
+                  <Input label={t('booking.phoneLabel')} type="tel" value={clientForm.phone} onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })} required placeholder="0470 12 34 56" />
+                </>
+              )}
               <Button type="submit" variant="primary" disabled={bookingLoading} className="v2-reg__submit" style={{ marginTop: 4 }}>
                 {t('booking.confirmBtn')}
               </Button>

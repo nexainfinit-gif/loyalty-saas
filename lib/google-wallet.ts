@@ -481,7 +481,7 @@ export async function issueGooglePass(params: {
     primaryColor,
     passKind,
     portalUrl: restaurantSlug
-      ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/fr/client/${restaurantSlug}`
+      ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/fr/client/${restaurantSlug}?t=${qrToken}`
       : null,
   };
 

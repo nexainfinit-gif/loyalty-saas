@@ -104,9 +104,10 @@ export async function sendWelcomeEmail({
   const referralLink = referralCode
     ? `${process.env.NEXT_PUBLIC_APP_URL}/register/${referralCode}`
     : null;
-  // Espace client self-service (points, rendez-vous, historique) — magic-link.
+  // Espace client self-service — le qr_token ouvre la session directement
+  // (aucun email magic-link supplémentaire, quota limité).
   const portalUrl = restaurantSlug
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/fr/client/${restaurantSlug}`
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/fr/client/${restaurantSlug}?t=${qrToken}`
     : null;
 
   await resend.emails.send({
@@ -363,6 +364,22 @@ export async function sendBookingConfirmationEmail({
 
   const bookingPageUrl = `${process.env.NEXT_PUBLIC_APP_URL}/book/${businessSlug}`;
 
+  // Lien espace client — tokenisé (best-effort) si le client a un compte
+  // fidélité : accès direct, sans consommer un email magic-link du quota.
+  let clientSpaceUrl = `${process.env.NEXT_PUBLIC_APP_URL}/fr/client/${businessSlug}`;
+  try {
+    const { data: resto } = await supabaseAdmin
+      .from('restaurants').select('id').eq('slug', businessSlug).maybeSingle();
+    if (resto) {
+      const { data: cust } = await supabaseAdmin
+        .from('customers').select('qr_token')
+        .eq('restaurant_id', resto.id)
+        .eq('email', to.toLowerCase().trim())
+        .maybeSingle();
+      if (cust?.qr_token) clientSpaceUrl += `?t=${cust.qr_token}`;
+    }
+  } catch { /* best-effort — lien simple si le lookup échoue */ }
+
   await resend.emails.send({
     from: `${businessName} <noreply@rebites.be>`,
     to,
@@ -429,7 +446,7 @@ export async function sendBookingConfirmationEmail({
           ${rescheduleUrl ? `<p style="margin: 0 0 0.25rem 0; font-size: 0.8rem;"><a href="${rescheduleUrl}" style="color: ${safeColor}; text-decoration: underline;">Modifier mon rendez-vous</a></p>` : ''}
           ${cancelUrl ? `<p style="margin: 0 0 0.25rem 0; font-size: 0.8rem;"><a href="${cancelUrl}" style="color: ${safeColor}; text-decoration: underline;">Annuler mon rendez-vous</a></p>` : ''}
           ${!cancelUrl && !rescheduleUrl ? `<p style="margin: 0; color: #6b7280; font-size: 0.8rem;">Contactez directement ${safeBizName} par téléphone ou en répondant à cet email.</p>` : ''}
-          <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem;"><a href="${process.env.NEXT_PUBLIC_APP_URL}/fr/client/${businessSlug}" style="color: ${safeColor}; text-decoration: underline;">Gérer tous mes rendez-vous — mon espace client</a></p>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem;"><a href="${clientSpaceUrl}" style="color: ${safeColor}; text-decoration: underline;">Gérer tous mes rendez-vous — mon espace client</a></p>
         </div>
 
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />

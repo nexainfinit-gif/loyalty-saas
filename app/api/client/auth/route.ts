@@ -15,6 +15,15 @@ const loginSchema = z.object({
   slug: z.string().min(1).max(100),
 });
 
+// Accès direct par qr_token (liens de nos emails/passes Wallet) : le lien EST
+// la preuve de possession — même niveau de confiance que le magic-link, sans
+// consommer un email du quota. Limite alignée sur le GET (30/min/IP).
+const directSchema = z.object({
+  qrToken: z.string().min(8).max(100),
+  slug: z.string().min(1).max(100),
+});
+const directLimiter = rateLimit({ prefix: 'client-auth-direct', limit: 30, windowMs: 60_000 });
+
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -28,18 +37,65 @@ function safeCssColor(c: string): string {
  */
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
-  if (!limiter.check(ip).success) {
-    return NextResponse.json(
-      { error: 'Trop de tentatives. Réessayez dans 5 minutes.' },
-      { status: 429 },
-    );
-  }
+  // NB : la limite stricte (5/5min, anti-spam d'emails) ne s'applique qu'au
+  // chemin magic-link — l'accès direct par qr_token n'envoie aucun email.
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 });
+  }
+
+  // ── Chemin 1 : accès direct par qr_token (aucun email envoyé) ──────────
+  const direct = directSchema.safeParse(body);
+  if (direct.success) {
+    if (!directLimiter.check(ip).success) {
+      return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans une minute.' }, { status: 429 });
+    }
+    const { qrToken, slug: directSlug } = direct.data;
+
+    const { data: restaurant } = await supabaseAdmin
+      .from('restaurants')
+      .select('id')
+      .eq('slug', directSlug)
+      .single();
+    if (!restaurant) {
+      return NextResponse.json({ error: 'Lien invalide.' }, { status: 401 });
+    }
+
+    const { data: customer } = await supabaseAdmin
+      .from('customers')
+      .select('id')
+      .eq('restaurant_id', restaurant.id)
+      .eq('qr_token', qrToken)
+      .maybeSingle();
+    if (!customer) {
+      return NextResponse.json({ error: 'Lien invalide.' }, { status: 401 });
+    }
+
+    const { data: session } = await supabaseAdmin
+      .from('client_sessions')
+      .insert({
+        restaurant_id: restaurant.id,
+        customer_id: customer.id,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .select('token')
+      .single();
+    if (!session) {
+      return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, token: session.token });
+  }
+
+  // ── Chemin 2 : magic-link par email (visiteur sans lien tokenisé) ──────
+  if (!limiter.check(ip).success) {
+    return NextResponse.json(
+      { error: 'Trop de tentatives. Réessayez dans 5 minutes.' },
+      { status: 429 },
+    );
   }
 
   const parsed = loginSchema.safeParse(body);
@@ -167,7 +223,7 @@ export async function GET(request: NextRequest) {
   // Fetch customer data
   const { data: customer } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, last_name, email, total_points, stamps_count, total_visits, last_visit_at, created_at')
+    .select('id, first_name, last_name, email, phone, total_points, stamps_count, total_visits, last_visit_at, created_at')
     .eq('id', session.customer_id)
     .single();
 

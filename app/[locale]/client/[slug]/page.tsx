@@ -49,10 +49,14 @@ export default function ClientPortalPage() {
   const searchParams = useSearchParams()
   const { t, locale } = useTranslation()
   const slug = params.slug as string
-  const token = searchParams.get('token')
+  const urlToken = searchParams.get('token')
+  // Lien tokenisé ?t=<qr_token> (emails, passes Wallet) : échangé contre une
+  // session côté serveur — aucun email magic-link envoyé (quota limité).
+  const directToken = searchParams.get('t')
+  const [token, setToken] = useState<string | null>(urlToken)
 
   // No token → nothing to fetch, so start with loading=false
-  const [loading, setLoading] = useState(Boolean(token))
+  const [loading, setLoading] = useState(Boolean(urlToken || directToken))
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [loyalty, setLoyalty] = useState<Loyalty | null>(null)
@@ -60,6 +64,25 @@ export default function ClientPortalPage() {
   const [loginEmail, setLoginEmail] = useState('')
   const [loginSent, setLoginSent] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
+
+  // Échange silencieux qr_token → session (accès direct depuis nos liens)
+  useEffect(() => {
+    if (token || !directToken) return
+    let stop = false
+    fetch('/api/client/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qrToken: directToken, slug }),
+    })
+      .then((r) => r.json())
+      .then((j) => {
+        if (stop) return
+        if (j.token) setToken(j.token)
+        else setLoading(false)
+      })
+      .catch(() => { if (!stop) setLoading(false) })
+    return () => { stop = true }
+  }, [token, directToken, slug])
 
   useEffect(() => {
     if (!token) return
@@ -92,8 +115,8 @@ export default function ClientPortalPage() {
   const upcoming = appointments.filter((a) => a.date >= today && a.status === 'confirmed')
   const past = appointments.filter((a) => a.date < today || a.status !== 'confirmed')
 
-  // Login form (no token)
-  if (!token) {
+  // Login form (no token, and no direct-link exchange in flight)
+  if (!token && !loading) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
@@ -234,7 +257,7 @@ export default function ClientPortalPage() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-gray-900">{t('clientPortal.upcomingAppointments')}</h2>
             <Link
-              href={`/${locale}/book/${slug}`}
+              href={`/${locale}/book/${slug}?ct=${token}`}
               className="text-xs font-medium flex items-center gap-1 hover:opacity-80 transition-opacity"
               style={{ color: primaryColor }}
             >
