@@ -23,7 +23,9 @@ export default function SettingsPage() {
 
   const [settings, setSettings] = useState<AppointmentSettings | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  // Message d'erreur RÉEL de l'API (403 booking inactif, accès refusé…) —
+  // avant, la page affichait un générique qui cachait la cause.
+  const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [slug, setSlug] = useState<string | null>(null)
@@ -260,6 +262,7 @@ export default function SettingsPage() {
       try {
         const settingsRes = await api<{ settings: AppointmentSettings }>('/api/appointments/settings')
         if (settingsRes.data) setSettings(settingsRes.data.settings)
+        else setError(settingsRes.error)
 
         // Fetch restaurant slug for embed code
         const { data: { user } } = await supabase.auth.getUser()
@@ -293,7 +296,7 @@ export default function SettingsPage() {
           toast.error('Erreur lors de la connexion à Google Calendar')
         }
       } catch {
-        setError(true)
+        setError('Erreur réseau. Vérifiez votre connexion.')
       } finally {
         setLoading(false)
       }
@@ -347,7 +350,9 @@ export default function SettingsPage() {
   if (error || !settings) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <p className="text-sm text-gray-500">Impossible de charger les paramètres. Veuillez réessayer.</p>
+        <p className="text-sm text-gray-500 text-center px-6">
+          {error || 'Impossible de charger les paramètres. Veuillez réessayer.'}
+        </p>
         <button
           onClick={() => window.location.reload()}
           className="px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
