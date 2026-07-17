@@ -18,7 +18,9 @@ export default function AppointmentsLayout({ children }: { children: React.React
   ]
 
   return (
-    <div>
+    // Marges latérales : même convention que le dashboard (px-4 md:p-6) —
+    // sans elles le contenu collait au bord de l'écran, surtout sur mobile.
+    <div className="px-4 md:px-6 pb-8">
       {/* Underline tabs — professional SaaS pattern */}
       <div className="border-b border-gray-200 mb-5">
         <nav className="flex gap-0 -mb-px overflow-x-auto scrollbar-hide">

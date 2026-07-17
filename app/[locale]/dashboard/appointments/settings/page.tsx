@@ -364,7 +364,7 @@ export default function SettingsPage() {
           Enregistrer doit rester accessible sans remonter tout en haut.
           (Pas de barre en bas : le BookingSetupGuide flotte déjà là pendant
           le parcours guidé et la recouvrirait.) */}
-      <div className="sticky top-0 z-30 sm:static flex items-center justify-between gap-3 mb-6 py-2.5 sm:py-0 bg-surface/95 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none">
+      <div className="sticky top-0 z-30 sm:static flex items-center justify-between gap-3 mb-6 py-2.5 sm:py-0 -mx-4 px-4 sm:mx-0 sm:px-0 bg-surface/95 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-2xl font-semibold tracking-tight truncate">{t('appointmentSettings.title')}</h1>
           {/* Sous-titre masqué sur mobile pour garder la barre sticky compacte */}
