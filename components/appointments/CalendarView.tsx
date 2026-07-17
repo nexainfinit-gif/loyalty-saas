@@ -14,6 +14,7 @@ import { fr } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { Appointment, StaffMember, CalendarView } from '@/types/appointments'
 import AppointmentCard from './AppointmentCard'
+import MobileAgenda from './MobileAgenda'
 
 interface CalendarViewProps {
   appointments: Appointment[]
@@ -123,7 +124,19 @@ export default function CalendarViewComponent({
   }, [staff, appointments, selectedDate])
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 180px)', minHeight: '480px' }}>
+    <>
+    {/* ── Mobile : liste chronologique (la grille est illisible sous lg) ── */}
+    <MobileAgenda
+      appointments={appointments}
+      staff={staff}
+      selectedDate={selectedDate}
+      onDateChange={onDateChange}
+      onAppointmentClick={onAppointmentClick}
+      onNewAppointment={onNewAppointment}
+    />
+
+    {/* ── Desktop : grille multi-colonnes ── */}
+    <div className="hidden lg:flex bg-white rounded-xl border border-gray-200 overflow-hidden flex-col" style={{ height: 'calc(100vh - 180px)', minHeight: '480px' }}>
       {/* ── Toolbar ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 py-2 sm:py-0 sm:h-11 gap-2 sm:gap-0 border-b border-gray-100 shrink-0 bg-white">
         <div className="flex items-center gap-1.5">
@@ -387,5 +400,6 @@ export default function CalendarViewComponent({
         )}
       </div>
     </div>
+    </>
   )
 }

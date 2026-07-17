@@ -93,7 +93,7 @@ function awaitableChain(resolvedValue: { data: unknown; error: unknown }, overri
 function setupHappyPath() {
   const restaurantChain = chain({
     single: vi.fn().mockResolvedValue({
-      data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, business_type: 'salon_coiffure', primary_color: RESTAURANT.primary_color },
+      data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, business_type: 'salon_coiffure', primary_color: RESTAURANT.primary_color, booking_active: true },
       error: null,
     }),
   });
@@ -190,11 +190,11 @@ describe('POST /api/book/[slug]/book', () => {
     expect(sendBookingConfirmationEmail).toHaveBeenCalled();
   });
 
-  // ── Gate type d'activité : booking = prestations uniquement ──────────────
-  it('returns 404 for a non-eligible business type (café)', async () => {
+  // ── Gate add-on : booking ouvert seulement si booking_active (055) ───────
+  it('returns 404 when the booking add-on is not active', async () => {
     const chains = setupHappyPath();
     chains.restaurantChain.single.mockResolvedValue({
-      data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, business_type: 'cafe', primary_color: RESTAURANT.primary_color },
+      data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, business_type: 'salon_coiffure', primary_color: RESTAURANT.primary_color, booking_active: false },
       error: null,
     });
 
@@ -202,6 +202,17 @@ describe('POST /api/book/[slug]/book', () => {
     expect(res.status).toBe(404);
     const json = await res.json();
     expect(json.error).toContain('pas disponible');
+  });
+
+  it('allows a café with the booking add-on active (decoupled from business type)', async () => {
+    const chains = setupHappyPath();
+    chains.restaurantChain.single.mockResolvedValue({
+      data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, business_type: 'cafe', primary_color: RESTAURANT.primary_color, booking_active: true },
+      error: null,
+    });
+
+    const res = await POST(postReq(), slug());
+    expect(res.status).toBe(200);
   });
 
   // ── 2. Restaurant not found → 404 ────────────────────────────────────────
@@ -259,7 +270,7 @@ describe('POST /api/book/[slug]/book', () => {
     // Build a fresh happy path but override the conflict check to return a conflict
     const restaurantChain = chain({
       single: vi.fn().mockResolvedValue({
-        data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, business_type: 'salon_coiffure', primary_color: RESTAURANT.primary_color },
+        data: { id: RESTAURANT.id, name: RESTAURANT.name, slug: RESTAURANT.slug, business_type: 'salon_coiffure', primary_color: RESTAURANT.primary_color, booking_active: true },
         error: null,
       }),
     });
