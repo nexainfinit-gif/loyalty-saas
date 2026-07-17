@@ -1089,7 +1089,8 @@
     "bookTitle": "Réservation en ligne",
     "pageNotFound": "Page introuvable",
     "businessNotFound": "Cet établissement n'existe pas.",
-    "multiplierHint": "Points fidélité ×{n} sur ce créneau !"
+    "multiplierHint": "Points fidélité ×{n} sur ce créneau !",
+    "myClientSpace": "Déjà client ? Accéder à mon espace"
   },
   "bookingSuccess": {
     "title": "Rendez-vous confirmé",

@@ -1072,7 +1072,8 @@
     "bookTitle": "Online reservering",
     "pageNotFound": "Pagina niet gevonden",
     "businessNotFound": "Deze zaak bestaat niet.",
-    "multiplierHint": "Klantenpunten ×{n} op dit tijdslot!"
+    "multiplierHint": "Klantenpunten ×{n} op dit tijdslot!",
+    "myClientSpace": "Al klant? Naar mijn account"
   },
   "bookingSuccess": {
     "title": "Afspraak bevestigd",

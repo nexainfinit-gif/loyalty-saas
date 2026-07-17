@@ -1089,7 +1089,8 @@
     "bookTitle": "Online booking",
     "pageNotFound": "Page not found",
     "businessNotFound": "This business does not exist.",
-    "multiplierHint": "Loyalty points ×{n} on this slot!"
+    "multiplierHint": "Loyalty points ×{n} on this slot!",
+    "myClientSpace": "Already a customer? Go to my space"
   },
   "bookingSuccess": {
     "title": "Appointment confirmed",

@@ -429,6 +429,7 @@ export async function sendBookingConfirmationEmail({
           ${rescheduleUrl ? `<p style="margin: 0 0 0.25rem 0; font-size: 0.8rem;"><a href="${rescheduleUrl}" style="color: ${safeColor}; text-decoration: underline;">Modifier mon rendez-vous</a></p>` : ''}
           ${cancelUrl ? `<p style="margin: 0 0 0.25rem 0; font-size: 0.8rem;"><a href="${cancelUrl}" style="color: ${safeColor}; text-decoration: underline;">Annuler mon rendez-vous</a></p>` : ''}
           ${!cancelUrl && !rescheduleUrl ? `<p style="margin: 0; color: #6b7280; font-size: 0.8rem;">Contactez directement ${safeBizName} par téléphone ou en répondant à cet email.</p>` : ''}
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem;"><a href="${process.env.NEXT_PUBLIC_APP_URL}/fr/client/${businessSlug}" style="color: ${safeColor}; text-decoration: underline;">Gérer tous mes rendez-vous — mon espace client</a></p>
         </div>
 
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />

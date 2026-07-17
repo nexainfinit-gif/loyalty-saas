@@ -441,6 +441,18 @@ export default function BookingPageV2() {
             </form>
           </div>
         )}
+
+        {/* Porte d'entrée espace client (masquée en mode embed) */}
+        {!isEmbed && (
+          <p className="text-center mt-8 pb-6">
+            <a
+              href={`/${locale}/client/${slug}`}
+              className="text-xs underline opacity-60 hover:opacity-100 transition-opacity"
+            >
+              {t('booking.myClientSpace')}
+            </a>
+          </p>
+        )}
       </div>
     </Frame>
   )

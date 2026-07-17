@@ -1068,7 +1068,8 @@
     "bookTitle": "Reserva online",
     "pageNotFound": "Página no encontrada",
     "businessNotFound": "Este negocio no existe.",
-    "multiplierHint": "¡Puntos de fidelidad ×{n} en esta franja!"
+    "multiplierHint": "¡Puntos de fidelidad ×{n} en esta franja!",
+    "myClientSpace": "¿Ya eres cliente? Ir a mi espacio"
   },
   "bookingSuccess": {
     "title": "Cita confirmada",

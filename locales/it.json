@@ -1072,7 +1072,8 @@
     "bookTitle": "Prenotazione online",
     "pageNotFound": "Pagina non trovata",
     "businessNotFound": "Questa attività non esiste.",
-    "multiplierHint": "Punti fedeltà ×{n} su questa fascia!"
+    "multiplierHint": "Punti fedeltà ×{n} su questa fascia!",
+    "myClientSpace": "Già cliente? Vai al mio spazio"
   },
   "bookingSuccess": {
     "title": "Appuntamento confermato",
