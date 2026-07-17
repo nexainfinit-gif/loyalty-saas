@@ -78,24 +78,25 @@ export default function StaffPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    if (editingId) {
-      const res = await api<{ staff: StaffMember }>('/api/appointments/staff', {
-        method: 'PUT',
-        body: JSON.stringify({ id: editingId, ...form }),
-      })
-      if (res.data) {
-        setStaff((prev) => prev.map((s) => (s.id === editingId ? res.data!.staff : s)))
-      }
-    } else {
-      const res = await api<{ staff: StaffMember }>('/api/appointments/staff', {
-        method: 'POST',
-        body: JSON.stringify(form),
-      })
-      if (res.data) {
-        setStaff((prev) => [...prev, res.data!.staff])
-      }
-    }
+    const res = editingId
+      ? await api<{ staff: StaffMember }>('/api/appointments/staff', {
+          method: 'PUT',
+          body: JSON.stringify({ id: editingId, ...form }),
+        })
+      : await api<{ staff: StaffMember }>('/api/appointments/staff', {
+          method: 'POST',
+          body: JSON.stringify(form),
+        })
     setSaving(false)
+    // Échec (validation, droits…) : formulaire gardé ouvert + vraie raison
+    // affichée — avant, le toast « créé » masquait l'erreur et rien n'existait.
+    if (!res.data) {
+      toast.error(res.error || 'Erreur lors de l\'enregistrement.')
+      return
+    }
+    setStaff((prev) =>
+      editingId ? prev.map((s) => (s.id === editingId ? res.data!.staff : s)) : [...prev, res.data!.staff]
+    )
     setModalView('list')
     toast.success(editingId ? t('appointmentStaff.modified') : t('appointmentStaff.created'))
   }
@@ -119,6 +120,8 @@ export default function StaffPage() {
     const res = await api('/api/appointments/staff?id=' + id, { method: 'DELETE' })
     if (!res.error) {
       setStaff((prev) => prev.filter((s) => s.id !== id))
+    } else {
+      toast.error(res.error)
     }
   }
 
@@ -174,7 +177,7 @@ export default function StaffPage() {
     if (!scheduleStaffId) return
     setSaving(true)
     const staffAvail = availability[scheduleStaffId] || []
-    await api('/api/appointments/staff', {
+    const res = await api('/api/appointments/staff', {
       method: 'PUT',
       body: JSON.stringify({
         staffId: scheduleStaffId,
@@ -182,6 +185,10 @@ export default function StaffPage() {
       }),
     })
     setSaving(false)
+    if (res.error) {
+      toast.error(res.error)
+      return
+    }
     setModalView('list')
     toast.success(t('appointmentStaff.saveHours'))
   }

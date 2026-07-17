@@ -3,10 +3,15 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAuth, requireBooking } from '@/lib/server-auth';
 
+// Le formulaire envoie '' pour les champs optionnels laissés vides — sans
+// cette normalisation, z.email() rejetait la chaîne vide (400 « Invalid
+// email ») alors que l'email est optionnel dans l'UI.
+const emptyToNull = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? null : v);
+
 const staffSchema = z.object({
-  name:        z.string().trim().min(1).max(100),
-  email:       z.string().trim().email().max(255).optional().nullable(),
-  phone:       z.string().trim().max(30).optional().nullable(),
+  name:        z.string().trim().min(1, 'Le nom est requis.').max(100),
+  email:       z.preprocess(emptyToNull, z.string().trim().email('Adresse email invalide.').max(255).optional().nullable()),
+  phone:       z.preprocess(emptyToNull, z.string().trim().max(30).optional().nullable()),
   service_ids: z.array(z.string().uuid()).optional().default([]),
   active:      z.boolean().optional().default(true),
 });

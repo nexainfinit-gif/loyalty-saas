@@ -64,26 +64,25 @@ export default function ServicesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    if (editingId) {
-      const res = await api<{ service: Service }>('/api/appointments/services', {
-        method: 'PUT',
-        body: JSON.stringify({ id: editingId, ...form }),
-      })
-      if (res.data) {
-        setServices((prev) =>
-          prev.map((s) => (s.id === editingId ? res.data!.service : s))
-        )
-      }
-    } else {
-      const res = await api<{ service: Service }>('/api/appointments/services', {
-        method: 'POST',
-        body: JSON.stringify(form),
-      })
-      if (res.data) {
-        setServices((prev) => [...prev, res.data!.service])
-      }
-    }
+    const res = editingId
+      ? await api<{ service: Service }>('/api/appointments/services', {
+          method: 'PUT',
+          body: JSON.stringify({ id: editingId, ...form }),
+        })
+      : await api<{ service: Service }>('/api/appointments/services', {
+          method: 'POST',
+          body: JSON.stringify(form),
+        })
     setSaving(false)
+    // Échec (validation, droits…) : formulaire gardé ouvert + vraie raison
+    // affichée — avant, le toast « créé » masquait l'erreur et rien n'existait.
+    if (!res.data) {
+      toast.error(res.error || 'Erreur lors de l\'enregistrement.')
+      return
+    }
+    setServices((prev) =>
+      editingId ? prev.map((s) => (s.id === editingId ? res.data!.service : s)) : [...prev, res.data!.service]
+    )
     setShowForm(false)
     toast.success(editingId ? t('appointmentServices.modified') : t('appointmentServices.created'))
   }
@@ -109,6 +108,8 @@ export default function ServicesPage() {
     const res = await api('/api/appointments/services?id=' + id, { method: 'DELETE' })
     if (!res.error) {
       setServices((prev) => prev.filter((s) => s.id !== id))
+    } else {
+      toast.error(res.error)
     }
   }
 
