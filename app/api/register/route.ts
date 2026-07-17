@@ -212,6 +212,7 @@ export async function POST(req: NextRequest) {
       restaurantColor: restaurant.color,
       qrToken: customer.qr_token,
       appleWalletUrl,
+      restaurantSlug,
     });
   } catch (emailError) {
     logger.error({ ctx: 'register', rid: restaurant.id, msg: 'Welcome email failed', err: emailError });

@@ -76,6 +76,8 @@ interface WelcomeEmailProps {
   programType?: 'points' | 'stamps';
   /** Logo de l'établissement (affiché en tête d'email). */
   restaurantLogoUrl?: string | null;
+  /** Slug de l'établissement — active le lien « Mon espace client » (/client/slug). */
+  restaurantSlug?: string | null;
 }
 
 export async function sendWelcomeEmail({
@@ -91,6 +93,7 @@ export async function sendWelcomeEmail({
   referralRewardAmount,
   programType,
   restaurantLogoUrl,
+  restaurantSlug,
 }: WelcomeEmailProps) {
   const scanUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/scan/${qrToken}`;
   const qrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(scanUrl)}&size=250`;
@@ -100,6 +103,10 @@ export async function sendWelcomeEmail({
   const rewardLabel = programType === 'stamps' ? 'tampon(s)' : 'point(s)';
   const referralLink = referralCode
     ? `${process.env.NEXT_PUBLIC_APP_URL}/register/${referralCode}`
+    : null;
+  // Espace client self-service (points, rendez-vous, historique) — magic-link.
+  const portalUrl = restaurantSlug
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/fr/client/${restaurantSlug}`
     : null;
 
   await resend.emails.send({
@@ -147,11 +154,22 @@ ${emailHeader({ color: safeColor, title: 'Bienvenue !', subtitle: safeName, logo
           />
         </div>
 
-        <div style="background: #f9fafb; border-radius: 12px; padding: 1rem; margin-bottom: 2rem;">
+        <div style="background: #f9fafb; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
           <p style="margin: 0; color: #6b7280; font-size: 0.85rem; text-align: center;">
             Conseil : faites une capture d'écran de ce QR code pour l'avoir toujours avec vous !
           </p>
         </div>
+
+        ${portalUrl ? `
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <p style="margin: 0 0 0.5rem; color: #6b7280; font-size: 0.85rem;">
+            Retrouvez vos points, rendez-vous et historique à tout moment :
+          </p>
+          <a href="${portalUrl}" target="_blank" style="color: ${safeColor}; font-size: 0.9rem; font-weight: 600; text-decoration: underline;">
+            Accéder à mon espace client
+          </a>
+        </div>
+        ` : ''}
 
         ${referralBonusReceived ? `
         <div style="background: #f0fdf4; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid #bbf7d0;">

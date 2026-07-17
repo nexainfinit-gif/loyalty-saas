@@ -71,7 +71,7 @@ async function getGoogleWalletUrl(customer: CustomerForWallet): Promise<string |
     const [restaurantRes, settingsRes, templateRes] = await Promise.all([
       supabaseAdmin
         .from('restaurants')
-        .select('id, name, primary_color, logo_url')
+        .select('id, name, slug, primary_color, logo_url')
         .eq('id', customer.restaurant_id)
         .single(),
       supabaseAdmin
@@ -125,6 +125,7 @@ async function getGoogleWalletUrl(customer: CustomerForWallet): Promise<string |
       logoUrl: restaurant.logo_url,
       passKind: effectivePassKind,
       configJson: resolvedConfig,
+      restaurantSlug: restaurant.slug,
     });
 
     await supabaseAdmin

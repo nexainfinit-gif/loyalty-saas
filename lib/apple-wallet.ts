@@ -53,6 +53,8 @@ export interface PassBuildInput {
   promoMessage?: string | null;
   /** Public booking URL (restaurants booking-eligible) — « Réserver » back link */
   bookingUrl?: string | null;
+  /** Lien « Mon espace client » (/client/slug) affiché au dos du pass. */
+  portalUrl?: string | null;
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -138,6 +140,17 @@ function buildPassJson(
     { key: 'program', label: 'Programme de fidélité', value: `Carte de fidélité – ${input.restaurantName}` },
     { key: 'terms',   label: 'Conditions',            value: 'Ce pass est personnel et non transférable.' },
   ];
+
+  // Lien « Mon espace client » — points, rendez-vous et historique en
+  // self-service (magic-link). Inséré avant Réserver pour finir après lui
+  // dans l'ordre final (les unshift successifs inversent).
+  if (input.portalUrl) {
+    defaultBackFields.unshift({
+      key:   'portal',
+      label: 'Mon espace client',
+      value: `Points, rendez-vous et historique :\n${input.portalUrl}`,
+    });
+  }
 
   // Lien « Réserver » — boucle de re-booking dans la poche du client
   // (iOS rend les URLs des back fields cliquables via les data detectors).

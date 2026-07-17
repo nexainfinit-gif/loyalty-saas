@@ -181,6 +181,7 @@ export async function POST(
         qrToken: customer.qr_token,
         appleWalletUrl: walletUrls.apple,
         googleWalletUrl: walletUrls.google,
+        restaurantSlug: slug,
       })
     } catch (emailErr) {
       logger.error({ ctx: 'register/slug', rid: restaurant.id, msg: 'Welcome email failed', err: emailErr })

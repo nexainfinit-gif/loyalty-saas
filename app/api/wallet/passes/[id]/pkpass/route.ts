@@ -193,6 +193,7 @@ export async function GET(
     bookingUrl:          isBookingOpen(restaurant as { booking_active?: boolean | null })
       ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/fr/book/${(restaurant as { slug?: string }).slug}`
       : null,
+    portalUrl:           `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/fr/client/${(restaurant as { slug?: string }).slug}`,
   };
 
   try {

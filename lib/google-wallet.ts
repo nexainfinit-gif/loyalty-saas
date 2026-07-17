@@ -61,6 +61,8 @@ export interface GooglePassData {
   restaurantName:  string;
   primaryColor:    string;
   passKind:        'stamps' | 'points' | 'event';
+  /** Lien « Mon espace client » (/client/slug) — linksModuleData du pass. */
+  portalUrl?:      string | null;
 }
 
 /* ── Internal: lazy-initialised GoogleAuth instance ──────────────────────── */
@@ -382,6 +384,13 @@ function buildLoyaltyObject(data: GooglePassData): Record<string, unknown> {
     ],
   };
 
+  // Lien « Mon espace client » — points, rendez-vous et historique (magic-link).
+  if (data.portalUrl) {
+    obj.linksModuleData = {
+      uris: [{ uri: data.portalUrl, description: 'Mon espace client', id: 'portal' }],
+    };
+  }
+
   if (data.passKind === 'stamps') {
     obj.loyaltyPoints = {
       balance: { string: `${data.stampsCount} / ${data.stampsTotal}` },
@@ -438,6 +447,8 @@ export async function issueGooglePass(params: {
   logoUrl:        string | null;
   passKind:       'stamps' | 'points' | 'event';
   configJson:     Record<string, unknown>;
+  /** Slug de l'établissement — active le lien « Mon espace client » sur le pass. */
+  restaurantSlug?: string | null;
 }): Promise<{
   saveUrl:  string;
   objectId: string;
@@ -447,7 +458,7 @@ export async function issueGooglePass(params: {
   const {
     passId, restaurantId, customerId, firstName, lastName,
     totalPoints, stampsCount, qrToken, shortCode, restaurantName,
-    primaryColor, logoUrl, passKind, configJson,
+    primaryColor, logoUrl, passKind, configJson, restaurantSlug,
   } = params;
 
   const { ISSUER_ID } = getWalletConfig();
@@ -469,6 +480,9 @@ export async function issueGooglePass(params: {
     restaurantName,
     primaryColor,
     passKind,
+    portalUrl: restaurantSlug
+      ? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/fr/client/${restaurantSlug}`
+      : null,
   };
 
   // Sequential: LoyaltyClass MUST be fully registered before LoyaltyObject creation.
