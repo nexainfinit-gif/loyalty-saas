@@ -678,7 +678,7 @@
     "joinProgram": "Join {restaurant}'s loyalty program and receive your rewards directly on your phone.",
     "firstName": "First name *",
     "email": "Email *",
-    "birthday": "Date of birth",
+    "birthday": "Date of birth *",
     "birthdayHint": "for a birthday gift 🎂",
     "phone": "Phone",
     "phoneOptional": "optional",
