@@ -966,6 +966,10 @@ export default function DashboardPage() {
         };
         setSentCampaigns(prev => [newEntry, ...prev]);
         toast.success(t('dashboard.toastWalletPushSent', { pushed: data.pushed, total: data.passes }));
+        // Cartes volontairement épargnées : un rappel de RDV actif occupe leur message
+        if (data.skippedReminder > 0) {
+          toast.info(`${data.skippedReminder} carte(s) non modifiée(s) : un rappel de rendez-vous est affiché dessus.`);
+        }
       } else {
         toast.error(t('dashboard.toastCampaignError', { error: data.error ?? 'Inconnu' }));
       }

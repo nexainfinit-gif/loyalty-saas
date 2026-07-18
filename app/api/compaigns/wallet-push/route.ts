@@ -76,7 +76,7 @@ export async function POST(req: Request) {
   // ── Fetch all customers ─────────────────────────────────────────────────
   const { data: allCustomers } = await supabaseAdmin
     .from('customers')
-    .select('id, first_name, total_points, stamps_count, last_visit_at, birth_date')
+    .select('id, first_name, email, total_points, stamps_count, last_visit_at, birth_date')
     .eq('restaurant_id', restaurant.id);
 
   const customers = allCustomers ?? [];
@@ -115,20 +115,50 @@ export async function POST(req: Request) {
   }
 
   // ── Find active Apple passes for targeted customers ─────────────────────
-  const { data: passes } = await supabaseAdmin
+  const { data: allPasses } = await supabaseAdmin
     .from('wallet_passes')
-    .select('id, customer_id')
+    .select('id, customer_id, promo_message')
     .eq('restaurant_id', restaurant.id)
     .eq('platform', 'apple')
     .eq('status', 'active')
     .in('customer_id', targetCustomerIds);
 
-  if (!passes?.length) {
+  if (!allPasses?.length) {
     return Response.json({ error: 'Aucun porteur Apple Wallet dans ce segment' }, { status: 400 });
   }
 
-  // ── Update promo_message on each pass (personalized per customer) ────
   const customerMap = new Map(customers.map(c => [c.id, c]));
+
+  // ── Protection rappels de RDV : le pass n'a qu'UN emplacement de message.
+  //    Un message préfixé 📅 est un rappel de rendez-vous (booking-wallet) ;
+  //    si le client a encore un RDV à venir, la campagne ne l'écrase PAS —
+  //    le client la recevra par email, mais son heure de RDV reste sur la carte.
+  const today = new Date().toISOString().split('T')[0];
+  const { data: upcomingApts } = await supabaseAdmin
+    .from('appointments')
+    .select('client_email')
+    .eq('restaurant_id', restaurant.id)
+    .eq('status', 'confirmed')
+    .gte('date', today);
+  const upcomingEmails = new Set(
+    (upcomingApts ?? []).map(a => (a.client_email as string | null)?.toLowerCase().trim()).filter(Boolean),
+  );
+
+  const passes = allPasses.filter(p => {
+    if (!p.promo_message?.startsWith('📅')) return true;
+    const email = customerMap.get(p.customer_id)?.email?.toLowerCase().trim();
+    return !(email && upcomingEmails.has(email)); // rappel actif → pass protégé
+  });
+  const skippedReminder = allPasses.length - passes.length;
+
+  if (!passes.length) {
+    return Response.json(
+      { error: 'Tous les porteurs de ce segment ont un rappel de rendez-vous actif sur leur carte — campagne non envoyée pour ne pas l\'écraser.' },
+      { status: 400 },
+    );
+  }
+
+  // ── Update promo_message on each pass (personalized per customer) ────
   const passIds = passes.map(p => p.id);
 
   for (const pass of passes) {
@@ -226,5 +256,7 @@ export async function POST(req: Request) {
     passes: passes.length,
     pushed,
     failed,
+    // Cartes non touchées car un rappel de RDV actif occupe leur message
+    skippedReminder,
   });
 }
