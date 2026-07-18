@@ -244,6 +244,10 @@ export default function DashboardPage() {
   const [logoError,      setLogoError]         = useState('');
   const [logoSaved,      setLogoSaved]         = useState(false);
   const [campaignModal, setCampaignModal]     = useState(false);
+  // Zone de danger — suppression définitive de l'établissement
+  const [dangerOpen, setDangerOpen] = useState(false);
+  const [dangerText, setDangerText] = useState('');
+  const [dangerBusy, setDangerBusy] = useState(false);
   const [campaignPreview, setCampaignPreview] = useState(false);
   const [sendingCampaign, setSendingCampaign] = useState(false);
   const [sentCampaigns, setSentCampaigns]     = useState<Campaign[]>([]);
@@ -750,6 +754,29 @@ export default function DashboardPage() {
       }
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  async function deleteEstablishment() {
+    if (!restaurant || dangerText.trim() !== restaurant.name) return;
+    setDangerBusy(true);
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) return;
+      const res = await fetch('/api/Restaurant/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
+        body: JSON.stringify({ restaurantId: restaurant.id, confirmName: dangerText.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error || t('common.error')); return; }
+      // Cookie de sélection obsolète → retour au dashboard qui choisit le
+      // prochain établissement (ou l'onboarding s'il n'en reste aucun).
+      document.cookie = 'selected_restaurant=; path=/; max-age=0';
+      toast.success('Établissement supprimé.');
+      window.location.href = `/${locale}/dashboard`;
+    } finally {
+      setDangerBusy(false);
     }
   }
 
@@ -2578,6 +2605,59 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-400 mb-4">{t('settings.languageDesc')}</p>
                   <LocaleSwitcher />
                 </div>
+
+                {/* Zone de danger — suppression définitive (propriétaire uniquement) */}
+                <div className="bg-white rounded-2xl p-5 border border-danger-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                  <h3 className="text-sm font-semibold text-danger-700 mb-1">Zone de danger</h3>
+                  <p className="text-xs text-gray-400 mb-4">
+                    Supprime définitivement cet établissement : clients, cartes Wallet, rendez-vous,
+                    campagnes et données associées. L&apos;abonnement Stripe est annulé automatiquement.
+                    Cette action est irréversible.
+                  </p>
+                  <button
+                    onClick={() => { setDangerText(''); setDangerOpen(true); }}
+                    className="px-4 py-2 rounded-xl text-sm font-medium border border-danger-600 text-danger-700 hover:bg-danger-50 transition-colors"
+                  >
+                    Supprimer cet établissement…
+                  </button>
+                </div>
+
+                {/* Modale de confirmation — le nom doit être retapé */}
+                {dangerOpen && restaurant && (
+                  <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => !dangerBusy && setDangerOpen(false)} />
+                    <div className="relative bg-white rounded-t-2xl sm:rounded-2xl border border-gray-200 shadow-xl w-full max-w-md mx-0 sm:mx-4 p-6">
+                      <h2 className="text-base font-semibold text-danger-700 mb-2">Supprimer « {restaurant.name} » ?</h2>
+                      <p className="text-sm text-gray-500 mb-4">
+                        Toutes les données seront définitivement effacées et l&apos;abonnement annulé.
+                        Pour confirmer, tapez le nom exact de l&apos;établissement :
+                      </p>
+                      <input
+                        type="text"
+                        value={dangerText}
+                        onChange={(e) => setDangerText(e.target.value)}
+                        placeholder={restaurant.name}
+                        className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-danger-600 transition-colors mb-4"
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setDangerOpen(false)}
+                          disabled={dangerBusy}
+                          className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors"
+                        >
+                          {t('common.cancel')}
+                        </button>
+                        <button
+                          onClick={deleteEstablishment}
+                          disabled={dangerBusy || dangerText.trim() !== restaurant.name}
+                          className="flex-1 px-4 py-3 rounded-xl bg-danger-600 text-white text-sm font-semibold hover:bg-danger-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {dangerBusy ? 'Suppression…' : 'Supprimer définitivement'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
             </div>
           )}
 
