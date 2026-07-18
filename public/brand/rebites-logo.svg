@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 172" width="400" height="344">
+  <g transform="translate(53,4) scale(0.86)">
+  <g fill="none" stroke="#111111" stroke-width="10">
+    <path d="M 15 104 L 15 18 Q 15 8 25 8 L 40 8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 40 8 C 66 8 83 19 83 36 C 83 53 70 62 56 57" stroke-linecap="butt"/>
+    <path d="M 63 43 L 42 53 L 57 69 Z" fill="#111111" stroke="none"/>
+    <path d="M 37 70 L 73 104" stroke-linecap="round"/>
+  </g></g>
+  <text x="100" y="152" text-anchor="middle" fill="#111111"
+        font-family="Poppins, Montserrat, 'Segoe UI', system-ui, sans-serif"
+        font-size="34" font-weight="600" letter-spacing="0.5">ReBites</text>
+</svg>
