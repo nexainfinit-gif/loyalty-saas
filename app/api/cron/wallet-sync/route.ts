@@ -9,6 +9,7 @@
 import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { updateLoyaltyObject } from '@/lib/google-wallet';
+import { recoverGooglePassById } from '@/lib/wallet-recovery';
 import { pushPassUpdate } from '@/lib/apns';
 import { logger } from '@/lib/logger';
 
@@ -40,7 +41,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const stats = { queue_processed: 0, queue_synced: 0, queue_skipped: 0, retried: 0, succeeded: 0, failed: 0, apns_sent: 0, apns_failed: 0 };
+  const stats = { queue_processed: 0, queue_synced: 0, queue_skipped: 0, retried: 0, succeeded: 0, failed: 0, recovered: 0, apns_sent: 0, apns_failed: 0 };
 
   // ── Phase 1: Drain wallet_sync_queue ──────────────────────────────────
   const { data: queueItems } = await supabaseAdmin
@@ -185,13 +186,32 @@ export async function GET(req: Request) {
           : settings?.program_type === 'stamps' ? 'stamps' : 'points'
       ) as 'stamps' | 'points';
 
-      const result = await updateLoyaltyObject(pass.object_id!, {
+      let result = await updateLoyaltyObject(pass.object_id!, {
         passKind:    effectivePassKind,
         totalPoints: pass.total_points ?? 0,
         stampsCount: pass.stamps_count ?? 0,
         stampsTotal: settings?.stamps_total ?? 10,
         portalUrl:   await portalUrlFor(pass.restaurant_id, pass.customer_id),
       });
+
+      // Objet jamais créé chez Google (échec à l'émission) : le PATCH renvoie
+      // 404 pour toujours — on escalade vers la récupération complète
+      // (classe + recréation de l'objet), puis on réapplique les compteurs
+      // du pass (la recréation part des compteurs client).
+      if (!result.ok && result.status === 404) {
+        const rec = await recoverGooglePassById(pass.id);
+        if (rec.ok) {
+          stats.recovered++;
+          result = await updateLoyaltyObject(pass.object_id!, {
+            passKind:    effectivePassKind,
+            totalPoints: pass.total_points ?? 0,
+            stampsCount: pass.stamps_count ?? 0,
+            stampsTotal: settings?.stamps_total ?? 10,
+          });
+        } else {
+          logger.error({ ctx: 'cron/wallet-sync', msg: 'recovery failed', passId: pass.id, err: rec.error ?? 'unknown' });
+        }
+      }
 
       await supabaseAdmin
         .from('wallet_passes')
