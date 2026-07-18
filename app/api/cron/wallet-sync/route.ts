@@ -16,6 +16,20 @@ const MAX_QUEUE_DRAIN = 50;
 const MAX_RETRY       = 50;
 const MAX_ATTEMPTS    = 5;
 
+/**
+ * Lien « Mon espace client » tokenisé pour un client — patché à chaque synchro
+ * Google : les passes émis AVANT l'ajout du lien (2026-07-17) se mettent à
+ * niveau d'eux-mêmes, sans script de migration.
+ */
+async function portalUrlFor(restaurantId: string, customerId: string): Promise<string | undefined> {
+  const [{ data: resto }, { data: cust }] = await Promise.all([
+    supabaseAdmin.from('restaurants').select('slug').eq('id', restaurantId).maybeSingle(),
+    supabaseAdmin.from('customers').select('qr_token').eq('id', customerId).maybeSingle(),
+  ]);
+  if (!resto?.slug || !cust?.qr_token) return undefined;
+  return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/fr/client/${resto.slug}?t=${cust.qr_token}`;
+}
+
 export async function GET(req: Request) {
   // Verify Vercel Cron secret
   const auth = req.headers.get('authorization') ?? '';
@@ -85,6 +99,7 @@ export async function GET(req: Request) {
 
       // Sync Google passes — use pass-level counters (already fetched in select)
       if (googlePasses?.length) {
+        const portalUrl = await portalUrlFor(item.restaurant_id, item.customer_id);
         await Promise.allSettled(googlePasses.map(async (pass) => {
           const effectivePassKind = (
             pass.pass_kind === 'stamps' || pass.pass_kind === 'points'
@@ -97,6 +112,7 @@ export async function GET(req: Request) {
             totalPoints: pass.total_points ?? 0,
             stampsCount: pass.stamps_count ?? 0,
             stampsTotal: settings?.stamps_total ?? 10,
+            portalUrl,
           });
 
           await supabaseAdmin
@@ -174,6 +190,7 @@ export async function GET(req: Request) {
         totalPoints: pass.total_points ?? 0,
         stampsCount: pass.stamps_count ?? 0,
         stampsTotal: settings?.stamps_total ?? 10,
+        portalUrl:   await portalUrlFor(pass.restaurant_id, pass.customer_id),
       });
 
       await supabaseAdmin

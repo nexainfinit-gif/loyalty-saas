@@ -25,8 +25,8 @@ export async function generateMetadata({
   const meta = (dict as Record<string, Record<string, string>>).metadata ?? {};
 
   return {
-    title: meta.title ?? 'ReBites — Loyalty Platform',
-    description: meta.description ?? 'Restaurant loyalty program management',
+    title: meta.title ?? 'Rebites — Loyalty, bookings & ticketing',
+    description: meta.description ?? 'The platform for local businesses: wallet loyalty cards, online bookings and event ticketing.',
   };
 }
 

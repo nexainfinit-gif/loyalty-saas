@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ReBites — Loyalty Platform",
-  description: "Restaurant loyalty program management",
+  title: "Rebites — Loyalty, bookings & ticketing",
+  description: "The platform for local businesses: wallet loyalty cards, online bookings and event ticketing.",
 };
 
 export default function RootLayout({

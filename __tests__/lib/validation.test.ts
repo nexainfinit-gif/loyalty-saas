@@ -1,46 +1,4 @@
-import { registerSchema, registerSlugSchema, parseBody } from '@/lib/validation';
-
-describe('registerSchema', () => {
-  const validData = {
-    restaurantSlug: 'my-restaurant',
-    firstName: 'Jean',
-    lastName: 'Dupont',
-    email: 'jean@example.com',
-    birthDate: '1990-05-15',
-    postalCode: '75001',
-    marketingConsent: true,
-  };
-
-  it('accepts valid data', () => {
-    const result = registerSchema.safeParse(validData);
-    expect(result.success).toBe(true);
-  });
-
-  it('fails when required fields are missing', () => {
-    const result = registerSchema.safeParse({});
-    expect(result.success).toBe(false);
-
-    if (!result.success) {
-      const fieldNames = result.error.issues.map((i) => i.path[0]);
-      expect(fieldNames).toContain('restaurantSlug');
-      expect(fieldNames).toContain('firstName');
-      expect(fieldNames).toContain('lastName');
-      expect(fieldNames).toContain('email');
-      expect(fieldNames).toContain('marketingConsent');
-    }
-  });
-
-  it('fails when email is invalid', () => {
-    const result = registerSchema.safeParse({ ...validData, email: 'not-an-email' });
-    expect(result.success).toBe(false);
-
-    if (!result.success) {
-      const emailIssue = result.error.issues.find((i) => i.path[0] === 'email');
-      expect(emailIssue).toBeDefined();
-      expect(emailIssue!.message).toBe('Adresse email invalide');
-    }
-  });
-});
+import { registerSlugSchema, parseBody } from '@/lib/validation';
 
 describe('registerSlugSchema', () => {
   const validData = {

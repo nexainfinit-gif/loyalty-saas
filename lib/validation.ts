@@ -6,18 +6,6 @@ import { z } from 'zod';
 /** Strip HTML tags to prevent stored XSS */
 const stripHtml = (s: string) => s.replace(/<[^>]*>/g, '');
 
-/** Schema for POST /api/register (main registration route) */
-export const registerSchema = z.object({
-  restaurantSlug: z.string().trim().min(1).max(100),
-  firstName:      z.string().trim().min(1, 'Le prénom est requis').max(100).transform(stripHtml),
-  lastName:       z.string().trim().min(1, 'Le nom est requis').max(100).transform(stripHtml),
-  email:          z.string().trim().email('Adresse email invalide').max(255),
-  birthDate:      z.string().date().optional().nullable(),
-  postalCode:     z.string().regex(/^\d{4,10}$/, 'Code postal invalide').optional().nullable(),
-  marketingConsent: z.boolean(),
-  ref:            z.string().trim().max(100).optional().nullable(),
-});
-
 /** Schema for POST /api/register/[slug] (slug-based registration route) */
 export const registerSlugSchema = z.object({
   first_name:        z.string().trim().min(1, 'Le prénom est requis').max(100).transform(stripHtml),

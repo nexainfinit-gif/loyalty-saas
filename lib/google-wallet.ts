@@ -197,6 +197,9 @@ export async function updateLoyaltyObject(
     /** When provided, patches the barcode on the Google Wallet object.
      *  Use this during a Sync to align the QR value with the stored short_code. */
     barcode?:       { value: string; alternateText: string };
+    /** Lien « Mon espace client » — patché à la synchro pour que les passes
+     *  émis AVANT l'ajout du lien (2026-07-17) le récupèrent d'eux-mêmes. */
+    portalUrl?:     string;
     /**
      * Controls which Google Wallet field carries the loyalty balance.
      * - 'stamps' → primary loyaltyPoints = stamps count ("X / Y Tampons").
@@ -261,6 +264,12 @@ export async function updateLoyaltyObject(
       alternateText: patch.barcode.alternateText,
     };
     maskFields.push('barcode');
+  }
+  if (patch.portalUrl !== undefined) {
+    body.linksModuleData = {
+      uris: [{ uri: patch.portalUrl, description: 'Mon espace client', id: 'portal' }],
+    };
+    maskFields.push('linksModuleData');
   }
 
   const qs     = maskFields.length > 0 ? `?updateMask=${maskFields.join(',')}` : '';
