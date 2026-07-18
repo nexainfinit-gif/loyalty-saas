@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendBirthdayEmail } from '@/lib/email';
+import { pushPassUpdate } from '@/lib/apns';
 import { logger } from '@/lib/logger';
 
 function timingSafeCompare(a: string, b: string): boolean {
@@ -104,6 +105,31 @@ export async function GET(req: NextRequest) {
           qrToken:         c.qr_token as string | undefined,
         }),
       );
+
+      // Notification lockscreen sur la carte Wallet (Apple uniquement — les
+      // notifs Google Wallet sont peu fiables). Même mécanique que les
+      // rappels de RDV : promo_message + push APNS. Best-effort.
+      emailTasks.push((async () => {
+        const unit = ls?.program_type === 'stamps' ? 'tampon(s)' : 'point(s)';
+        const message = bonus > 0
+          ? `🎁 Joyeux anniversaire, ${c.first_name} ! ${bonus} ${unit} offerts sur votre carte.`
+          : `🎁 Joyeux anniversaire, ${c.first_name} ! Toute l'équipe pense à vous.`;
+        const { data: passes } = await supabaseAdmin
+          .from('wallet_passes')
+          .select('id, promo_message')
+          .eq('restaurant_id', restaurantId)
+          .eq('customer_id', c.id)
+          .eq('platform', 'apple')
+          .eq('status', 'active');
+        for (const pass of passes ?? []) {
+          if ((pass.promo_message ?? null) === message) continue;
+          await supabaseAdmin
+            .from('wallet_passes')
+            .update({ promo_message: message })
+            .eq('id', pass.id);
+          await pushPassUpdate(pass.id).catch(() => { /* push best-effort */ });
+        }
+      })());
     }
   }
 

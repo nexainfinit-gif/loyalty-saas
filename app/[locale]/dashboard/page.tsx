@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import TeamAccessSection from '@/components/TeamAccessSection'
 import LogoCropper from '@/components/LogoCropper';
 import DashboardTutorial from '@/components/DashboardTutorial';
+import AutomationsPanel from '@/components/AutomationsPanel';
 import LoyaltySetupModal from '@/components/LoyaltySetupModal';
 import { staffLanding } from '@/lib/booking-eligibility';
 import PlanSelection from '@/components/PlanSelection';
@@ -1801,6 +1802,15 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Automations — ce qui part tout seul (crons + notifications au scan) */}
+              {restaurant && (
+                <AutomationsPanel
+                  restaurantId={restaurant.id}
+                  bookingActive={!!restaurant.booking_active}
+                  onGoToLoyalty={() => setActiveTab('loyalty')}
+                />
+              )}
 
               {/* History */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">

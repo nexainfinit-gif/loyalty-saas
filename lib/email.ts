@@ -580,6 +580,93 @@ export async function sendBirthdayEmail({
   });
 }
 
+/* ── Winback email (relance automatique des inactifs) ──────────────────── */
+
+interface WinbackEmailProps {
+  to: string;
+  firstName: string;
+  restaurantName: string;
+  restaurantColor: string;
+  restaurantSlug: string;
+  qrToken: string | null;
+  programType: 'points' | 'stamps';
+  /** Solde actuel : points ou tampons selon le programme. */
+  balance: number;
+  /** Objectif : reward_threshold (points) ou stamps_total (tampons). */
+  target: number;
+}
+
+export async function sendWinbackEmail({
+  to,
+  firstName,
+  restaurantName,
+  restaurantColor,
+  restaurantSlug,
+  qrToken,
+  programType,
+  balance,
+  target,
+}: WinbackEmailProps) {
+  const safeColor = safeCssColor(restaurantColor);
+  const safeName  = esc(restaurantName);
+  const safeFname = esc(firstName);
+  const unit      = programType === 'stamps' ? 'tampon(s)' : 'point(s)';
+  const unsubUrl  = qrToken
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/api/unsubscribe?token=${qrToken}`
+    : null;
+  // Accès direct à l'espace client (aucun email magic-link supplémentaire)
+  const portalUrl = qrToken
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/fr/client/${restaurantSlug}?t=${qrToken}`
+    : `${process.env.NEXT_PUBLIC_APP_URL}/fr/client/${restaurantSlug}`;
+
+  await resend.emails.send({
+    from: `${restaurantName} <noreply@rebites.be>`,
+    to,
+    subject: `${firstName}, vos ${unit} vous attendent chez ${restaurantName}`,
+    html: `
+      <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem;">
+
+        ${emailHeader({ color: safeColor, title: 'Ça fait un moment !', subtitle: safeName, logoUrl: await logoFor({ slug: restaurantSlug }) })}
+
+        <p style="color: #374151;">
+          Bonjour <strong>${safeFname}</strong>,
+        </p>
+
+        <p style="color: #374151;">
+          On ne vous a pas vu depuis un moment chez <strong>${safeName}</strong> —
+          et votre carte de fidélité, elle, n'a pas bougé :
+        </p>
+
+        <div style="background: #f9fafb; border-radius: 12px; padding: 1.25rem; margin: 1.25rem 0; text-align: center;">
+          <p style="margin: 0; color: #111827; font-size: 1.25rem; font-weight: 700;">
+            ${balance} / ${target} ${unit}
+          </p>
+          <p style="margin: 0.25rem 0 0; color: #6b7280; font-size: 0.85rem;">
+            déjà sur votre carte — il serait dommage de repartir de zéro !
+          </p>
+        </div>
+
+        <div style="text-align: center; margin: 1.5rem 0;">
+          <a href="${portalUrl}" target="_blank" style="display: inline-block; background: ${safeColor}; color: white; text-decoration: none; padding: 0.875rem 2rem; border-radius: 12px; font-size: 0.95rem; font-weight: 600;">
+            Voir ma carte
+          </a>
+        </div>
+
+        <p style="color: #6b7280; font-size: 0.85rem; text-align: center;">
+          À très bientôt !
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;" />
+
+        <p style="color: #9ca3af; font-size: 0.75rem; text-align: center;">
+          ${safeName} — Programme de fidélité<br/>
+          ${unsubUrl ? `<a href="${unsubUrl}" style="color: #9ca3af; text-decoration: underline;">Se désinscrire</a>` : ''}
+        </p>
+      </div>
+    `,
+  });
+}
+
 /* ── Appointment reminder email ────────────────────────────────────────── */
 
 interface ReminderEmailProps {
