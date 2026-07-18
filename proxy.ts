@@ -132,18 +132,19 @@ export async function proxy(request: NextRequest) {
 
   const strippedPath = stripLocalePrefix(pathname, pathnameLocale);
 
-  /* ── Bascule design v2 « Comptoir » ──────────────────────────────────── */
-  // Beta opt-in via cookie `ui_v2` (posé par ?v2=1, retiré par ?v2=0). Flag
-  // global `UI_V2_GLOBAL` = seam pour un toggle runtime (à câbler sur un KV
-  // Upstash quand on passera en bascule globale sans redeploy).
+  /* ── Design v2 « Comptoir » — GLOBAL depuis le 2026-07-18 ────────────── */
+  // v2 est le défaut pour tout le monde (fin du beta opt-in). Deux
+  // échappatoires : ?v2=0 → cookie d'opt-out (v1 pour CE visiteur, ?v2=1
+  // pour revenir) ; UI_V2_GLOBAL=off → kill-switch global (env + redeploy,
+  // sans toucher au code). Les anciens cookies beta ui_v2='1' restent valides.
   const v2Query = request.nextUrl.searchParams.get('v2');
-  const v2GlobalOn = process.env.UI_V2_GLOBAL === 'on'; // TODO: lire depuis KV (Upstash) pour un toggle sans redeploy
-  const v2OptIn = v2Query === '1' || (request.cookies.get('ui_v2')?.value === '1' && v2Query !== '0');
-  const v2Enabled = v2GlobalOn || v2OptIn;
+  const v2KillSwitch = process.env.UI_V2_GLOBAL === 'off';
+  const v2OptOut = v2Query === '0' || (request.cookies.get('ui_v2')?.value === '0' && v2Query !== '1');
+  const v2Enabled = !v2KillSwitch && !v2OptOut;
 
   const setV2Cookie = (res: NextResponse) => {
     if (v2Query === '1') res.cookies.set('ui_v2', '1', { path: '/', maxAge: 60 * 60 * 24 * 180, sameSite: 'lax' });
-    else if (v2Query === '0') res.cookies.set('ui_v2', '', { path: '/', maxAge: 0 });
+    else if (v2Query === '0') res.cookies.set('ui_v2', '0', { path: '/', maxAge: 60 * 60 * 24 * 180, sameSite: 'lax' });
   };
 
   const v2Target = v2Enabled ? mapToV2(strippedPath) : null;
