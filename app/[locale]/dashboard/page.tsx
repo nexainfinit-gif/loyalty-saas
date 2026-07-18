@@ -244,9 +244,13 @@ export default function DashboardPage() {
   const [logoError,      setLogoError]         = useState('');
   const [logoSaved,      setLogoSaved]         = useState(false);
   const [campaignModal, setCampaignModal]     = useState(false);
-  // Zone de danger — suppression définitive de l'établissement
+  // Zone de danger — suppression définitive de l'établissement.
+  // Deux étapes : nom exact → code de confirmation reçu par email (OTP).
   const [dangerOpen, setDangerOpen] = useState(false);
+  const [dangerStep, setDangerStep] = useState<'name' | 'code'>('name');
   const [dangerText, setDangerText] = useState('');
+  const [dangerCode, setDangerCode] = useState('');
+  const [dangerEmail, setDangerEmail] = useState('');
   const [dangerBusy, setDangerBusy] = useState(false);
   const [campaignPreview, setCampaignPreview] = useState(false);
   const [sendingCampaign, setSendingCampaign] = useState(false);
@@ -757,7 +761,8 @@ export default function DashboardPage() {
     }
   }
 
-  async function deleteEstablishment() {
+  // Étape 1 : demande l'envoi du code de confirmation sur l'email du gérant
+  async function requestDeleteCode() {
     if (!restaurant || dangerText.trim() !== restaurant.name) return;
     setDangerBusy(true);
     try {
@@ -767,6 +772,28 @@ export default function DashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
         body: JSON.stringify({ restaurantId: restaurant.id, confirmName: dangerText.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json.error || t('common.error')); return; }
+      setDangerEmail(json.email ?? '');
+      setDangerCode('');
+      setDangerStep('code');
+    } finally {
+      setDangerBusy(false);
+    }
+  }
+
+  // Étape 2 : code saisi → suppression définitive
+  async function deleteEstablishment() {
+    if (!restaurant || dangerCode.trim().length !== 6) return;
+    setDangerBusy(true);
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) return;
+      const res = await fetch('/api/Restaurant/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
+        body: JSON.stringify({ restaurantId: restaurant.id, confirmName: dangerText.trim(), code: dangerCode.trim() }),
       });
       const json = await res.json();
       if (!res.ok) { toast.error(json.error || t('common.error')); return; }
@@ -2615,7 +2642,7 @@ export default function DashboardPage() {
                     Cette action est irréversible.
                   </p>
                   <button
-                    onClick={() => { setDangerText(''); setDangerOpen(true); }}
+                    onClick={() => { setDangerText(''); setDangerCode(''); setDangerStep('name'); setDangerOpen(true); }}
                     className="px-4 py-2 rounded-xl text-sm font-medium border border-danger-600 text-danger-700 hover:bg-danger-50 transition-colors"
                   >
                     Supprimer cet établissement…
@@ -2628,33 +2655,71 @@ export default function DashboardPage() {
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => !dangerBusy && setDangerOpen(false)} />
                     <div className="relative bg-white rounded-t-2xl sm:rounded-2xl border border-gray-200 shadow-xl w-full max-w-md mx-0 sm:mx-4 p-6">
                       <h2 className="text-base font-semibold text-danger-700 mb-2">Supprimer « {restaurant.name} » ?</h2>
-                      <p className="text-sm text-gray-500 mb-4">
-                        Toutes les données seront définitivement effacées et l&apos;abonnement annulé.
-                        Pour confirmer, tapez le nom exact de l&apos;établissement :
-                      </p>
-                      <input
-                        type="text"
-                        value={dangerText}
-                        onChange={(e) => setDangerText(e.target.value)}
-                        placeholder={restaurant.name}
-                        className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-danger-600 transition-colors mb-4"
-                      />
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => setDangerOpen(false)}
-                          disabled={dangerBusy}
-                          className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors"
-                        >
-                          {t('common.cancel')}
-                        </button>
-                        <button
-                          onClick={deleteEstablishment}
-                          disabled={dangerBusy || dangerText.trim() !== restaurant.name}
-                          className="flex-1 px-4 py-3 rounded-xl bg-danger-600 text-white text-sm font-semibold hover:bg-danger-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          {dangerBusy ? 'Suppression…' : 'Supprimer définitivement'}
-                        </button>
-                      </div>
+
+                      {dangerStep === 'name' ? (
+                        <>
+                          <p className="text-sm text-gray-500 mb-4">
+                            Toutes les données seront définitivement effacées et l&apos;abonnement annulé.
+                            Pour continuer, tapez le nom exact de l&apos;établissement — un code de
+                            confirmation vous sera ensuite envoyé par email.
+                          </p>
+                          <input
+                            type="text"
+                            value={dangerText}
+                            onChange={(e) => setDangerText(e.target.value)}
+                            placeholder={restaurant.name}
+                            className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-danger-600 transition-colors mb-4"
+                          />
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => setDangerOpen(false)}
+                              disabled={dangerBusy}
+                              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors"
+                            >
+                              {t('common.cancel')}
+                            </button>
+                            <button
+                              onClick={requestDeleteCode}
+                              disabled={dangerBusy || dangerText.trim() !== restaurant.name}
+                              className="flex-1 px-4 py-3 rounded-xl bg-danger-600 text-white text-sm font-semibold hover:bg-danger-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {dangerBusy ? 'Envoi…' : 'Recevoir le code par email'}
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm text-gray-500 mb-4">
+                            Un code à 6 chiffres a été envoyé à <strong>{dangerEmail}</strong> (valable
+                            10 minutes). Saisissez-le pour confirmer la suppression définitive.
+                          </p>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            value={dangerCode}
+                            onChange={(e) => setDangerCode(e.target.value.replace(/\D/g, ''))}
+                            placeholder="000000"
+                            className="w-full px-3 py-3 rounded-xl border border-gray-200 text-center text-lg font-bold tracking-[0.4em] tabular-nums focus:outline-none focus:border-danger-600 transition-colors mb-4"
+                          />
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => { setDangerStep('name'); setDangerCode(''); }}
+                              disabled={dangerBusy}
+                              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors"
+                            >
+                              Retour
+                            </button>
+                            <button
+                              onClick={deleteEstablishment}
+                              disabled={dangerBusy || dangerCode.trim().length !== 6}
+                              className="flex-1 px-4 py-3 rounded-xl bg-danger-600 text-white text-sm font-semibold hover:bg-danger-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {dangerBusy ? 'Suppression…' : 'Supprimer définitivement'}
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
