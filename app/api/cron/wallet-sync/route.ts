@@ -132,7 +132,9 @@ export async function GET(req: Request) {
       if (applePasses?.length) {
         await Promise.allSettled(applePasses.map(async (pass) => {
           try {
-            await pushPassUpdate(pass.push_token!);
+            // pushPassUpdate attend l'ID DU PASS (il résout lui-même les
+            // appareils via wallet_push_registrations) — pas le push_token.
+            await pushPassUpdate(pass.id);
             stats.apns_sent++;
           } catch (err) {
             stats.apns_failed++;
@@ -236,7 +238,8 @@ export async function GET(req: Request) {
         if (applePassesRetry?.length) {
           await Promise.allSettled(applePassesRetry.map(async (ap) => {
             try {
-              await pushPassUpdate(ap.push_token!);
+              // Même correction : id du pass, pas push_token.
+              await pushPassUpdate(ap.id);
               stats.apns_sent++;
             } catch (err) {
               stats.apns_failed++;
