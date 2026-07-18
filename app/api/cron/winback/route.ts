@@ -139,19 +139,24 @@ export async function GET(req: NextRequest) {
     }
 
     // Comptabilité quota + historique : une ligne campagne par run réussi.
+    // NB : segment_type a une contrainte CHECK — 'inactive_45' est la valeur
+    // du segment manuel existant (les valeurs custom sont rejetées).
     if (sentForRestaurant > 0) {
-      await supabaseAdmin.from('campaigns').insert({
+      const { error: campErr } = await supabaseAdmin.from('campaigns').insert({
         restaurant_id: restaurantId,
         name: 'Relance automatique des inactifs',
         type: 'winback_auto',
         subject: 'Vos avantages vous attendent',
         body: `Relance automatique (inactifs depuis ${winbackDays} j)`,
         content: `Relance automatique (inactifs depuis ${winbackDays} j)`,
-        segment: 'inactive_auto',
-        segment_type: 'inactive_auto',
+        segment: 'inactive_45',
+        segment_type: 'inactive_45',
         status: 'sent',
         recipients_count: sentForRestaurant,
       });
+      if (campErr) {
+        logger.error({ ctx: 'cron/winback', rid: restaurantId, msg: 'campaign accounting insert failed', err: campErr.message });
+      }
     }
   }
 
