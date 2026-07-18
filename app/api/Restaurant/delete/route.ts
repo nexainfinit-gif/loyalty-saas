@@ -43,13 +43,15 @@ function esc(s: string): string {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Tables référençant restaurants SANS cascade (audit migrations 015/017/018/020/053)
+// Tables référençant restaurants SANS cascade (audit migrations 015/017/018/020/053).
+// ⚠️ Ordre important : wallet_sync_queue référence scan_events (018, sans
+// cascade) → la file doit partir AVANT les événements de scan.
 const NON_CASCADE_TABLES = [
   'audit_log',
   'team_invites',
   'team_members',
-  'scan_events',
   'wallet_sync_queue',
+  'scan_events',
   'referrals',
   'affiliate_commissions',
 ];
