@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendBirthdayEmail } from '@/lib/email';
 import { pushPassUpdate } from '@/lib/apns';
+import { addObjectMessage } from '@/lib/google-wallet';
 import { logger } from '@/lib/logger';
 
 function timingSafeCompare(a: string, b: string): boolean {
@@ -128,6 +129,24 @@ export async function GET(req: NextRequest) {
             .update({ promo_message: message })
             .eq('id', pass.id);
           await pushPassUpdate(pass.id).catch(() => { /* push best-effort */ });
+        }
+
+        // Android : notification Google Wallet (AddMessage TEXT_AND_NOTIFY,
+        // fallback silencieux si le quota 3/carte/24h est atteint).
+        const { data: gPasses } = await supabaseAdmin
+          .from('wallet_passes')
+          .select('object_id')
+          .eq('restaurant_id', restaurantId)
+          .eq('customer_id', c.id)
+          .eq('platform', 'google')
+          .eq('status', 'active')
+          .not('object_id', 'is', null);
+        for (const gp of gPasses ?? []) {
+          await addObjectMessage(gp.object_id as string, {
+            header: 'Joyeux anniversaire !',
+            body: message,
+            notify: true,
+          }).catch(() => { /* best-effort */ });
         }
       })());
     }

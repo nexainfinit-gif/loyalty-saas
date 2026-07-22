@@ -7,6 +7,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAuth, requireFeature } from '@/lib/server-auth';
 import { pushPassUpdate } from '@/lib/apns';
+import { addObjectMessage } from '@/lib/google-wallet';
 import { checkPlanLimit, planLimitError } from '@/lib/plan-limits';
 import { logger } from '@/lib/logger';
 import { auditLog } from '@/lib/audit';
@@ -123,8 +124,18 @@ export async function POST(req: Request) {
     .eq('status', 'active')
     .in('customer_id', targetCustomerIds);
 
-  if (!allPasses?.length) {
-    return Response.json({ error: 'Aucun porteur Apple Wallet dans ce segment' }, { status: 400 });
+  // Porteurs Google Wallet du segment (notification via AddMessage plus bas)
+  const { data: googlePasses } = await supabaseAdmin
+    .from('wallet_passes')
+    .select('id, customer_id, object_id')
+    .eq('restaurant_id', restaurant.id)
+    .eq('platform', 'google')
+    .eq('status', 'active')
+    .not('object_id', 'is', null)
+    .in('customer_id', targetCustomerIds);
+
+  if (!allPasses?.length && !googlePasses?.length) {
+    return Response.json({ error: 'Aucun porteur Wallet (Apple ou Google) dans ce segment' }, { status: 400 });
   }
 
   const customerMap = new Map(customers.map(c => [c.id, c]));
@@ -144,14 +155,14 @@ export async function POST(req: Request) {
     (upcomingApts ?? []).map(a => (a.client_email as string | null)?.toLowerCase().trim()).filter(Boolean),
   );
 
-  const passes = allPasses.filter(p => {
+  const passes = (allPasses ?? []).filter(p => {
     if (!p.promo_message?.startsWith('📅')) return true;
     const email = customerMap.get(p.customer_id)?.email?.toLowerCase().trim();
     return !(email && upcomingEmails.has(email)); // rappel actif → pass protégé
   });
-  const skippedReminder = allPasses.length - passes.length;
+  const skippedReminder = (allPasses?.length ?? 0) - passes.length;
 
-  if (!passes.length) {
+  if (!passes.length && !googlePasses?.length) {
     return Response.json(
       { error: 'Tous les porteurs de ce segment ont un rappel de rendez-vous actif sur leur carte — campagne non envoyée pour ne pas l\'écraser.' },
       { status: 400 },
@@ -187,7 +198,7 @@ export async function POST(req: Request) {
       segment: seg,
       segment_type: seg,
       status: 'sending',
-      recipients_count: passes.length,
+      recipients_count: passes.length + (googlePasses?.length ?? 0),
     })
     .select()
     .single();
@@ -215,14 +226,38 @@ export async function POST(req: Request) {
     if (r.status === 'rejected') failed++;
   }
 
+  // ── Porteurs Google Wallet : notification via AddMessage TEXT_AND_NOTIFY
+  //    (canal officiel Android, 3 notifs/carte/24h — au-delà le message passe
+  //    silencieusement sur la carte). Pas de protection RDV ici : les rappels
+  //    📅 ne vivent que sur les passes Apple, Android est couvert par WhatsApp.
+  let googleNotified = 0;
+  let googleSilent = 0;
+  await Promise.allSettled(
+    (googlePasses ?? []).map(async (gp) => {
+      const cust = customerMap.get(gp.customer_id);
+      const personalizedMsg = message.trim()
+        .replace(/\{\{prenom\}\}/gi, cust?.first_name ?? '')
+        .replace(/\{\{points\}\}/gi, String(cust?.total_points ?? 0))
+        .replace(/\{\{restaurant\}\}/gi, restaurant.name);
+      const r = await addObjectMessage(gp.object_id as string, {
+        header: restaurant.name,
+        body: personalizedMsg,
+        notify: true,
+      });
+      if (r.ok && r.notified) googleNotified++;
+      else if (r.ok) googleSilent++;
+    }),
+  );
+
   // ── Update campaign status ──────────────────────────────────────────────
+  const delivered = pushed + googleNotified + googleSilent;
   if (campaign) {
     await supabaseAdmin
       .from('campaigns')
       .update({
-        status: failed === passes.length ? 'failed' : 'sent',
+        status: delivered > 0 ? 'sent' : 'failed',
         sent_at: new Date().toISOString(),
-        recipients_count: pushed,
+        recipients_count: delivered,
       })
       .eq('id', campaign.id);
   }
@@ -258,5 +293,9 @@ export async function POST(req: Request) {
     failed,
     // Cartes non touchées car un rappel de RDV actif occupe leur message
     skippedReminder,
+    // Porteurs Google Wallet (Android) — notification AddMessage
+    googlePasses: googlePasses?.length ?? 0,
+    googleNotified,
+    googleSilent,
   });
 }

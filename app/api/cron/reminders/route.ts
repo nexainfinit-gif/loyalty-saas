@@ -3,6 +3,8 @@ import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendReminderEmail } from '@/lib/email';
 import { refreshAppointmentOnPass, frDateLabel } from '@/lib/booking-wallet';
+import { addObjectMessage } from '@/lib/google-wallet';
+import { logger } from '@/lib/logger';
 import { isWhatsAppConfigured, sendAppointmentReminderWhatsApp } from '@/lib/whatsapp';
 import { getReminderQuotaState } from '@/lib/plan-limits';
 
@@ -38,7 +40,7 @@ export async function GET(req: NextRequest) {
   }
 
   const now = new Date();
-  const results = { sent24h: 0, sent2h: 0, whatsapp: 0, whatsappQuota: 0, failed: 0 };
+  const results = { sent24h: 0, sent2h: 0, whatsapp: 0, whatsappQuota: 0, google: 0, failed: 0 };
 
   // Window: appointments between now and now+25h (covers both 24h and 2h reminders)
   const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000);
@@ -84,7 +86,7 @@ export async function GET(req: NextRequest) {
     .from('appointment_reminders')
     .select('appointment_id, scheduled_for, type')
     .in('appointment_id', aptIds)
-    .in('type', ['email', 'whatsapp'])
+    .in('type', ['email', 'whatsapp', 'google'])
     .not('sent_at', 'is', null);
 
   const sentSet = new Set(
@@ -96,6 +98,12 @@ export async function GET(req: NextRequest) {
   const waSentSet = new Set(
     (existingReminders ?? [])
       .filter((r) => r.type === 'whatsapp')
+      .map((r) => `${r.appointment_id}_${r.scheduled_for}`)
+  );
+  // Dedup notif Google Wallet (niveau gratuit intermédiaire de la cascade).
+  const gSentSet = new Set(
+    (existingReminders ?? [])
+      .filter((r) => r.type === 'google')
       .map((r) => `${r.appointment_id}_${r.scheduled_for}`)
   );
 
@@ -176,10 +184,63 @@ export async function GET(req: NextRequest) {
       ? await refreshAppointmentOnPass(apt.restaurant_id, apt.client_email)
       : false;
 
+    // Cascade niveau 1bis (gratuit) — Android : notification Google Wallet via
+    // AddMessage TEXT_AND_NOTIFY (3/carte/24h, fallback silencieux). Couvre le
+    // client Android SANS consommer le quota WhatsApp payant.
+    let googleCovered = false;
+    if (!walletCovered && remindersToSend.length > 0) {
+      const { data: gCust } = await supabaseAdmin
+        .from('customers')
+        .select('id')
+        .eq('restaurant_id', apt.restaurant_id)
+        .eq('email', (apt.client_email as string).toLowerCase().trim())
+        .maybeSingle();
+      if (gCust) {
+        const { data: gPass } = await supabaseAdmin
+          .from('wallet_passes')
+          .select('object_id')
+          .eq('customer_id', gCust.id)
+          .eq('restaurant_id', apt.restaurant_id)
+          .eq('platform', 'google')
+          .eq('status', 'active')
+          .not('object_id', 'is', null)
+          .maybeSingle();
+        if (gPass?.object_id) {
+          for (const reminder of remindersToSend) {
+            const gKey = `${apt.id}_${reminder.scheduledFor}`;
+            if (gSentSet.has(gKey)) { googleCovered = true; continue; }
+            const dateTimeLabel = `${frDateLabel(apt.date)} à ${String(apt.start_time).slice(0, 5)}`;
+            const r = await addObjectMessage(gPass.object_id as string, {
+              header: 'Rappel de rendez-vous',
+              body: `📅 ${dateTimeLabel} — ${restaurant.name}`,
+              notify: true,
+            }).catch(() => ({ ok: false, notified: false }));
+            if (r.ok && r.notified) {
+              googleCovered = true;
+              gSentSet.add(gKey);
+              const { error: gDedupErr } = await supabaseAdmin.from('appointment_reminders').insert({
+                appointment_id: apt.id,
+                restaurant_id: apt.restaurant_id,
+                type: 'google',
+                sent_at: new Date().toISOString(),
+                scheduled_for: reminder.scheduledFor,
+              });
+              if (gDedupErr) {
+                // Migration 058 pas encore exécutée ? Sans dédup persistée, une
+                // notif peut se répéter au prochain run — à corriger vite.
+                logger.warn({ ctx: 'cron/reminders', rid: apt.restaurant_id, msg: 'google dedup insert failed (migration 058 ?)', err: gDedupErr.message });
+              }
+              results.google++;
+            }
+          }
+        }
+      }
+    }
+
     // Cascade niveau 2 (payant, ~0,04 €) — WhatsApp UNIQUEMENT si le client
-    // n'est pas déjà couvert par la notif Wallet gratuite, a un numéro, et le
-    // provider est configuré. Aligné sur la cadence des rappels (24h/2h).
-    if (!walletCovered && waConfigured && apt.client_phone) {
+    // n'est pas déjà couvert par une notif Wallet gratuite (Apple ou Google),
+    // a un numéro, et le provider est configuré. Cadence 24h/2h.
+    if (!walletCovered && !googleCovered && waConfigured && apt.client_phone) {
       const restaurantPlan = (restaurant as { plan?: string | null }).plan ?? null;
       const restaurantCredits = (restaurant as { reminder_credits?: number }).reminder_credits ?? 0;
       for (const reminder of remindersToSend) {

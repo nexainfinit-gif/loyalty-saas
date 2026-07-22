@@ -180,6 +180,38 @@ export async function updateLoyaltyClass(params: {
 
 /* ── Object management ────────────────────────────────────────────────────── */
 
+/**
+ * Ajoute un message au dos de la carte Google — avec notification push
+ * Android quand notify=true (messageType TEXT_AND_NOTIFY, canal officiel).
+ * Limite Google : 3 notifications par carte par 24 h → au-delà,
+ * QuotaExceededException ; on retombe alors automatiquement sur un message
+ * silencieux (TEXT) pour que le contenu arrive quand même sur la carte.
+ */
+export async function addObjectMessage(
+  objectId: string,
+  params: { header: string; body: string; notify?: boolean },
+): Promise<{ ok: boolean; notified: boolean }> {
+  const send = (messageType: 'TEXT_AND_NOTIFY' | 'TEXT') =>
+    gFetch('POST', `/loyaltyObject/${encodeURIComponent(objectId)}/addMessage`, {
+      message: { header: params.header, body: params.body, messageType },
+    });
+
+  if (params.notify) {
+    const r = await send('TEXT_AND_NOTIFY');
+    if (r.ok) return { ok: true, notified: true };
+    // Quota de notifications atteint → message silencieux (carte à jour sans notif)
+    const errText = JSON.stringify(r.data ?? '') + (r.error ?? '');
+    if (r.status === 403 || /quota/i.test(errText)) {
+      const silent = await send('TEXT');
+      return { ok: silent.ok, notified: false };
+    }
+    return { ok: false, notified: false };
+  }
+
+  const r = await send('TEXT');
+  return { ok: r.ok, notified: false };
+}
+
 export async function createLoyaltyObject(data: GooglePassData): Promise<{ ok: boolean }> {
   const body   = buildLoyaltyObject(data);
   const result = await gFetch('POST', '/loyaltyObject', body);
