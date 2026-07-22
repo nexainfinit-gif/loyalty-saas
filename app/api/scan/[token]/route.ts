@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { pushPassUpdate } from '@/lib/apns';
+import { syncGooglePassesNow } from '@/lib/wallet-sync-now';
 import { sendRewardReachedEmail, sendNearRewardEmail } from '@/lib/email';
 import { getTranslator, defaultLocale, locales, type Locale } from '@/lib/i18n-server';
 
@@ -464,11 +465,11 @@ export async function POST(
       .from('scan_events').insert(scanEventInsert).select('id').single();
 
     // Wallet sync + APNS push
-    await supabaseAdmin.from('wallet_sync_queue').insert({
+    const { data: redeemQueueItem } = await supabaseAdmin.from('wallet_sync_queue').insert({
       scan_event_id: scanEvent?.id ?? null,
       customer_id:   customer.id,
       restaurant_id: restaurantId,
-    });
+    }).select('id').single();
     try {
       const { data: applePasses } = await supabaseAdmin
         .from('wallet_passes').select('id')
@@ -479,6 +480,9 @@ export async function POST(
     } catch (err) {
       logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push failed', err: err instanceof Error ? err.message : String(err) });
     }
+    // Parité Android : solde Google rafraîchi immédiatement (le cron nocturne
+    // reste le filet de rattrapage en cas d'échec).
+    await syncGooglePassesNow(customer.id, restaurantId, redeemQueueItem?.id ?? null);
 
     return Response.json(responsePayload);
   }
@@ -622,11 +626,11 @@ export async function POST(
   }
 
   // ── Wallet sync + APNS push (awaited to ensure execution on Vercel) ─────
-  const { error: syncErr } = await supabaseAdmin.from('wallet_sync_queue').insert({
+  const { data: queueItem, error: syncErr } = await supabaseAdmin.from('wallet_sync_queue').insert({
     scan_event_id: scanEvent?.id ?? null,
     customer_id:   customer.id,
     restaurant_id: restaurantId,
-  });
+  }).select('id').single();
   if (syncErr) logger.error({ ctx: 'scan', rid: restaurantId, msg: 'wallet_sync_queue insert failed', err: syncErr.message });
 
   // APNS push for Apple Wallet passes
@@ -644,6 +648,10 @@ export async function POST(
   } catch (err) {
     logger.error({ ctx: 'scan', rid: restaurantId, msg: 'APNS push failed', err: err instanceof Error ? err.message : String(err) });
   }
+
+  // Parité Android : solde Google rafraîchi immédiatement (le cron nocturne
+  // reste le filet de rattrapage en cas d'échec).
+  await syncGooglePassesNow(customer.id, restaurantId, queueItem?.id ?? null);
 
   // ── Auto-notifications (fire-and-forget, never blocks response) ─────
   if (customer.email) {
