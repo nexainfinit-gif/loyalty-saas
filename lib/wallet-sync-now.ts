@@ -118,7 +118,19 @@ export async function syncGooglePassesNow(
           : settings?.program_type === 'stamps' ? 'stamps' : 'points'
       ) as 'stamps' | 'points';
 
-      let result = await updateLoyaltyObject(pass.object_id as string, {
+      // Normalisation : un object_id émis sous un mauvais issuer (cas réel :
+      // GOOGLE_WALLET_ISSUER_ID mal configuré en prod → préfixe = id du compte
+      // de service) est réécrit vers l'id canonique avant tout appel.
+      const ISSUER_ID = process.env.GOOGLE_WALLET_ISSUER_ID;
+      let objectId = pass.object_id as string;
+      if (ISSUER_ID && !objectId.startsWith(`${ISSUER_ID}.`)) {
+        objectId = `${ISSUER_ID}.p${pass.id.replace(/-/g, '')}`;
+        await supabaseAdmin.from('wallet_passes').update({ object_id: objectId }).eq('id', pass.id);
+        pass.object_id = objectId;
+        logger.info({ ctx: 'wallet-sync-now', rid: restaurantId, msg: `object_id normalisé pour pass ${pass.id}` });
+      }
+
+      let result = await updateLoyaltyObject(objectId, {
         passKind:    effectivePassKind,
         totalPoints: pass.total_points ?? 0,
         stampsCount: pass.stamps_count ?? 0,
