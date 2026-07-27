@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "finary-dashboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/Mehdi/Desktop/finary-dashboard", "run", "dev", "--", "-p", "3005"],
+      "port": 3005
     }
   ]
 }

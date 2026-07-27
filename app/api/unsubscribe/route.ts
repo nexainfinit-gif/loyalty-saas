@@ -126,3 +126,13 @@ function pageResponse(status: number, state: State): Response {
     },
   );
 }
+
+/**
+ * POST — désabonnement « one-click » RFC 8058 (header List-Unsubscribe-Post).
+ * Gmail/Yahoo POSTent sur l'URL du header List-Unsubscribe avec le corps
+ * `List-Unsubscribe=One-Click` ; le token voyage dans la query string comme
+ * pour le GET → on réutilise la même logique.
+ */
+export async function POST(req: NextRequest) {
+  return GET(req);
+}

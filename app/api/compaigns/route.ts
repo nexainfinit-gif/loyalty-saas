@@ -173,6 +173,14 @@ export async function POST(req: Request) {
       from: `${restaurant.name} <noreply@rebites.be>`,
       to: customer.email,
       subject: personalizedSubject,
+      // List-Unsubscribe RFC 8058 : désabonnement en un clic dans Gmail +
+      // signal de délivrabilité majeur pour les emails marketing.
+      ...(unsubscribeUrl ? {
+        headers: {
+          'List-Unsubscribe': `<${unsubscribeUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      } : {}),
       html: buildEmailHtml({
         firstName: customer.first_name,
         body: personalizedBody,

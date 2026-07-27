@@ -96,7 +96,9 @@ export async function sendWelcomeEmail({
   restaurantSlug,
 }: WelcomeEmailProps) {
   const scanUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/scan/${qrToken}`;
-  const qrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(scanUrl)}&size=250`;
+  // QR auto-hébergé (/api/qr) — plus de domaine externe (quickchart.io) dans
+  // nos emails : cohérence de domaine = meilleur signal de délivrabilité.
+  const qrUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/qr?t=${qrToken}`;
   const safeColor = safeCssColor(restaurantColor);
   const safeName  = esc(restaurantName);
   const safeFname = esc(firstName);
@@ -622,6 +624,14 @@ export async function sendWinbackEmail({
   await resend.emails.send({
     from: `${restaurantName} <noreply@rebites.be>`,
     to,
+    // List-Unsubscribe RFC 8058 : Gmail affiche « Se désabonner » en un clic
+    // et récompense fortement ce header côté délivrabilité (email marketing).
+    ...(unsubUrl ? {
+      headers: {
+        'List-Unsubscribe': `<${unsubUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+    } : {}),
     subject: `${firstName}, vos ${unit} vous attendent chez ${restaurantName}`,
     html: `
       <div style="font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 2rem;">
