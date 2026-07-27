@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { refreshAppointmentOnPass } from '@/lib/booking-wallet';
+import { alignPassCounters, syncGooglePassesNow } from '@/lib/wallet-sync-now';
+import { pushPassUpdate } from '@/lib/apns';
 import { requireAuth, requireBooking } from '@/lib/server-auth';
 import { sendStaffNotificationEmail } from '@/lib/email';
 import { syncAppointmentToCalendar, updateCalendarEvent } from '@/lib/google-calendar-sync';
@@ -438,6 +440,19 @@ export async function PUT(request: NextRequest) {
                   : customer.stamps_count,
                 last_visit_at: new Date().toISOString(),
               }).eq('id', customer.id);
+
+              // 7. Reflète le nouveau solde sur TOUTES les cartes (Apple +
+              // Google) — le trigger ne crédite que le pass cible, l'autre
+              // plateforme resterait figée. Puis push/synchro immédiats.
+              await alignPassCounters(customer.id, auth.restaurantId);
+              const { data: applePasses } = await supabaseAdmin
+                .from('wallet_passes')
+                .select('id')
+                .eq('customer_id', customer.id)
+                .eq('platform', 'apple')
+                .eq('status', 'active');
+              await Promise.allSettled((applePasses ?? []).map((p) => pushPassUpdate(p.id)));
+              await syncGooglePassesNow(customer.id, auth.restaurantId);
 
               loyaltyAwarded = pointsDelta;
             }

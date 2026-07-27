@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { pushPassUpdate } from '@/lib/apns';
-import { syncGooglePassesNow } from '@/lib/wallet-sync-now';
+import { syncGooglePassesNow, alignPassCounters } from '@/lib/wallet-sync-now';
 import { sendRewardReachedEmail, sendNearRewardEmail } from '@/lib/email';
 import { getTranslator, defaultLocale, locales, type Locale } from '@/lib/i18n-server';
 
@@ -470,6 +470,10 @@ export async function POST(
       customer_id:   customer.id,
       restaurant_id: restaurantId,
     }).select('id').single();
+    // Aligne TOUS les passes actifs (Apple + Google) sur le solde client —
+    // le trigger ne crédite que le pass cible ; sans ça l'autre plateforme
+    // affiche un compteur figé. À faire AVANT le push APNS.
+    await alignPassCounters(customer.id, restaurantId);
     try {
       const { data: applePasses } = await supabaseAdmin
         .from('wallet_passes').select('id')
@@ -632,6 +636,11 @@ export async function POST(
     restaurant_id: restaurantId,
   }).select('id').single();
   if (syncErr) logger.error({ ctx: 'scan', rid: restaurantId, msg: 'wallet_sync_queue insert failed', err: syncErr.message });
+
+  // Aligne TOUS les passes actifs (Apple + Google) sur le solde client —
+  // le trigger ne crédite que le pass cible ; sans ça l'autre plateforme
+  // affiche un compteur figé. À faire AVANT le push APNS.
+  await alignPassCounters(customer.id, restaurantId);
 
   // APNS push for Apple Wallet passes
   try {

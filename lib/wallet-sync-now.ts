@@ -3,6 +3,37 @@ import { updateLoyaltyObject, ensureLoyaltyClass, createLoyaltyObject } from '@/
 import { logger } from '@/lib/logger';
 
 /**
+ * Aligne les compteurs PAR PASS de tous les passes actifs du client sur le
+ * solde CLIENT (source de vérité). Depuis la 056 (un pass Apple + un Google),
+ * le trigger de transactions ne crédite que le pass cible (`wallet_pass_id`)
+ * — l'autre plateforme restait figée (cas réel : carte Apple à « 0/10 »
+ * pendant que le client avait 3 tampons). À appeler AVANT le push APNS pour
+ * que l'iPhone relise des compteurs justes.
+ */
+export async function alignPassCounters(customerId: string, restaurantId: string): Promise<void> {
+  try {
+    const { data: customer } = await supabaseAdmin
+      .from('customers')
+      .select('total_points, stamps_count, reward_pending')
+      .eq('id', customerId)
+      .maybeSingle();
+    if (!customer) return;
+    await supabaseAdmin
+      .from('wallet_passes')
+      .update({
+        total_points:   customer.total_points ?? 0,
+        stamps_count:   customer.stamps_count ?? 0,
+        reward_pending: customer.reward_pending ?? false,
+      })
+      .eq('customer_id', customerId)
+      .eq('restaurant_id', restaurantId)
+      .eq('status', 'active');
+  } catch (err) {
+    logger.error({ ctx: 'wallet-sync-now', rid: restaurantId, msg: 'alignPassCounters failed', err: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+/**
  * Auto-réparation : recrée la classe et l'objet Google manquants (PATCH → 404).
  * Cas réel constaté (KIKO, 2026-07-22) : la création avait échoué à l'émission
  * de façon transitoire et RIEN ne réparait jamais — le cron nocturne re-PATCHait
