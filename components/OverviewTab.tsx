@@ -85,6 +85,8 @@ interface Props {
   onTabChange: (tab: string) => void;
   onFilterChange: (filter: string) => void;
   onCampaignOpen: () => void;
+  /** Ouvre la modale de partage du lien d'inscription (QR + partage natif). */
+  onShareLink: () => void;
   restaurantSlug?: string;
   referralEnabled?: boolean;
   businessType?: string | null;
@@ -165,6 +167,7 @@ export default function OverviewTab({
   onTabChange,
   onFilterChange,
   onCampaignOpen,
+  onShareLink,
   restaurantSlug,
   referralEnabled,
   businessType,
@@ -486,6 +489,17 @@ export default function OverviewTab({
               </button>
             ))}
           </div>
+
+          {/* Lien d'inscription clients — visible aussi sur mobile (feuille de
+              partage native), contrairement au bouton campagne. */}
+          <button
+            onClick={onShareLink}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 text-sm font-medium hover:bg-gray-50 transition-colors"
+          >
+            <I d={ICONS.userPlus} className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Lien d&apos;inscription</span>
+            <span className="sm:hidden">Inscription</span>
+          </button>
 
           <button
             onClick={onCampaignOpen}
